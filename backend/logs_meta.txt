@@ -1,0 +1,5 @@
+Token OK. type=SYSTEM_USER  expires=0  scopes=['pages_show_list', 'leads_retrieval', 'pages_read_engagement', 'pages_manage_metadata', 'pages_manage_ads', 'public_profile']
+
+Fetched 8400 lead(s) from form 1795851617749555.
+
+Imported 0 new lead(s) (duplicates skipped). Total in form: 8400.

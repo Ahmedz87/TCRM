@@ -1,0 +1,183 @@
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 77, in main
+    rd.execute("""
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 256 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 64 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 115, in main
+    for login, symbol, entry, action, volume, price, profit, dtime, bal, deal_id in rd:
+psycopg2.OperationalError: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 256 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\ib_refresh_loop.py", line 19, in <module>
+    ib_trades.main()
+  File "C:\broker-crm\backend\ib_trades.py", line 138, in main
+    execute_values(cur, INSERT, batch); batch.clear()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\psycopg2\extras.py", line 1299, in execute_values
+    cur.execute(b''.join(parts))
+psycopg2.errors.OutOfMemory: out of memory
+DETAIL:  Failed on request of size 40 in memory context "MessageContext".
+

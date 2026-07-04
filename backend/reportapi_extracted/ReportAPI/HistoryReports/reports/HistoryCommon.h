@@ -1,0 +1,20 @@
+//+------------------------------------------------------------------+
+//|                                                   Reports plugin |
+//|                   Copyright 2001-2014, MetaQuotes Software Corp. |
+//|                                        http://www.metaquotes.net |
+//+------------------------------------------------------------------+
+#pragma once
+//---
+#include "Report.h"
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+class CHistoryCommon : public CReport
+  {
+public:
+   CHistoryCommon(CReport *next,LPCSTR name,LPCSTR formats=NULL) :
+                     CReport(next,name,formats) {};
+   int               GenerateHTML(const ReportParams *params);
+   int               GenerateCSV(const ReportParams *params);
+  };
+//+------------------------------------------------------------------+

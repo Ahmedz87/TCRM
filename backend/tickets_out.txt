@@ -1,0 +1,242 @@
+=== 20 TICKETS ===
+
+--- Ticket #23 [under_review] crit=critical route=fix src=admin for_ai=False ---
+  by: Abbas K (staff)  section: Dashboard
+  page: https://my1.tnfx.co/
+  note: also i need to statistics, one is the total equity at a single point of time, the second is the equity bonus excluded
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 22:47:33.547414  updated: 2026-06-18 22:47:33.547414
+
+--- Ticket #22 [under_review] crit=medium route=fix src=admin for_ai=False ---
+  by: Abbas K (staff)  section: Dashboard
+  page: https://my1.tnfx.co/
+  note: also i need to statistics, one is the total equity at a single point of time, the second is the equity bonus excluded
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 22:31:53.441703  updated: 2026-06-18 22:31:53.441703
+
+--- Ticket #21 [under_review] crit=critical route=fix src=admin for_ai=False ---
+  by: Abbas K (staff)  section: Dashboard
+  page: https://my1.tnfx.co/
+  note: also i need to statistics, one is the total equity at a single point of time, the second is the equity bonus excluded
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 22:27:59.559487  updated: 2026-06-18 22:27:59.559487
+
+--- Ticket #17 [done] crit=medium route=fix src=chat for_ai=True ---
+  by: Baker Ali (client)  section: AI assistant
+  page: https://my1.tnfx.co/portal/
+  note: بالتكت رقم 10 ورقم 11 بلغتني تم التعديل واللان ما تم العديل احنى عدنا الحد الأدنى للسحب هو 50$ وليس 10$
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 19:00:02.300381  updated: 2026-06-18 21:47:54.728901
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 19:03:14.398458: تم الإصلاح بشكل دائم هاي المرة / Fixed permanently this time. السبب: تذكرتي #10 و #11 تم إغلاقهما (status=done)، وتعليمات "50$" كانت مرتبطة بالتذكرة المفتوحة فقط، فلما انغلقت رجع البوت ما يعرف الحد الأدنى. الحل: حطّيت "الحد الأدنى للسحب = 50$" كمعلومة ثابتة في معلومات الشركة للبوت، فالآن البوت رح يجاوب دائماً 50$ (مو 10$) حتى لو انغلقت كل التذاكر.
+EN: tickets #10/#11 were CLOSED, and the "$50" instruction only lived inside the open ticket — so once closed, the bot lost it. I've now hard-coded "minimum withdrawal = $50, never $10" into the bot's permanent company info, so it will always say $50 regardless of ticket status. Live now.
+
+--- Ticket #16 [done] crit=medium route=fix src=admin for_ai=False ---
+  by: Admin (staff)  section: Transactions
+  page: https://my1.tnfx.co/
+  note: show the pending withdrawals, not yet performed along with statistics regad the payment method, how much value, how many transactions, total and per method
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 18:52:18.248399  updated: 2026-06-18 22:41:39.078088
+  REPLIES (3):
+     > [ai] Claude (dev) @ 2026-06-18 18:59:30.462216: DONE — Added a collapsible "💸 Pending withdrawals & payment-method stats" panel at the top of the Transactions page (new /transactions/pending-withdrawals endpoint). It shows: (a) PENDING withdrawals not yet performed — count, total value, and a per-method breakdown; and (b) "Withdrawals by payment method — all time" — count, value and % share per method (Qi card, USDT, sham_cash, MT5, FastPay, etc.) with bars. Live after a hard-refresh.
+Important data note: right now there are ZERO pending withdrawals in the system — every imported withdrawal has status 'approved', and the portal withdrawal queue is empty. So the "pending" side shows "queue is clear"; it will populate automatically once real withdrawal requests are awaiting action. The per-method statistics (the data-rich part) are fully populated from all withdrawals.
+Clarification I need: should "pending" be driven by (a) transactions with a pending/processing status, (b) portal withdrawal requests awaiting admin review, or (c) both (current behaviour)? And do you want approve/reject buttons on each pending row here?
+     > [staff] Admin @ 2026-06-18 19:19:11.277395: it is not accurate, i want a list for them like deposit, wd, itnernal transfer
+     > [ai] Claude (dev) @ 2026-06-18 21:59:20.470199: DONE — Added a "By transaction type" breakdown to the Transactions stats panel: Deposits, Withdrawals, Internal transfers (and Bonus/Credit) each shown as a card with total value + transaction count, alongside the existing per-payment-method withdrawal stats. Backed by the /transactions/pending-withdrawals endpoint (new by_type). Live after a hard-refresh.
+Clarification: I added it as summary cards per type. If you'd rather have a clickable LIST that drills into the actual transactions of each type (deposit/withdrawal/transfer rows), tell me and I'll make each card open that list.
+
+--- Ticket #15 [answered] crit=medium route=fix src=admin for_ai=False ---
+  by: Admin (staff)  section: Dashboard
+  page: https://my1.tnfx.co/
+  note: show the comparism feature between weeks, months, years figures and charts
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 18:43:52.820001  updated: 2026-06-18 18:53:09.243014
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 18:53:09.229507: DONE — Added a "📊 Comparison" panel on the Dashboard with a Week / Month / Year toggle. It compares the CURRENT period vs the PREVIOUS one (this week vs last week, this month vs last month, this year vs last year) across 5 metrics — Deposits, Withdrawals, Net, New clients, Active traders — each showing the current figure, the % change (green=good/red=bad; for withdrawals a rise is shown red), and mini current-vs-previous bars. Backed by a new /dashboard/compare endpoint. Live after a hard-refresh.
+What I could do: figures + per-metric comparison bars are in.
+Clarification I need: do you also want a full side-by-side line/bar CHART (e.g. this year's monthly deposits overlaid on last year's) in addition to these comparison tiles? And should the comparison respect the top period selector or stay independent (currently independent — its own Week/Month/Year toggle)?
+
+--- Ticket #14 [proceed] crit=medium route=fix src=admin for_ai=False ---
+  by: Admin (staff)  section: Dashboard
+  page: https://my1.tnfx.co/
+  note: show the total deposit and total withdrawal and the net of the whole year starting from 1 Jan till 31 Dec of each year in the cards above
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 18:41:34.153126  updated: 2026-06-18 22:42:04.937477
+  REPLIES (2):
+     > [ai] Claude (dev) @ 2026-06-18 18:46:44.707415: DONE — Added a row of three cards at the TOP of the Dashboard showing the WHOLE-YEAR totals (1 Jan – 31 Dec of the current year), independent of the period selector: 📅 [year] Deposits (green), [year] Withdrawals (red), and [year] Net = deposits − withdrawals (blue/red). Figures come from the transactions table filtered to the current calendar year. Live after a hard-refresh.
+What I could do: fully added.
+Clarification I need: do you want a small year picker on these cards to view PAST years (e.g. 2025) too, or is the current year enough? Also fine to move them below the main 8 KPIs if you prefer them lower.
+     > [staff] Abbas K @ 2026-06-18 22:19:19.154905: also i need to statistics, one is the total equity at a single point of time, the second is the equity bonus excluded
+
+--- Ticket #13 [done] crit=high route=fix src=admin for_ai=False ---
+  by: Admin (staff)  section: Dashboard
+  page: https://my1.tnfx.co/
+  note: here give two difrent colour to your message and Admin message 
+
+and make the news on top and oldes on the bottopm , so the admin will see the new reply on top and if you want to read all the history start from bottom , and also use arrow whihc up driection and anything else whihc admins can know it is the story start from the botoom and the the lates message is on the top
+  unread=False needs_approval=False approved=False has_shot=True
+  created: 2026-06-18 17:53:05.595446  updated: 2026-06-18 22:40:57.742928
+  REPLIES (4):
+     > [ai] Claude (dev) @ 2026-06-18 17:54:16.177445: DONE — In the ticket conversation: (1) my messages and people's messages now have two distinct colours and sit on opposite sides — 🤖 my (Claude) replies are violet on the left, 🛠/👤 Admin & client replies are blue on the right. (2) Newest reply is now on TOP, oldest at the bottom, with an "↑ newest on top — read up from the bottom for the full story" hint above the thread. Live after a hard-refresh.
+     > [staff] Admin @ 2026-06-18 17:57:29.180969: is that done, if i want to check thios message it self is not as per the requirement
+     > [staff] Admin @ 2026-06-18 17:59:34.001129: ok i see that you pin the original message on top 
+|start with original message put it at the bottom and at the top the header above the creasdt by admin and date , put the subject only, you creat a subject based on the contain
+     > [ai] Claude (dev) @ 2026-06-18 22:21:01.519844: DONE — رتّبت نافذة التذكرة مثل ما طلبت بالضبط:
+(1) ما عاد أثبّت الرسالة الأصلية فوق. صار فوق فقط هيدر فيه: رقم التذكرة + عنوان (Subject) أولّده تلقائياً من محتوى التذكرة + "Created by [الأدمن] والتاريخ".
+(2) الرسالة الأصلية نزلت لتحت — صارت أقدم رسالة في المحادثة (الستوري يبدأ من تحت)، وعليها وسم "ORIGINAL REQUEST"، والسكرين شوت ورابط الصفحة صاروا جواها.
+(3) المحادثة لسه الأحدث فوق والأقدم تحت، بنفس الألوان (ردودي بنفسجي يسار، ردود الأدمن/العميل أزرق يمين).
+
+EN: Reworked the ticket window exactly as requested. The original message is no longer pinned at the top — the top now shows only a HEADER (ticket #, an auto-generated Subject derived from the ticket's content, and "Created by <admin> · date"). The original request moved to the BOTTOM as the oldest message in the thread (tagged "ORIGINAL REQUEST", carrying its screenshot + page link). Newest-on-top ordering and the two-colour bubbles are kept. Live after a hard-refresh (Ctrl+Shift+R).
+
+Note: the Subject is auto-built from the first line/sentence of your note (works for Arabic & English). If you'd rather type your own subject when creating a ticket, tell me and I'll add a Subject field to the new-ticket form.
+
+--- Ticket #12 [done] crit=high route=fix src=admin for_ai=False ---
+  by: Zainab (staff)  section: Dashboard
+  page: https://my1.tnfx.co/
+  note: add IB unable to add please fixed
+  unread=False needs_approval=False approved=False has_shot=True
+  created: 2026-06-18 16:44:55.241401  updated: 2026-06-18 21:47:37.228275
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 17:38:36.314085: DONE — What I did: the "+ Add IB" button did nothing (it had no action wired and there was no create-IB endpoint at all). I built both: a backend POST /ibs endpoint and an "Add IB" form (click "+ Add IB" → enter the IB's trading-account login + name/contact + level → Create). It auto-fills name/email/phone/country/city from that client account if it exists, blocks duplicates, and the new IB appears in the list immediately. Live after a hard-refresh.
+What I could do: fully wired the create flow.
+Clarification I need: when you "add an IB", should we also (a) link their existing referred clients automatically, and (b) set them up on the MT server as an agent — or is creating the IB record (for tracking/commission) enough for now?
+
+--- Ticket #11 [done] crit=medium route=fix src=chat for_ai=True ---
+  by: Baker Ali (client)  section: AI assistant
+  page: https://my1.tnfx.co/portal/
+  note: الحد الادنى للسحب لازم يكون الجواب هو 50$
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 16:08:56.671594  updated: 2026-06-18 17:29:57.406515
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 16:21:44.494503: DONE / ACTIVE — same as ticket #10: the assistant now answers that the minimum withdrawal is 50$. (#10 and #11 are duplicates — you can close one.)
+
+--- Ticket #10 [done] crit=medium route=fix src=chat for_ai=True ---
+  by: Baker Ali (client)  section: AI assistant
+  page: https://my1.tnfx.co/portal/
+  note: الحد الادنى للسحب هو 50$
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 16:04:09.374871  updated: 2026-06-18 17:29:45.044489
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 16:21:44.494503: DONE / ACTIVE — تم: المساعد الآن يجاوب أن الحد الأدنى للسحب هو 50$ عند السؤال. التعليمات فعّالة وتُطبّق تلقائياً.
+Note: the system's built-in rule is $50 once a client has deposited (and $100 if they never deposited). Per your note the bot will answer $50 — tell me if you want it to mention the $100 no-deposit case too.
+
+--- Ticket #9 [done] crit=medium route=fix src=chat for_ai=True ---
+  by: Ahmed Wissam Ibrahim (client)  section: AI assistant
+  page: https://my1.tnfx.co/portal/
+  note: if anyone asked he has pending deposit or withdraw, first check if he ready has those pemnding transection, if not tell him there is no any deposit made by this account, you may reffer to diffent account
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 15:56:55.171558  updated: 2026-06-18 17:24:55.641506
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 16:21:44.494503: DONE / ACTIVE — Your instruction is live for the assistant: when a client asks about a pending deposit/withdrawal, it first checks their actual pending transactions; if there are none it tells them no deposit/withdrawal is pending on this account and suggests they may be referring to a different account. The bot already has each client's real pending-transaction data in context, so it can follow this accurately. Auto-applies until you close this.
+
+--- Ticket #8 [answered] crit=medium route=fix src=chat for_ai=True ---
+  by: Ahmed Wissam Ibrahim (client)  section: AI assistant
+  page: https://my1.tnfx.co/portal/
+  note: if any ask for the spread of any symbols
+just go and check the MT4/5 and tell him the spreads is 
+for STD x
+For Zero y
+for VIP z
+  unread=False needs_approval=True approved=False has_shot=False
+  created: 2026-06-18 15:53:22.298892  updated: 2026-06-18 21:59:20.483335
+  REPLIES (5):
+     > [ai] Claude (dev) @ 2026-06-18 16:21:44.494503: ACTIVE — Your instruction is now live for the assistant (it auto-applies until you close this): when a client asks for a symbol's spread, answer with the per-account-type spread (Standard / Zero / VIP).
+What I CAN'T do yet: the bot has no live link to MT4/5 to read real spreads, and your note used placeholders (x / y / z). So I won't let it invent numbers.
+What I need from you: either (a) give me the actual spread values per account type (and per symbol, or a default), or (b) confirm the data source to pull from (e.g. the markup/symbols config) and I'll wire the bot to read it live. Until then the bot will tell the client to check with their account manager for exact spreads.
+     > [staff] Admin @ 2026-06-18 16:50:12.391533: cant you check the ticks insdie the MT5?
+is yes you can read / calcualte the spread from bid and ask
+     > [ai] Claude (dev) @ 2026-06-18 17:31:34.076358: Good call — yes, in principle the MT5 manager API can read each symbol's live Bid/Ask, and spread = Ask − Bid (then ×point for the pip/point value), and we already have the per-account-type markup in the Symbol config, so I can compute Standard/Zero/VIP spreads.
+What this needs (a supervised step): add a /symbol/<name> route to the LIVE MT5 bridge that pulls Bid/Ask, then wire the bot to call it. The catch is the bridge has to be RESTARTED to load the new route, which causes a ~4-minute gap in live MT data sync (per the bridge notes). I don't want to interrupt your live sync without your go-ahead.
+What I need from you: (1) OK to add the bridge route + restart the bridge (~4 min sync gap)? (2) Should the spread the bot quotes be the RAW market spread (Ask−Bid) or RAW + your markup per account type? (3) all symbols, or a short list (e.g. EURUSD, XAUUSD)? Give me these and I'll wire it end-to-end.
+     > [staff] Admin @ 2026-06-18 17:42:21.337088: 1. add the bridge att 19/6/2026 21:00 it is when the market closed. just know that the market opens on Sunday 21:00 and close at Friday 21:00 UTC
+on Monday 00:00 the market opens and close at Firday 23:59/ only the crypto will works
+
+2. it is RAW market speard
+
+3. all symbols, and depend on what they ask you, at the same time please take the session on each symbol trading hours like for XAUUSD and oil 00:00 till 1:00 is closing hours no trades in and out, you can read from the manager the session of each symbol
+     > [ai] Claude (dev) @ 2026-06-18 21:59:20.470199: Got it — thank you, all three answered. Final plan locked:
+1) Spread source: read live Bid/Ask from the MT5 manager, spread = Ask − Bid (RAW market spread, no markup), for ALL symbols (answer whatever symbol the client asks about).
+2) Sessions: for each symbol I'll read its trading session from the manager and tell the client when a symbol is in its no-trade/closing window (e.g. XAUUSD & oil 00:00–01:00 UTC), and that the market runs Sun 21:00 → Fri 21:00 UTC (crypto 24/7).
+3) Bridge change: I'll add the /symbol route + wire the bot, and do the LIVE BRIDGE RESTART at the market-closed window you set — 2026-06-19 21:00 UTC (Friday close) — so the ~4-min MT-sync gap hits when markets are shut.
+This needs a supervised live bridge restart, so I'm leaving it flagged for Super-Admin approval. Once you click 🛡 Approve, the loop will perform the bridge route + restart at 2026-06-19 21:00 UTC. ⚠ Needs Super Admin approval — risky action (live bridge restart, scheduled 2026-06-19 21:00 UTC).
+
+--- Ticket #7 [answered] crit=medium route=fix src=portal for_ai=False ---
+  by: nuha tt (client)  section: KYC
+  page: https://my1.tnfx.co/portal/
+  note: I need to add the ability to capture a photo using the camera, not just upload an image. In addition, an option should be added to upload a proof of address document after uploading the proof of identity....Please note that this issue occurs within the customer dashboard after login, not during the account registration process
+  unread=True needs_approval=False approved=False has_shot=True
+  created: 2026-06-18 15:45:20.368162  updated: 2026-06-18 21:59:20.478118
+  REPLIES (3):
+     > [ai] Claude (dev) @ 2026-06-18 16:21:44.494503: DONE — What I did (client dashboard / portal KYC, after login): (1) every document upload now has a "📷 Take photo" option that opens the camera, in addition to "📤 Upload"; (2) added a "Proof of address (utility bill / bank statement)" upload right after the ID. Live on the portal KYC after a hard-refresh.
+What I could do: the portal KYC capture flow is currently a front-end demo (it records the file name, OCR is simulated) — the camera + proof-of-address options are now there.
+Clarification I need: should proof of address be REQUIRED to submit, or optional? And do you want real file storage now (send the actual image to the server), or keep the current simulated capture for testing?
+     > [staff] Admin @ 2026-06-18 21:50:18.364886: add this stage we need ti add a barcode, so the client can scan and go to that page and upload or take photo my mobile
+     > [ai] Claude (dev) @ 2026-06-18 21:59:20.470199: DONE — Added a "Scan to continue on your phone" QR code on the KYC upload step (portal). The client scans it, the portal opens on their phone, they sign in and finish uploading / taking photos there (the camera capture added earlier works on mobile). Live after a hard-refresh.
+What I could do: the QR + scan-to-mobile entry point is in.
+What I need from you: right now the phone has to sign in again (the QR opens the portal login). A true one-tap hand-off (desktop shows QR → phone opens already authenticated to THIS client's KYC upload, no re-login) needs a short-lived signed link/token. Want me to build that tokenized hand-off next?
+
+--- Ticket #6 [done] crit=medium route=fix src=admin for_ai=False ---
+  by: Nuha (staff)  section: KYC / verification
+  page: https://my1.tnfx.co/
+  note: Add an option to upload the back side of the proof of residence document during the account registration process
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 14:07:24.115349  updated: 2026-06-18 21:51:22.818278
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 14:57:30.063581: DONE — What I did: during registration KYC, Proof of residence now has TWO uploads — "Proof of residence (front)" and "Proof of residence — back side" (with a "No back side" skip for single-page documents). The back file is stored as side=proof_of_address_back. Live on the registration wizard.
+What I could do: fully added to the registration flow.
+Clarification I need: should the back side be REQUIRED, or optional (currently optional with a skip)? And do you want the same front/back split shown in the client Portal's KYC upload screen, not just registration?
+
+--- Ticket #5 [done] crit=medium route=fix src=admin for_ai=False ---
+  by: Rav sam (staff)  section: Dashboard
+  page: https://my1.tnfx.co/
+  note: When I make a ticket I want options for add or make an edit before it don
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 13:51:07.482490  updated: 2026-06-18 17:53:20.262848
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 14:57:30.063581: DONE — What I did: the ticket form now has a Review step. After filling it in you click "Review →", see a summary of everything (handling, section, critical, note, screenshot), and can either "← Edit" to change it or "✓ Submit ticket" to confirm. Nothing is sent until you confirm.
+What I could do: added it to the staff CRM ticket form.
+Clarification I need: want the same Review step on the client Portal ticket form too? Also — do you want an "edit after submit" window (e.g. edit your own ticket for X minutes), or is review-before-submit enough?
+
+--- Ticket #4 [done] crit=medium route=fix src=admin for_ai=False ---
+  by: Rav sam (staff)  section: Dashboard
+  page: https://my1.tnfx.co/
+  note: When I make a refresher the pag send me to the dashboard I want to stay in the same page
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 13:49:20.609891  updated: 2026-06-18 17:30:28.153670
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 14:57:30.063581: DONE — What I did: the CRM now remembers which page you're on across a browser refresh (saved in your browser), so refreshing keeps you on the same page instead of bouncing to Dashboard. Live after a hard-refresh (Ctrl+Shift+R) once — from then on it sticks.
+What I could do: fully fixed for the staff CRM.
+Clarification I need: this was for the staff CRM. Do you also want the same on the client Portal? (It currently resets to its dashboard on refresh too.)
+
+--- Ticket #3 [answered] crit=medium route=fix src=admin for_ai=False ---
+  by: Admin (staff)  section: Network
+  page: https://my1.tnfx.co/
+  note: we need a graphis showing the network not only list of them
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 12:57:09.096597  updated: 2026-06-18 13:37:15.569728
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 13:37:15.563217: DONE — What I did: every IP / Device cluster card now shows a visual GRAPH — the shared device/IP sits in the centre with all linked accounts around it (hover a node for the name); the account list stays below it. (A deeper per-account map already exists in the "Account Network" tab.)
+What I could do: covered the cluster view you asked about.
+Clarification I need: do you also want one big "whole-network" map spanning multiple clusters at once, or is the per-cluster graph enough? Any layout preference (current is radial/star)?
+
+--- Ticket #2 [answered] crit=medium route=fix src=chat for_ai=True ---
+  by: Abbas Kareem (client)  section: AI assistant
+  page: https://my1.tnfx.co/portal/
+  note: تحتاج تربط اللايف جات بموقع اخبار وتحليلات اقتصادية قوي حت يحدث بياانات العميل عن الاسواق مو يتعمد فقط ع اوتوجارتيست
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 12:22:51.133671  updated: 2026-06-18 13:37:15.569728
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 13:37:15.563217: REVIEWED — What I could do: I can connect the live chat to an economic news/analysis feed so the bot answers with real market data, not only Autochartist.
+What I need from you (a decision): which source? Options: a paid API (Trading Economics / Finnhub / Marketaux / NewsAPI — needs an API key + monthly cost) or a free RSS feed (lower quality/reliability). Pick one and share the API key (stored gitignored, like the Claude key) and I'll wire it in. Routed to Admin review and left open for your decision.
+
+--- Ticket #1 [done] crit=medium route=fix src=chat for_ai=True ---
+  by: Abbas Kareem (client)  section: AI assistant
+  page: https://my1.tnfx.co/portal/
+  note: جنت احجي وياك انجليزي وغيرت عربي وصرت تخربط ليش شبيك شجا؛
+  unread=False needs_approval=False approved=False has_shot=False
+  created: 2026-06-18 12:15:55.777591  updated: 2026-06-18 17:28:35.592999
+  REPLIES (1):
+     > [ai] Claude (dev) @ 2026-06-18 13:37:15.563217: DONE — What I did: changed the assistant's language rule so it follows your LATEST message (not the first one) and switches between English and Arabic mid-chat cleanly, without mixing the two. It's deployed live.
+What I could do: fully fixed.
+Clarification I need: please test switching English -> Arabic in the chat and confirm it behaves now. If a specific exchange still breaks, paste the exact messages and I'll tune it further.
+

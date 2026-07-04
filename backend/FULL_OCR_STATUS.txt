@@ -1,0 +1,302 @@
+[full-ocr] start Thu Jul  2 01:50:42 CUT 2026
+pay_qi_card: OCR queue (present locally) 32,391
+pay_qi_card: OCR queue (present locally) 38,230
+pay_zaincash: OCR queue (present locally) 114,335
+Exception (client): Error reading SSH protocol banner
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2213, in _check_banner
+    buf = self.packetizer.readline(timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 395, in readline
+    buf += self._read_timeout(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 665, in _read_timeout
+    raise EOFError()
+EOFError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    self._check_banner()
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+    raise SSHException(
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner
+
+Exception in thread Thread-8 (worker):
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2213, in _check_banner
+    buf = self.packetizer.readline(timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 395, in readline
+    buf += self._read_timeout(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 665, in _read_timeout
+    raise EOFError()
+EOFError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\broker-crm\backend\receipt_ocr_dbbox.py", line 31, in worker
+    c,s = sftp(); pg=psycopg2.connect(PG); pg.autocommit=True; cur=pg.cursor()
+          ^^^^^^
+  File "C:\broker-crm\backend\receipt_ocr_dbbox.py", line 24, in sftp
+    c.connect(DBBOX, username="root", key_filename=KEY, timeout=20)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\client.py", line 443, in connect
+    t.start_client(timeout=timeout)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 701, in start_client
+    raise e
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    self._check_banner()
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+    raise SSHException(
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner
+ect
+    t.start_client(timeout=timeout)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 701, in start_client
+    raise e
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    self._check_banner()
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+    raise SSHException(
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner[WinError 10053] An established connection was aborted by the software in your host machine
+Exception (client): Error reading SSH protocol banner
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2213, in _check_banner
+    buf = self.packetizer.readline(timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 395, in readline
+    buf += self._read_timeout(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 665, in _read_timeout
+    raise EOFError()
+EOFError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    self._check_banner()
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+    raise SSHException(
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner
+
+Exception in thread Thread-8 (worker):
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2213, in _check_banner
+    buf = self.packetizer.readline(timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 395, in readline
+    buf += self._read_timeout(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 665, in _read_timeout
+    raise EOFError()
+EOFError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\broker-crm\backend\receipt_ocr_dbbox.py", line 31, in worker
+    c,s = sftp(); pg=psycopg2.connect(PG); pg.autocommit=True; cur=pg.cursor()
+          ^^^^^^
+  File "C:\broker-crm\backend\receipt_ocr_dbbox.py", line 24, in sftp
+    c.connect(DBBOX, username="root", key_filename=KEY, timeout=20)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\client.py", line 443, in connect
+    t.start_client(timeout=timeout)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 701, in start_client
+    raise e
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    self._check_banner()
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+    raise SSHException(
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner
+pay_sham_cash: OCR queue (present locally) 2,204
+Exception (client): Error reading SSH protocol banner[WinError 10053] An established connection was aborted by the software in your host machine
+Exception (client): Error reading SSH protocol banner[WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2213, in _check_banner
+    buf = self.packetizer.readline(timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 395, in readline
+    buf += self._read_timeout(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 663, in _read_timeout
+    x = self.__socket.recv(128)
+        ^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+
+During handling of the above exception, another exception occurred:
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2213, in _check_banner
+    buf = self.packetizer.readline(timeout)
+
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 395, in readline
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    self._check_banner()
+    buf += self._read_timeout(timeout)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    raise SSHException(
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 663, in _read_timeout
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner[WinError 10054] An existing connection was forcibly closed by the remote host
+    x = self.__socket.recv(128)
+        ^^^^^^^^^^^^^^^^^^^^^^^
+
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    self._check_banner()
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+    raise SSHException(
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner[WinError 10053] An established connection was aborted by the software in your host machine
+
+Exception in thread Thread-5 (worker):
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2213, in _check_banner
+Exception in thread Thread-6 (worker):
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2213, in _check_banner
+    buf = self.packetizer.readline(timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 395, in readline
+    buf = self.packetizer.readline(timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 395, in readline
+    buf += self._read_timeout(timeout)
+    buf += self._read_timeout(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 663, in _read_timeout
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 663, in _read_timeout
+    x = self.__socket.recv(128)
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    x = self.__socket.recv(128)
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+        ^^^^^^^^^^^^^^^^^^^^^^^
+
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+
+During handling of the above exception, another exception occurred:
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+Traceback (most recent call last):
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self.run()
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\broker-crm\backend\receipt_ocr_dbbox.py", line 31, in worker
+    self._target(*self._args, **self._kwargs)
+  File "C:\broker-crm\backend\receipt_ocr_dbbox.py", line 31, in worker
+    c,s = sftp(); pg=psycopg2.connect(PG); pg.autocommit=True; cur=pg.cursor()
+          ^^^^^^
+  File "C:\broker-crm\backend\receipt_ocr_dbbox.py", line 24, in sftp
+    c.connect(DBBOX, username="root", key_filename=KEY, timeout=20)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\client.py", line 443, in connect
+    c,s = sftp(); pg=psycopg2.connect(PG); pg.autocommit=True; cur=pg.cursor()
+          ^^^^^^
+  File "C:\broker-crm\backend\receipt_ocr_dbbox.py", line 24, in sftp
+    t.start_client(timeout=timeout)
+    c.connect(DBBOX, username="root", key_filename=KEY, timeout=20)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 701, in start_client
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\client.py", line 443, in connect
+    raise e
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    t.start_client(timeout=timeout)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 701, in start_client
+    self._check_banner()
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+    raise e
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    raise SSHException(
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner[WinError 10054] An existing connection was forcibly closed by the remote host
+    self._check_banner()
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+    raise SSHException(
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner[WinError 10053] An established connection was aborted by the software in your host machine
+[full-ocr] 02:02 pay_qi_card=8623/68755 pay_zaincash=309/114697 pay_sham_cash=402/2606
+[full-ocr] remaining_present=176670 download=inactive Thu Jul  2 02:02:29 CUT 2026
+[full-ocr] 02:02 pay_qi_card=8623/68755 pay_zaincash=309/114697 pay_sham_cash=402/2606
+[full-ocr] remaining_present=176670 download=inactive Thu Jul  2 02:02:30 CUT 2026
+pay_qi_card: OCR queue (present locally) 60,131
+pay_zaincash: OCR queue (present locally) 114,335
+pay_sham_cash: OCR queue (present locally) 2,204
+[full-ocr] 07:24 pay_qi_card=16123/68755 pay_zaincash=309/114697 pay_sham_cash=402/2606
+[full-ocr] remaining_present=169170 download=inactive Thu Jul  2 07:24:14 CUT 2026
+[full-ocr] 07:24 pay_qi_card=16123/68755 pay_zaincash=309/114697 pay_sham_cash=402/2606
+[full-ocr] remaining_present=169170 download=inactive Thu Jul  2 07:24:15 CUT 2026
+pay_qi_card: OCR queue (present locally) 52,331
+Exception (client): Error reading SSH protocol banner[WinError 10054] An existing connection was forcibly closed by the remote host
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2213, in _check_banner
+    buf = self.packetizer.readline(timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 395, in readline
+    buf += self._read_timeout(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 663, in _read_timeout
+    x = self.__socket.recv(128)
+        ^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    self._check_banner()
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+    raise SSHException(
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner[WinError 10054] An existing connection was forcibly closed by the remote host
+
+Exception in thread Thread-8 (worker):
+Traceback (most recent call last):
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2213, in _check_banner
+    buf = self.packetizer.readline(timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 395, in readline
+    buf += self._read_timeout(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\packet.py", line 663, in _read_timeout
+    x = self.__socket.recv(128)
+        ^^^^^^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 1045, in _bootstrap_inner
+    self.run()
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python311\Lib\threading.py", line 982, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\broker-crm\backend\receipt_ocr_dbbox.py", line 31, in worker
+    c,s = sftp(); pg=psycopg2.connect(PG); pg.autocommit=True; cur=pg.cursor()
+          ^^^^^^
+  File "C:\broker-crm\backend\receipt_ocr_dbbox.py", line 24, in sftp
+    c.connect(DBBOX, username="root", key_filename=KEY, timeout=20)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\client.py", line 443, in connect
+    t.start_client(timeout=timeout)
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 701, in start_client
+    raise e
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2029, in run
+    self._check_banner()
+  File "C:\broker-crm\backend\venv\Lib\site-packages\paramiko\transport.py", line 2217, in _check_banner
+    raise SSHException(
+paramiko.ssh_exception.SSHException: Error reading SSH protocol banner[WinError 10054] An existing connection was forcibly closed by the remote host

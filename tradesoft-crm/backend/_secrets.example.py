@@ -1,0 +1,6 @@
+"""Template for _secrets.py (gitignored). Copy to _secrets.py and fill in real values."""
+TRADESOFT_DATABASE_URL = "postgresql://postgres:YOUR_PASSWORD@127.0.0.1:5432/tradesoft_crm"
+PG_DSN     = "host=127.0.0.1 port=5432 dbname=tradesoft_crm user=postgres password=YOUR_PASSWORD"
+TS_DSN     = "host=localhost port=5432 dbname=tradesoft_crm user=postgres password=YOUR_PASSWORD"
+BROKER_DSN = "host=localhost port=5432 dbname=broker_crm user=postgres password=YOUR_PASSWORD"
+BROKER_LOCAL_DSN = "host=127.0.0.1 port=5432 dbname=broker_crm user=postgres password=YOUR_PASSWORD"

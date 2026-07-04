@@ -1,0 +1,82 @@
+# ───────────────────────── dependencies / build artifacts ─────────────────────────
+node_modules/
+venv/
+__pycache__/
+*.pyc
+dist/
+build/
+*.dll
+
+# ───────────────────────── logs ─────────────────────────
+*.log
+
+# ───────────────────────── SECRETS (never commit) ─────────────────────────
+.env
+.env.*
+!.env.example
+*.bak-*
+backend/db_config.py
+_secrets.py
+**/_secrets.py
+backend/ai_config.py
+backend/ai_key.txt
+backend/smtp_config.py
+backend/turnstile_secret.txt
+backend/sms_config.py
+backend/autochartist_config.py
+backend/gateway_config.py
+backend/meta_config.py
+backend/ts_mysql_config.py
+# throwaway diagnostic/test scripts (ad-hoc dev scratch; many embed live tokens/admin creds) — not versioned
+backend/test_*.py
+backend/check_*.py
+backend/debug_*.py
+backend/diag_*.py
+backend/explore_*.py
+backend/find_login.py
+backend/stop_auto.py
+backend/final_test.py
+backend/time_scans*.py
+backend/list_meta_forms.py
+# certs / keys
+certs/
+*.pem
+*.key
+*.crt
+
+# ───────────────────────── DATA (client data / backups — never commit) ─────────────────────────
+*.dump
+*.backup
+broker_crm_full.backup
+backups/
+exports/
+data/
+data Email + Phone/
+kyc_test_docs/
+Compare excel deposit/
+# spreadsheets = data extracts
+*.xlsx
+*.xls
+*.zip
+*.csv
+
+# ───────────────────────── client uploads / documents (PII — never commit) ─────────────────────────
+backend/kyc_uploads/
+backend/deposit_proofs/
+IB setting/
+data Email + Phone/
+# data-dump JSON (not app config)
+backend/archive_legacy_leads_backup.json
+backend/commission_report_result.json
+*_backup.json
+*_result.json
+
+# ───────────────────────── MT runtime data (not source) ─────────────────────────
+backend/bases/
+*.dat
+
+# ───────────────────────── legacy reference (kept on disk, not versioned) ─────────────────────────
+Old CRM Code/
+
+# ───────────────────────── local tooling ─────────────────────────
+.claude/

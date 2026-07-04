@@ -1,0 +1,37 @@
+
+======================================================================
+STUDY: Qi Card  [pay_qi_card]
+======================================================================
+OCR'd receipts analysed: 8,623
+  txid present: 6,495/8,623
+  FORMAT (len 37-38): lengths={37: 3232, 38: 2862} dated=True fixed-block-after-date=''
+  sample txid: 2026041410121420010100166482105293196
+  A) REUSED SCREENSHOTS (rich phash): 10,747 groups; 1,295 span >1 client (worst 36 deposits/one image)
+  B) DUPLICATE TXIDs: 4 (worst x2)
+  -> per-row suspects (excl. reused-img): 4,321  reasons={'qi_senderid_unstable': 3299, 'amount_mismatch': 1631, 'qi_series_violation': 49, 'duplicate_txid': 4}
+  -> TOTAL flagged suspect (incl reused-img+dup): 5,431 | clean: 3,192
+  Qi sender-id: 1003 accounts stable, 493 with MULTIPLE sender-ids (forgery signal)
+
+======================================================================
+STUDY: ZainCash  [pay_zaincash]
+======================================================================
+OCR'd receipts analysed: 309
+  txid present: 46/309
+  FORMAT: lengths={9: 38, 4: 4, 6: 4} dated=False fixed-block-after-date=''
+  sample txid: 213216349
+  A) REUSED SCREENSHOTS (rich phash): 15,697 groups; 934 span >1 client (worst 32 deposits/one image)
+  B) DUPLICATE TXIDs: 0 (worst x0)
+  -> per-row suspects (excl. reused-img): 11  reasons={'amount_mismatch': 11}
+  -> TOTAL flagged suspect (incl reused-img+dup): 80 | clean: 229
+
+======================================================================
+STUDY: Sham Cash  [pay_sham_cash]
+======================================================================
+OCR'd receipts analysed: 402
+  txid present: 396/402
+  FORMAT: lengths={9: 327, 8: 65, 19: 2, 18: 1, 6: 1} dated=False fixed-block-after-date=''
+  sample txid: 300919215
+  A) REUSED SCREENSHOTS (rich phash): 207 groups; 22 span >1 client (worst 10 deposits/one image)
+  B) DUPLICATE TXIDs: 1 (worst x2)
+  -> per-row suspects (excl. reused-img): 12  reasons={'amount_mismatch': 12, 'duplicate_txid': 1}
+  -> TOTAL flagged suspect (incl reused-img+dup): 94 | clean: 308

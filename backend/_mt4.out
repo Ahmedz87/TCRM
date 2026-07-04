@@ -1,0 +1,2273 @@
+=== MT4 auto-fetch loop (recent, every 60s). Ctrl+C to stop. ===
+
+[11:36:41] MT4 recent fetch...
+[11:36:54] done, sleeping 60s
+
+[11:37:54] MT4 recent fetch...
+[11:38:07] done, sleeping 60s
+
+[11:39:07] MT4 recent fetch...
+[11:39:18] done, sleeping 60s
+
+[11:40:18] MT4 recent fetch...
+[11:40:32] done, sleeping 60s
+
+[11:41:32] MT4 recent fetch...
+[11:41:48] done, sleeping 60s
+
+[11:42:48] MT4 recent fetch...
+[11:43:04] done, sleeping 60s
+
+[11:44:04] MT4 recent fetch...
+[11:44:19] done, sleeping 60s
+
+[11:45:19] MT4 recent fetch...
+[11:45:33] done, sleeping 60s
+
+[11:46:33] MT4 recent fetch...
+[11:46:47] done, sleeping 60s
+
+[11:47:47] MT4 recent fetch...
+[11:48:03] MT4 balance (deposits) fetch...
+journal records (last 2d): 78180
+MT4 balance ops parsed: 274  rows offered: 274  transactions 92501 -> 92501
+MT4 transactions now:
+   deposit             12507   $404,362.86
+   withdrawal            660   $315,672.62
+   bonus_withdrawal      492   $55,941.32
+   bonus_deposit         411   $41,396.01
+[11:48:06] done, sleeping 60s
+
+[11:49:06] MT4 recent fetch...
+[11:49:21] done, sleeping 60s
+
+[11:50:21] MT4 recent fetch...
+[11:50:37] done, sleeping 60s
+
+[11:51:37] MT4 recent fetch...
+[11:51:52] done, sleeping 60s
+
+[11:52:52] MT4 recent fetch...
+[11:53:05] done, sleeping 60s
+
+[11:54:05] MT4 recent fetch...
+[11:54:20] done, sleeping 60s
+
+[11:55:20] MT4 recent fetch...
+[11:55:35] done, sleeping 60s
+
+[11:56:35] MT4 recent fetch...
+[11:56:54] done, sleeping 60s
+
+[11:57:54] MT4 recent fetch...
+[11:58:22] done, sleeping 60s
+
+[11:59:22] MT4 recent fetch...
+[11:59:37] done, sleeping 60s
+
+[12:00:37] MT4 recent fetch...
+[12:00:53] MT4 balance (deposits) fetch...
+journal records (last 2d): 78316
+MT4 balance ops parsed: 274  rows offered: 274  transactions 92501 -> 92501
+MT4 transactions now:
+   deposit             12507   $404,362.86
+   withdrawal            660   $315,672.62
+   bonus_withdrawal      492   $55,941.32
+   bonus_deposit         411   $41,396.01
+[12:00:56] done, sleeping 60s
+
+[12:01:56] MT4 recent fetch...
+[12:02:11] done, sleeping 60s
+
+[12:03:11] MT4 recent fetch...
+[12:03:29] done, sleeping 60s
+
+[12:04:29] MT4 recent fetch...
+[12:05:51] done, sleeping 60s
+
+[12:06:51] MT4 recent fetch...
+[12:07:06] done, sleeping 60s
+
+[12:08:06] MT4 recent fetch...
+[12:08:19] done, sleeping 60s
+
+[12:09:19] MT4 recent fetch...
+[12:11:36] done, sleeping 60s
+
+[12:12:36] MT4 recent fetch...
+[12:14:06] done, sleeping 60s
+
+[12:15:06] MT4 recent fetch...
+[12:15:21] done, sleeping 60s
+
+[12:16:21] MT4 recent fetch...
+[12:16:46] done, sleeping 60s
+
+[12:17:46] MT4 recent fetch...
+[12:18:02] MT4 balance (deposits) fetch...
+journal records (last 2d): 78432
+MT4 balance ops parsed: 278  rows offered: 278  transactions 92501 -> 92505
+MT4 transactions now:
+   deposit             12509   $404,376.24
+   withdrawal            660   $315,672.62
+   bonus_withdrawal      494   $55,954.70
+   bonus_deposit         411   $41,396.01
+[12:18:05] done, sleeping 60s
+
+[12:19:05] MT4 recent fetch...
+[12:19:22] done, sleeping 60s
+
+[12:20:22] MT4 recent fetch...
+[12:20:36] done, sleeping 60s
+
+[12:21:36] MT4 recent fetch...
+[12:21:49] done, sleeping 60s
+
+[12:22:49] MT4 recent fetch...
+[12:23:53] done, sleeping 60s
+
+[12:24:53] MT4 recent fetch...
+[12:25:10] done, sleeping 60s
+
+[12:26:10] MT4 recent fetch...
+[12:26:34] done, sleeping 60s
+
+[12:27:34] MT4 recent fetch...
+[12:28:46] done, sleeping 60s
+
+[12:29:46] MT4 recent fetch...
+[12:30:01] done, sleeping 60s
+
+[12:31:01] MT4 recent fetch...
+[12:31:15] done, sleeping 60s
+
+[12:32:15] MT4 recent fetch...
+[12:34:01] MT4 balance (deposits) fetch...
+journal records (last 2d): 78544
+MT4 balance ops parsed: 278  rows offered: 278  transactions 92505 -> 92505
+MT4 transactions now:
+   deposit             12509   $404,376.24
+   withdrawal            660   $315,672.62
+   bonus_withdrawal      494   $55,954.70
+   bonus_deposit         411   $41,396.01
+[12:34:04] done, sleeping 60s
+
+[12:35:04] MT4 recent fetch...
+[12:35:17] done, sleeping 60s
+
+[12:36:17] MT4 recent fetch...
+[12:36:31] done, sleeping 60s
+
+[12:37:31] MT4 recent fetch...
+[12:37:45] done, sleeping 60s
+
+[12:38:45] MT4 recent fetch...
+[12:38:59] done, sleeping 60s
+
+[12:39:59] MT4 recent fetch...
+[12:40:11] done, sleeping 60s
+
+[12:41:11] MT4 recent fetch...
+[12:41:31] done, sleeping 60s
+
+[12:42:31] MT4 recent fetch...
+[12:44:11] done, sleeping 60s
+
+[12:45:11] MT4 recent fetch...
+[12:45:29] done, sleeping 60s
+
+[12:46:29] MT4 recent fetch...
+[12:46:43] done, sleeping 60s
+
+[12:47:43] MT4 recent fetch...
+[12:47:57] MT4 balance (deposits) fetch...
+journal records (last 2d): 78651
+MT4 balance ops parsed: 278  rows offered: 278  transactions 92505 -> 92505
+MT4 transactions now:
+   deposit             12509   $404,376.24
+   withdrawal            660   $315,672.62
+   bonus_withdrawal      494   $55,954.70
+   bonus_deposit         411   $41,396.01
+[12:48:00] done, sleeping 60s
+
+[12:49:00] MT4 recent fetch...
+[12:49:13] done, sleeping 60s
+
+[12:50:13] MT4 recent fetch...
+[12:50:27] done, sleeping 60s
+
+[12:51:27] MT4 recent fetch...
+[12:51:41] done, sleeping 60s
+
+[12:52:41] MT4 recent fetch...
+[12:53:51] done, sleeping 60s
+
+[12:54:51] MT4 recent fetch...
+[12:55:07] done, sleeping 60s
+
+[12:56:07] MT4 recent fetch...
+[12:56:26] done, sleeping 60s
+
+[12:57:26] MT4 recent fetch...
+[12:58:11] done, sleeping 60s
+
+[12:59:11] MT4 recent fetch...
+[12:59:25] done, sleeping 60s
+
+[13:00:25] MT4 recent fetch...
+[13:00:40] done, sleeping 60s
+
+[13:01:40] MT4 recent fetch...
+[13:01:54] MT4 balance (deposits) fetch...
+journal records (last 2d): 78751
+MT4 balance ops parsed: 279  rows offered: 279  transactions 92505 -> 92506
+MT4 transactions now:
+   deposit             12510   $404,476.24
+   withdrawal            660   $315,672.62
+   bonus_withdrawal      494   $55,954.70
+   bonus_deposit         411   $41,396.01
+[13:01:57] done, sleeping 60s
+
+[13:02:57] MT4 recent fetch...
+[13:03:56] done, sleeping 60s
+
+[13:04:56] MT4 recent fetch...
+[13:05:10] done, sleeping 60s
+
+[13:06:10] MT4 recent fetch...
+[13:06:25] done, sleeping 60s
+
+[13:07:25] MT4 recent fetch...
+[13:07:37] done, sleeping 60s
+
+[13:08:37] MT4 recent fetch...
+[13:09:00] done, sleeping 60s
+
+[13:10:00] MT4 recent fetch...
+[13:10:14] done, sleeping 60s
+
+[13:11:14] MT4 recent fetch...
+[13:12:24] done, sleeping 60s
+
+[13:13:24] MT4 recent fetch...
+[13:14:10] done, sleeping 60s
+
+[13:15:10] MT4 recent fetch...
+[13:15:26] done, sleeping 60s
+
+[13:16:26] MT4 recent fetch...
+[13:24:37] MT4 balance (deposits) fetch...
+journal records (last 2d): 79023
+MT4 balance ops parsed: 279  rows offered: 279  transactions 92506 -> 92506
+MT4 transactions now:
+   deposit             12510   $404,476.24
+   withdrawal            660   $315,672.62
+   bonus_withdrawal      494   $55,954.70
+   bonus_deposit         411   $41,396.01
+[13:24:40] done, sleeping 60s
+
+[13:25:40] MT4 recent fetch...
+[13:26:19] done, sleeping 60s
+
+[13:27:19] MT4 recent fetch...
+[13:27:36] done, sleeping 60s
+
+[13:28:36] MT4 recent fetch...
+[13:28:53] done, sleeping 60s
+
+[13:29:53] MT4 recent fetch...
+[13:30:11] done, sleeping 60s
+
+[13:31:11] MT4 recent fetch...
+[13:31:26] done, sleeping 60s
+
+[13:32:26] MT4 recent fetch...
+[13:33:56] done, sleeping 60s
+
+[13:34:56] MT4 recent fetch...
+[13:35:09] done, sleeping 60s
+
+[13:36:09] MT4 recent fetch...
+[13:36:24] done, sleeping 60s
+
+[13:37:24] MT4 recent fetch...
+[13:37:39] done, sleeping 60s
+
+[13:38:39] MT4 recent fetch...
+[13:38:52] MT4 balance (deposits) fetch...
+journal records (last 2d): 79144
+MT4 balance ops parsed: 280  rows offered: 280  transactions 92506 -> 92507
+MT4 transactions now:
+   deposit             12511   $405,376.24
+   withdrawal            660   $315,672.62
+   bonus_withdrawal      494   $55,954.70
+   bonus_deposit         411   $41,396.01
+[13:38:54] done, sleeping 60s
+
+[13:39:54] MT4 recent fetch...
+[13:40:07] done, sleeping 60s
+
+[13:41:07] MT4 recent fetch...
+[13:41:20] done, sleeping 60s
+
+[13:42:20] MT4 recent fetch...
+[13:43:50] done, sleeping 60s
+
+[13:44:50] MT4 recent fetch...
+[13:45:12] done, sleeping 60s
+
+[13:46:12] MT4 recent fetch...
+[13:47:08] done, sleeping 60s
+
+[13:48:08] MT4 recent fetch...
+[13:48:25] done, sleeping 60s
+
+[13:49:25] MT4 recent fetch...
+[13:49:39] done, sleeping 60s
+
+[13:50:39] MT4 recent fetch...
+[13:50:58] done, sleeping 60s
+
+[13:51:58] MT4 recent fetch...
+  +1 new MT4 accounts synced to trading_accounts
+[13:54:36] done, sleeping 60s
+
+[13:55:36] MT4 recent fetch...
+[13:55:56] MT4 balance (deposits) fetch...
+journal records (last 2d): 79471
+MT4 balance ops parsed: 283  rows offered: 283  transactions 92507 -> 92510
+MT4 transactions now:
+   deposit             12512   $406,422.74
+   withdrawal            661   $324,672.62
+   bonus_withdrawal      495   $57,001.20
+   bonus_deposit         411   $41,396.01
+[13:56:02] done, sleeping 60s
+
+[13:57:02] MT4 recent fetch...
+[13:57:16] done, sleeping 60s
+
+[13:58:16] MT4 recent fetch...
+[13:58:31] done, sleeping 60s
+
+[13:59:31] MT4 recent fetch...
+  +1 new MT4 accounts synced to trading_accounts
+[13:59:44] done, sleeping 60s
+
+[14:00:44] MT4 recent fetch...
+[14:01:00] done, sleeping 60s
+
+[14:02:00] MT4 recent fetch...
+[14:04:37] done, sleeping 60s
+
+[14:05:37] MT4 recent fetch...
+[14:05:53] done, sleeping 60s
+
+[14:06:53] MT4 recent fetch...
+[14:07:11] done, sleeping 60s
+
+[14:08:11] MT4 recent fetch...
+[14:08:28] done, sleeping 60s
+
+[14:09:28] MT4 recent fetch...
+[14:09:50] done, sleeping 60s
+
+[14:10:50] MT4 recent fetch...
+[14:11:07] MT4 balance (deposits) fetch...
+journal records (last 2d): 79738
+MT4 balance ops parsed: 289  rows offered: 289  transactions 92510 -> 92516
+MT4 transactions now:
+   deposit             12514   $406,719.51
+   withdrawal            663   $325,222.62
+   bonus_withdrawal      496   $57,008.20
+   bonus_deposit         412   $41,415.36
+[14:11:09] done, sleeping 60s
+
+[14:12:09] MT4 recent fetch...
+[14:13:57] done, sleeping 60s
+
+[14:14:57] MT4 recent fetch...
+[14:16:21] done, sleeping 60s
+
+[14:17:21] MT4 recent fetch...
+[14:17:36] done, sleeping 60s
+
+[14:18:36] MT4 recent fetch...
+[14:18:49] done, sleeping 60s
+
+[14:19:49] MT4 recent fetch...
+[14:20:03] done, sleeping 60s
+
+[14:21:03] MT4 recent fetch...
+[14:21:24] done, sleeping 60s
+
+[14:22:24] MT4 recent fetch...
+[14:23:15] done, sleeping 60s
+
+[14:24:15] MT4 recent fetch...
+[14:26:45] done, sleeping 60s
+
+[14:27:45] MT4 recent fetch...
+  +1 new MT4 accounts synced to trading_accounts
+[14:28:07] done, sleeping 60s
+
+[14:29:07] MT4 recent fetch...
+[14:29:22] MT4 balance (deposits) fetch...
+journal records (last 2d): 80722
+MT4 balance ops parsed: 314  rows offered: 314  transactions 92516 -> 92541
+MT4 transactions now:
+   deposit             12523   $414,296.79
+   withdrawal            668   $327,381.13
+   bonus_withdrawal      501   $57,619.20
+   bonus_deposit         418   $42,844.72
+[14:29:25] done, sleeping 60s
+
+[14:30:25] MT4 recent fetch...
+[14:30:41] done, sleeping 60s
+
+[14:31:41] MT4 recent fetch...
+[14:31:56] done, sleeping 60s
+
+[14:32:56] MT4 recent fetch...
+[14:33:10] done, sleeping 60s
+
+[14:34:10] MT4 recent fetch...
+[14:34:24] done, sleeping 60s
+
+[14:35:24] MT4 recent fetch...
+[14:36:25] done, sleeping 60s
+
+[14:37:25] MT4 recent fetch...
+[14:37:43] done, sleeping 60s
+
+[14:38:43] MT4 recent fetch...
+[14:39:02] done, sleeping 60s
+
+[14:40:02] MT4 recent fetch...
+[14:40:19] done, sleeping 60s
+
+[14:41:19] MT4 recent fetch...
+[14:41:34] done, sleeping 60s
+
+[14:42:34] MT4 recent fetch...
+[14:42:48] MT4 balance (deposits) fetch...
+journal records (last 2d): 81101
+MT4 balance ops parsed: 314  rows offered: 314  transactions 92541 -> 92541
+MT4 transactions now:
+   deposit             12523   $414,296.79
+   withdrawal            668   $327,381.13
+   bonus_withdrawal      501   $57,619.20
+   bonus_deposit         418   $42,844.72
+[14:42:51] done, sleeping 60s
+
+[14:43:51] MT4 recent fetch...
+[14:44:09] done, sleeping 60s
+
+[14:45:09] MT4 recent fetch...
+[14:46:41] done, sleeping 60s
+
+[14:47:41] MT4 recent fetch...
+[14:47:56] done, sleeping 60s
+
+[14:48:56] MT4 recent fetch...
+[14:49:44] done, sleeping 60s
+
+[14:50:44] MT4 recent fetch...
+[14:51:01] done, sleeping 60s
+
+[14:52:01] MT4 recent fetch...
+[14:52:17] done, sleeping 60s
+
+[14:53:17] MT4 recent fetch...
+[14:53:32] done, sleeping 60s
+
+[14:54:32] MT4 recent fetch...
+[14:57:05] done, sleeping 60s
+
+[14:58:05] MT4 recent fetch...
+[14:58:23] done, sleeping 60s
+
+[14:59:23] MT4 recent fetch...
+[14:59:37] MT4 balance (deposits) fetch...
+journal records (last 2d): 81631
+MT4 balance ops parsed: 317  rows offered: 317  transactions 92541 -> 92544
+MT4 transactions now:
+   deposit             12524   $414,396.79
+   withdrawal            669   $327,459.13
+   bonus_withdrawal      502   $57,623.20
+   bonus_deposit         418   $42,844.72
+[14:59:39] done, sleeping 60s
+
+[15:00:39] MT4 recent fetch...
+[15:00:55] done, sleeping 60s
+
+[15:01:55] MT4 recent fetch...
+[15:02:10] done, sleeping 60s
+
+[15:03:10] MT4 recent fetch...
+[15:03:25] done, sleeping 60s
+
+[15:04:25] MT4 recent fetch...
+[15:06:19] done, sleeping 60s
+
+[15:07:19] MT4 recent fetch...
+[15:07:32] done, sleeping 60s
+
+[15:08:32] MT4 recent fetch...
+[15:08:46] done, sleeping 60s
+
+[15:09:46] MT4 recent fetch...
+[15:09:59] done, sleeping 60s
+
+[15:10:59] MT4 recent fetch...
+[15:11:12] done, sleeping 60s
+
+[15:12:12] MT4 recent fetch...
+[15:12:30] done, sleeping 60s
+
+[15:13:30] MT4 recent fetch...
+[15:14:21] MT4 balance (deposits) fetch...
+journal records (last 2d): 81738
+MT4 balance ops parsed: 320  rows offered: 320  transactions 92544 -> 92547
+MT4 transactions now:
+   deposit             12526   $414,556.03
+   withdrawal            669   $327,459.13
+   bonus_withdrawal      503   $57,644.44
+   bonus_deposit         418   $42,844.72
+[15:14:24] done, sleeping 60s
+
+[15:15:24] MT4 recent fetch...
+[15:16:34] done, sleeping 60s
+
+[15:17:34] MT4 recent fetch...
+[15:17:54] done, sleeping 60s
+
+[15:18:54] MT4 recent fetch...
+[15:19:08] done, sleeping 60s
+
+[15:20:08] MT4 recent fetch...
+[15:20:24] done, sleeping 60s
+
+[15:21:24] MT4 recent fetch...
+[15:21:38] done, sleeping 60s
+
+[15:22:38] MT4 recent fetch...
+[15:22:54] done, sleeping 60s
+
+[15:23:54] MT4 recent fetch...
+[15:24:07] done, sleeping 60s
+
+[15:25:07] MT4 recent fetch...
+[15:26:15] done, sleeping 60s
+
+[15:27:15] MT4 recent fetch...
+[15:27:36] done, sleeping 60s
+
+[15:28:36] MT4 recent fetch...
+[15:29:08] MT4 balance (deposits) fetch...
+journal records (last 2d): 82502
+MT4 balance ops parsed: 327  rows offered: 327  transactions 92547 -> 92554
+MT4 transactions now:
+   deposit             12527   $414,557.03
+   withdrawal            672   $328,968.13
+   bonus_withdrawal      506   $57,665.44
+   bonus_deposit         418   $42,844.72
+[15:29:11] done, sleeping 60s
+
+[15:30:11] MT4 recent fetch...
+[15:30:27] done, sleeping 60s
+
+[15:31:27] MT4 recent fetch...
+[15:31:42] done, sleeping 60s
+
+[15:32:42] MT4 recent fetch...
+[15:32:58] done, sleeping 60s
+
+[15:33:58] MT4 recent fetch...
+[15:34:13] done, sleeping 60s
+
+[15:35:13] MT4 recent fetch...
+[15:36:21] done, sleeping 60s
+
+[15:37:21] MT4 recent fetch...
+[15:37:35] done, sleeping 60s
+
+[15:38:35] MT4 recent fetch...
+[15:38:49] done, sleeping 60s
+
+[15:39:49] MT4 recent fetch...
+[15:40:02] done, sleeping 60s
+
+[15:41:02] MT4 recent fetch...
+[15:41:15] done, sleeping 60s
+
+[15:42:15] MT4 recent fetch...
+[15:42:37] MT4 balance (deposits) fetch...
+journal records (last 2d): 82763
+MT4 balance ops parsed: 327  rows offered: 327  transactions 92554 -> 92554
+MT4 transactions now:
+   deposit             12527   $414,557.03
+   withdrawal            672   $328,968.13
+   bonus_withdrawal      506   $57,665.44
+   bonus_deposit         418   $42,844.72
+[15:42:40] done, sleeping 60s
+
+[15:43:40] MT4 recent fetch...
+[15:44:25] done, sleeping 60s
+
+[15:45:25] MT4 recent fetch...
+[15:46:28] done, sleeping 60s
+
+[15:47:28] MT4 recent fetch...
+[15:47:43] done, sleeping 60s
+
+[15:48:43] MT4 recent fetch...
+[15:48:59] done, sleeping 60s
+
+[15:49:59] MT4 recent fetch...
+[15:50:15] done, sleeping 60s
+
+[15:51:15] MT4 recent fetch...
+[15:51:30] done, sleeping 60s
+
+[15:52:30] MT4 recent fetch...
+[15:52:45] done, sleeping 60s
+
+[15:53:45] MT4 recent fetch...
+[15:53:59] done, sleeping 60s
+
+[15:54:59] MT4 recent fetch...
+[15:56:20] done, sleeping 60s
+
+[15:57:20] MT4 recent fetch...
+[15:58:47] MT4 balance (deposits) fetch...
+journal records (last 2d): 83188
+MT4 balance ops parsed: 327  rows offered: 327  transactions 92554 -> 92554
+MT4 transactions now:
+   deposit             12527   $414,557.03
+   withdrawal            672   $328,968.13
+   bonus_withdrawal      506   $57,665.44
+   bonus_deposit         418   $42,844.72
+[15:58:50] done, sleeping 60s
+
+[15:59:50] MT4 recent fetch...
+[16:00:06] done, sleeping 60s
+
+[16:01:06] MT4 recent fetch...
+[16:01:22] done, sleeping 60s
+
+[16:02:22] MT4 recent fetch...
+[16:02:37] done, sleeping 60s
+
+[16:03:37] MT4 recent fetch...
+[16:03:54] done, sleeping 60s
+
+[16:04:54] MT4 recent fetch...
+[16:06:21] done, sleeping 60s
+
+[16:07:21] MT4 recent fetch...
+[16:07:59] done, sleeping 60s
+
+[16:08:59] MT4 recent fetch...
+[16:09:14] done, sleeping 60s
+
+[16:10:14] MT4 recent fetch...
+[16:10:28] done, sleeping 60s
+
+[16:11:28] MT4 recent fetch...
+[16:11:44] done, sleeping 60s
+
+[16:12:44] MT4 recent fetch...
+[16:14:12] MT4 balance (deposits) fetch...
+journal records (last 2d): 83550
+MT4 balance ops parsed: 329  rows offered: 329  transactions 92554 -> 92556
+MT4 transactions now:
+   deposit             12528   $414,569.11
+   withdrawal            673   $328,980.21
+   bonus_withdrawal      506   $57,665.44
+   bonus_deposit         418   $42,844.72
+[16:14:14] done, sleeping 60s
+
+[16:15:14] MT4 recent fetch...
+  +1 new MT4 accounts synced to trading_accounts
+[16:16:33] done, sleeping 60s
+
+[16:17:33] MT4 recent fetch...
+[16:17:50] done, sleeping 60s
+
+[16:18:50] MT4 recent fetch...
+[16:19:06] done, sleeping 60s
+
+[16:20:06] MT4 recent fetch...
+[16:20:22] done, sleeping 60s
+
+[16:21:22] MT4 recent fetch...
+[16:21:37] done, sleeping 60s
+
+[16:22:37] MT4 recent fetch...
+[16:22:53] done, sleeping 60s
+
+[16:23:53] MT4 recent fetch...
+[16:24:07] done, sleeping 60s
+
+[16:25:07] MT4 recent fetch...
+[16:26:34] done, sleeping 60s
+
+[16:27:34] MT4 recent fetch...
+[16:28:49] done, sleeping 60s
+
+[16:29:49] MT4 recent fetch...
+[16:30:06] MT4 balance (deposits) fetch...
+journal records (last 2d): 83825
+MT4 balance ops parsed: 329  rows offered: 329  transactions 92556 -> 92556
+MT4 transactions now:
+   deposit             12528   $414,569.11
+   withdrawal            673   $328,980.21
+   bonus_withdrawal      506   $57,665.44
+   bonus_deposit         418   $42,844.72
+[16:30:09] done, sleeping 60s
+
+[16:31:09] MT4 recent fetch...
+[16:31:25] done, sleeping 60s
+
+[16:32:25] MT4 recent fetch...
+[16:32:44] done, sleeping 60s
+
+[16:33:44] MT4 recent fetch...
+[16:34:00] done, sleeping 60s
+
+[16:35:00] MT4 recent fetch...
+[16:53:11] done, sleeping 60s
+
+[16:54:11] MT4 recent fetch...
+  +2 new MT4 accounts synced to trading_accounts
+[16:56:22] done, sleeping 60s
+
+[16:57:22] MT4 recent fetch...
+[16:58:00] done, sleeping 60s
+
+[16:59:00] MT4 recent fetch...
+[17:20:12] done, sleeping 60s
+
+[17:21:12] MT4 recent fetch...
+[17:22:20] done, sleeping 60s
+
+[17:23:20] MT4 recent fetch...
+[17:24:57] done, sleeping 60s
+
+[17:25:57] MT4 recent fetch...
+[17:26:13] MT4 balance (deposits) fetch...
+journal records (last 2d): 84303
+MT4 balance ops parsed: 343  rows offered: 343  transactions 92556 -> 92570
+MT4 transactions now:
+   deposit             12532   $415,243.69
+   withdrawal            676   $329,242.89
+   bonus_withdrawal      509   $57,709.44
+   bonus_deposit         422   $43,108.98
+[17:26:16] done, sleeping 60s
+
+[17:27:16] MT4 recent fetch...
+[17:27:32] done, sleeping 60s
+
+[17:28:32] MT4 recent fetch...
+[17:28:48] done, sleeping 60s
+
+[17:29:48] MT4 recent fetch...
+  +1 new MT4 accounts synced to trading_accounts
+[17:30:01] done, sleeping 60s
+
+[17:31:01] MT4 recent fetch...
+[17:31:15] done, sleeping 60s
+
+[17:32:15] MT4 recent fetch...
+[17:32:35] done, sleeping 60s
+
+[17:33:35] MT4 recent fetch...
+[17:35:18] done, sleeping 60s
+
+[17:36:18] MT4 recent fetch...
+[17:36:43] done, sleeping 60s
+
+[17:37:43] MT4 recent fetch...
+[17:37:59] done, sleeping 60s
+
+[17:38:59] MT4 recent fetch...
+[17:39:14] done, sleeping 60s
+
+[17:40:14] MT4 recent fetch...
+[17:40:30] MT4 balance (deposits) fetch...
+journal records (last 2d): 84825
+MT4 balance ops parsed: 345  rows offered: 345  transactions 92570 -> 92572
+MT4 transactions now:
+   deposit             12533   $415,265.30
+   withdrawal            676   $329,242.89
+   bonus_withdrawal      509   $57,709.44
+   bonus_deposit         423   $43,158.98
+[17:40:33] done, sleeping 60s
+
+[17:41:33] MT4 recent fetch...
+[17:41:50] done, sleeping 60s
+
+[17:42:50] MT4 recent fetch...
+[17:44:56] done, sleeping 60s
+
+[17:45:56] MT4 recent fetch...
+  +1 new MT4 accounts synced to trading_accounts
+[17:46:11] done, sleeping 60s
+
+[17:47:11] MT4 recent fetch...
+[17:47:27] done, sleeping 60s
+
+[17:48:27] MT4 recent fetch...
+[17:48:40] done, sleeping 60s
+
+[17:49:40] MT4 recent fetch...
+[17:49:56] done, sleeping 60s
+
+[17:50:56] MT4 recent fetch...
+  +1 new MT4 accounts synced to trading_accounts
+[17:51:15] done, sleeping 60s
+
+[17:52:15] MT4 recent fetch...
+[17:52:44] done, sleeping 60s
+
+[17:53:44] MT4 recent fetch...
+[17:55:08] done, sleeping 60s
+
+[17:56:08] MT4 recent fetch...
+[17:56:24] MT4 balance (deposits) fetch...
+journal records (last 2d): 85131
+MT4 balance ops parsed: 349  rows offered: 349  transactions 92572 -> 92576
+MT4 transactions now:
+   deposit             12535   $415,349.17
+   withdrawal            676   $329,242.89
+   bonus_withdrawal      509   $57,709.44
+   bonus_deposit         425   $43,175.75
+[17:56:27] done, sleeping 60s
+
+[17:57:27] MT4 recent fetch...
+[17:57:42] done, sleeping 60s
+
+[17:58:42] MT4 recent fetch...
+[17:58:58] done, sleeping 60s
+
+[17:59:58] MT4 recent fetch...
+[18:00:13] done, sleeping 60s
+
+[18:01:13] MT4 recent fetch...
+[18:01:30] done, sleeping 60s
+
+[18:02:30] MT4 recent fetch...
+[18:02:45] done, sleeping 60s
+
+[18:03:45] MT4 recent fetch...
+[18:04:49] done, sleeping 60s
+
+[18:05:49] MT4 recent fetch...
+[18:06:05] done, sleeping 60s
+
+[18:07:05] MT4 recent fetch...
+[18:07:26] done, sleeping 60s
+
+[18:08:26] MT4 recent fetch...
+[18:08:48] done, sleeping 60s
+
+[18:09:48] MT4 recent fetch...
+[18:10:43] MT4 balance (deposits) fetch...
+journal records (last 2d): 87099
+MT4 balance ops parsed: 356  rows offered: 356  transactions 92576 -> 92583
+MT4 transactions now:
+   deposit             12536   $415,549.17
+   withdrawal            679   $329,695.89
+   bonus_withdrawal      511   $57,714.44
+   bonus_deposit         426   $43,176.75
+[18:10:45] done, sleeping 60s
+
+[18:11:45] MT4 recent fetch...
+[18:12:03] done, sleeping 60s
+
+[18:13:03] MT4 recent fetch...
+[18:15:11] done, sleeping 60s
+
+[18:16:11] MT4 recent fetch...
+[18:16:26] done, sleeping 60s
+
+[18:17:26] MT4 recent fetch...
+[18:17:42] done, sleeping 60s
+
+[18:18:42] MT4 recent fetch...
+[18:18:57] done, sleeping 60s
+
+[18:19:57] MT4 recent fetch...
+[18:20:12] done, sleeping 60s
+
+[18:21:12] MT4 recent fetch...
+[18:21:26] done, sleeping 60s
+
+[18:22:26] MT4 recent fetch...
+[18:22:41] done, sleeping 60s
+
+[18:23:41] MT4 recent fetch...
+[18:25:04] done, sleeping 60s
+
+[18:26:04] MT4 recent fetch...
+[18:27:11] MT4 balance (deposits) fetch...
+journal records (last 2d): 88025
+MT4 balance ops parsed: 360  rows offered: 360  transactions 92583 -> 92587
+MT4 transactions now:
+   deposit             12538   $415,599.50
+   withdrawal            679   $329,695.89
+   bonus_withdrawal      512   $57,729.29
+   bonus_deposit         427   $43,183.85
+[18:27:13] done, sleeping 60s
+
+[18:28:13] MT4 recent fetch...
+[18:28:30] done, sleeping 60s
+
+[18:29:30] MT4 recent fetch...
+[18:29:46] done, sleeping 60s
+
+[18:30:46] MT4 recent fetch...
+[18:31:01] done, sleeping 60s
+
+[18:32:01] MT4 recent fetch...
+[18:32:18] done, sleeping 60s
+
+[18:33:18] MT4 recent fetch...
+[18:34:55] done, sleeping 60s
+
+[18:35:55] MT4 recent fetch...
+[18:36:10] done, sleeping 60s
+
+[18:37:10] MT4 recent fetch...
+[18:37:26] done, sleeping 60s
+
+[18:38:26] MT4 recent fetch...
+[18:38:40] done, sleeping 60s
+
+[18:39:40] MT4 recent fetch...
+[18:39:55] done, sleeping 60s
+
+[18:40:55] MT4 recent fetch...
+[18:41:10] MT4 balance (deposits) fetch...
+journal records (last 2d): 89224
+MT4 balance ops parsed: 364  rows offered: 364  transactions 92587 -> 92591
+MT4 transactions now:
+   deposit             12539   $415,699.50
+   withdrawal            681   $330,345.89
+   bonus_withdrawal      513   $57,735.29
+   bonus_deposit         427   $43,183.85
+[18:41:13] done, sleeping 60s
+
+[18:42:13] MT4 recent fetch...
+[18:43:46] done, sleeping 60s
+
+[18:44:46] MT4 recent fetch...
+[18:45:48] done, sleeping 60s
+
+[18:46:48] MT4 recent fetch...
+[18:47:04] done, sleeping 60s
+
+[18:48:04] MT4 recent fetch...
+[18:48:21] done, sleeping 60s
+
+[18:49:21] MT4 recent fetch...
+[18:49:37] done, sleeping 60s
+
+[18:50:37] MT4 recent fetch...
+[18:50:54] done, sleeping 60s
+
+[18:51:54] MT4 recent fetch...
+[18:52:10] done, sleeping 60s
+
+[18:53:10] MT4 recent fetch...
+[18:54:51] done, sleeping 60s
+
+[18:55:51] MT4 recent fetch...
+[18:56:06] done, sleeping 60s
+
+[18:57:06] MT4 recent fetch...
+[18:57:20] MT4 balance (deposits) fetch...
+journal records (last 2d): 90313
+MT4 balance ops parsed: 370  rows offered: 370  transactions 92591 -> 92597
+MT4 transactions now:
+   deposit             12540   $415,911.50
+   withdrawal            683   $331,357.89
+   bonus_withdrawal      515   $57,762.29
+   bonus_deposit         428   $43,184.85
+[18:57:23] done, sleeping 60s
+
+[18:58:23] MT4 recent fetch...
+[18:59:42] done, sleeping 60s
+
+[19:00:42] MT4 recent fetch...
+[19:00:58] done, sleeping 60s
+
+[19:01:58] MT4 recent fetch...
+[19:02:15] done, sleeping 60s
+
+[19:03:15] MT4 recent fetch...
+[19:05:13] done, sleeping 60s
+
+[19:06:13] MT4 recent fetch...
+[19:06:30] done, sleeping 60s
+
+[19:07:30] MT4 recent fetch...
+[19:07:47] done, sleeping 60s
+
+[19:08:47] MT4 recent fetch...
+[19:09:03] done, sleeping 60s
+
+[19:10:03] MT4 recent fetch...
+[19:10:19] done, sleeping 60s
+
+[19:11:19] MT4 recent fetch...
+[19:11:34] done, sleeping 60s
+
+[19:12:34] MT4 recent fetch...
+[19:12:48] MT4 balance (deposits) fetch...
+journal records (last 2d): 91478
+MT4 balance ops parsed: 375  rows offered: 375  transactions 92597 -> 92602
+MT4 transactions now:
+   deposit             12541   $416,008.27
+   withdrawal            685   $331,775.89
+   bonus_withdrawal      516   $57,763.29
+   bonus_deposit         429   $43,204.05
+[19:12:51] done, sleeping 60s
+
+[19:13:51] MT4 recent fetch...
+[19:15:54] done, sleeping 60s
+
+[19:16:54] MT4 recent fetch...
+[19:17:21] done, sleeping 60s
+
+[19:18:21] MT4 recent fetch...
+[19:18:37] done, sleeping 60s
+
+[19:19:37] MT4 recent fetch...
+[19:19:53] done, sleeping 60s
+
+[19:20:53] MT4 recent fetch...
+[19:21:11] done, sleeping 60s
+
+[19:22:11] MT4 recent fetch...
+[19:22:27] done, sleeping 60s
+
+[19:23:27] MT4 recent fetch...
+  +1 new MT4 accounts synced to trading_accounts
+[19:24:56] done, sleeping 60s
+
+[19:25:56] MT4 recent fetch...
+[19:26:11] done, sleeping 60s
+
+[19:27:11] MT4 recent fetch...
+[19:27:27] done, sleeping 60s
+
+[19:28:27] MT4 recent fetch...
+[19:28:43] MT4 balance (deposits) fetch...
+journal records (last 2d): 92490
+MT4 balance ops parsed: 386  rows offered: 386  transactions 92602 -> 92613
+MT4 transactions now:
+   deposit             12545   $416,379.34
+   withdrawal            688   $334,920.89
+   bonus_withdrawal      519   $57,940.00
+   bonus_deposit         430   $43,209.21
+[19:28:45] done, sleeping 60s
+
+[19:29:45] MT4 recent fetch...
+[19:30:00] done, sleeping 60s
+
+[19:31:00] MT4 recent fetch...
+[19:31:16] done, sleeping 60s
+
+[19:32:16] MT4 recent fetch...
+[19:32:37] done, sleeping 60s
+
+[19:33:37] MT4 recent fetch...
+[19:35:14] done, sleeping 60s
+
+[19:36:14] MT4 recent fetch...
+[19:36:32] done, sleeping 60s
+
+[19:37:32] MT4 recent fetch...
+[19:37:49] done, sleeping 60s
+
+[19:38:49] MT4 recent fetch...
+[19:39:04] done, sleeping 60s
+
+[19:40:04] MT4 recent fetch...
+[19:40:21] done, sleeping 60s
+
+[19:41:21] MT4 recent fetch...
+[19:41:37] done, sleeping 60s
+
+[19:42:37] MT4 recent fetch...
+[19:42:54] MT4 balance (deposits) fetch...
+journal records (last 2d): 93211
+MT4 balance ops parsed: 394  rows offered: 394  transactions 92613 -> 92621
+MT4 transactions now:
+   deposit             12547   $416,553.37
+   withdrawal            691   $338,065.89
+   bonus_withdrawal      521   $58,076.00
+   bonus_deposit         431   $43,215.02
+[19:42:57] done, sleeping 60s
+
+[19:43:57] MT4 recent fetch...
+[19:44:51] done, sleeping 60s
+
+[19:45:51] MT4 recent fetch...
+[19:46:07] done, sleeping 60s
+
+[19:47:07] MT4 recent fetch...
+[19:47:21] done, sleeping 60s
+
+[19:48:21] MT4 recent fetch...
+[19:48:36] done, sleeping 60s
+
+[19:49:36] MT4 recent fetch...
+[19:49:56] done, sleeping 60s
+
+[19:50:56] MT4 recent fetch...
+[19:52:15] done, sleeping 60s
+
+[19:53:15] MT4 recent fetch...
+[19:55:12] done, sleeping 60s
+
+[19:56:12] MT4 recent fetch...
+[19:56:28] done, sleeping 60s
+
+[19:57:28] MT4 recent fetch...
+[19:57:45] done, sleeping 60s
+
+[19:58:45] MT4 recent fetch...
+[19:59:02] MT4 balance (deposits) fetch...
+journal records (last 2d): 93713
+MT4 balance ops parsed: 398  rows offered: 398  transactions 92621 -> 92625
+MT4 transactions now:
+   deposit             12549   $416,654.58
+   withdrawal            691   $338,065.89
+   bonus_withdrawal      522   $58,119.79
+   bonus_deposit         432   $43,226.50
+[19:59:05] done, sleeping 60s
+
+[20:00:05] MT4 recent fetch...
+[20:00:21] done, sleeping 60s
+
+[20:01:21] MT4 recent fetch...
+[20:01:37] done, sleeping 60s
+
+[20:02:37] MT4 recent fetch...
+[20:02:53] done, sleeping 60s
+
+[20:03:53] MT4 recent fetch...
+[20:05:06] done, sleeping 60s
+
+[20:06:06] MT4 recent fetch...
+[20:07:33] done, sleeping 60s
+
+[20:08:33] MT4 recent fetch...
+[20:08:50] done, sleeping 60s
+
+[20:09:50] MT4 recent fetch...
+[20:10:06] done, sleeping 60s
+
+[20:11:06] MT4 recent fetch...
+[20:11:23] done, sleeping 60s
+
+[20:12:23] MT4 recent fetch...
+[20:12:40] done, sleeping 60s
+
+[20:13:40] MT4 recent fetch...
+[20:14:57] MT4 balance (deposits) fetch...
+journal records (last 2d): 94228
+MT4 balance ops parsed: 404  rows offered: 404  transactions 92625 -> 92631
+MT4 transactions now:
+   deposit             12551   $416,754.96
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      523   $58,123.40
+   bonus_deposit         433   $43,245.85
+[20:15:00] done, sleeping 60s
+
+[20:16:00] MT4 recent fetch...
+[20:16:16] done, sleeping 60s
+
+[20:17:16] MT4 recent fetch...
+[20:17:31] done, sleeping 60s
+
+[20:18:31] MT4 recent fetch...
+[20:18:46] done, sleeping 60s
+
+[20:19:46] MT4 recent fetch...
+[20:20:07] done, sleeping 60s
+
+[20:21:07] MT4 recent fetch...
+[20:22:00] done, sleeping 60s
+
+[20:23:00] MT4 recent fetch...
+[20:25:14] done, sleeping 60s
+
+[20:26:14] MT4 recent fetch...
+[20:26:31] done, sleeping 60s
+
+[20:27:31] MT4 recent fetch...
+[20:27:48] done, sleeping 60s
+
+[20:28:48] MT4 recent fetch...
+[20:29:05] done, sleeping 60s
+
+[20:30:05] MT4 recent fetch...
+[20:30:23] MT4 balance (deposits) fetch...
+journal records (last 2d): 94612
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92631 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[20:30:26] done, sleeping 60s
+
+[20:31:26] MT4 recent fetch...
+[20:31:41] done, sleeping 60s
+
+[20:32:41] MT4 recent fetch...
+[20:32:58] done, sleeping 60s
+
+[20:33:58] MT4 recent fetch...
+[20:34:55] done, sleeping 60s
+
+[20:35:55] MT4 recent fetch...
+[20:36:14] done, sleeping 60s
+
+[20:37:14] MT4 recent fetch...
+[20:37:45] done, sleeping 60s
+
+[20:38:45] MT4 recent fetch...
+[20:39:02] done, sleeping 60s
+
+[20:40:02] MT4 recent fetch...
+[20:40:18] done, sleeping 60s
+
+[20:41:18] MT4 recent fetch...
+[20:41:35] done, sleeping 60s
+
+[20:42:35] MT4 recent fetch...
+[20:42:52] done, sleeping 60s
+
+[20:43:52] MT4 recent fetch...
+[20:44:59] MT4 balance (deposits) fetch...
+journal records (last 2d): 94764
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[20:45:02] done, sleeping 60s
+
+[20:46:02] MT4 recent fetch...
+[20:46:18] done, sleeping 60s
+
+[20:47:18] MT4 recent fetch...
+[20:47:33] done, sleeping 60s
+
+[20:48:33] MT4 recent fetch...
+[20:48:48] done, sleeping 60s
+
+[20:49:48] MT4 recent fetch...
+[20:50:04] done, sleeping 60s
+
+[20:51:04] MT4 recent fetch...
+[20:51:25] done, sleeping 60s
+
+[20:52:25] MT4 recent fetch...
+[20:53:03] done, sleeping 60s
+
+[20:54:03] MT4 recent fetch...
+[20:55:11] done, sleeping 60s
+
+[20:56:11] MT4 recent fetch...
+[20:56:27] done, sleeping 60s
+
+[20:57:27] MT4 recent fetch...
+[20:57:43] done, sleeping 60s
+
+[20:58:43] MT4 recent fetch...
+[20:58:58] MT4 balance (deposits) fetch...
+journal records (last 2d): 94857
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[20:59:01] done, sleeping 60s
+
+[21:00:01] MT4 recent fetch...
+[21:00:18] done, sleeping 60s
+
+[21:01:18] MT4 recent fetch...
+[21:01:35] done, sleeping 60s
+
+[21:02:35] MT4 recent fetch...
+[21:02:50] done, sleeping 60s
+
+[21:03:50] MT4 recent fetch...
+[21:04:49] done, sleeping 60s
+
+[21:05:49] MT4 recent fetch...
+[21:06:11] done, sleeping 60s
+
+[21:07:11] MT4 recent fetch...
+[21:08:15] done, sleeping 60s
+
+[21:09:15] MT4 recent fetch...
+[21:09:32] done, sleeping 60s
+
+[21:10:32] MT4 recent fetch...
+[21:10:50] done, sleeping 60s
+
+[21:11:50] MT4 recent fetch...
+[21:12:06] done, sleeping 60s
+
+[21:13:06] MT4 recent fetch...
+[21:15:13] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[21:15:15] done, sleeping 60s
+
+[21:16:15] MT4 recent fetch...
+[21:16:32] done, sleeping 60s
+
+[21:17:32] MT4 recent fetch...
+[21:17:47] done, sleeping 60s
+
+[21:18:47] MT4 recent fetch...
+[21:19:03] done, sleeping 60s
+
+[21:20:03] MT4 recent fetch...
+[21:20:18] done, sleeping 60s
+
+[21:21:18] MT4 recent fetch...
+[21:21:39] done, sleeping 60s
+
+[21:22:39] MT4 recent fetch...
+[21:23:46] done, sleeping 60s
+
+[21:24:46] MT4 recent fetch...
+[21:25:50] done, sleeping 60s
+
+[21:26:50] MT4 recent fetch...
+[21:27:07] done, sleeping 60s
+
+[21:28:07] MT4 recent fetch...
+[21:28:24] done, sleeping 60s
+
+[21:29:24] MT4 recent fetch...
+[21:29:42] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[21:29:45] done, sleeping 60s
+
+[21:30:45] MT4 recent fetch...
+[21:31:02] done, sleeping 60s
+
+[21:32:02] MT4 recent fetch...
+[21:32:19] done, sleeping 60s
+
+[21:33:19] MT4 recent fetch...
+[21:34:49] done, sleeping 60s
+
+[21:35:49] MT4 recent fetch...
+[21:36:04] done, sleeping 60s
+
+[21:37:04] MT4 recent fetch...
+[21:37:22] done, sleeping 60s
+
+[21:38:22] MT4 recent fetch...
+[21:39:02] done, sleeping 60s
+
+[21:40:02] MT4 recent fetch...
+[21:40:19] done, sleeping 60s
+
+[21:41:19] MT4 recent fetch...
+[21:41:36] done, sleeping 60s
+
+[21:42:36] MT4 recent fetch...
+[21:42:53] done, sleeping 60s
+
+[21:43:53] MT4 recent fetch...
+[21:45:10] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[21:45:13] done, sleeping 60s
+
+[21:46:13] MT4 recent fetch...
+[21:46:30] done, sleeping 60s
+
+[21:47:30] MT4 recent fetch...
+[21:47:47] done, sleeping 60s
+
+[21:48:47] MT4 recent fetch...
+[21:49:03] done, sleeping 60s
+
+[21:50:03] MT4 recent fetch...
+[21:50:18] done, sleeping 60s
+
+[21:51:18] MT4 recent fetch...
+[21:51:34] done, sleeping 60s
+
+[21:52:34] MT4 recent fetch...
+[21:54:21] done, sleeping 60s
+
+[21:55:21] MT4 recent fetch...
+[21:56:24] done, sleeping 60s
+
+[21:57:24] MT4 recent fetch...
+[21:57:41] done, sleeping 60s
+
+[21:58:41] MT4 recent fetch...
+[21:58:58] done, sleeping 60s
+
+[21:59:58] MT4 recent fetch...
+[22:00:15] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[22:00:18] done, sleeping 60s
+
+[22:01:18] MT4 recent fetch...
+[22:01:34] done, sleeping 60s
+
+[22:02:34] MT4 recent fetch...
+[22:02:52] done, sleeping 60s
+
+[22:03:52] MT4 recent fetch...
+[22:04:53] done, sleeping 60s
+
+[22:05:53] MT4 recent fetch...
+[22:06:09] done, sleeping 60s
+
+[22:07:09] MT4 recent fetch...
+[22:07:28] done, sleeping 60s
+
+[22:08:28] MT4 recent fetch...
+[22:09:28] done, sleeping 60s
+
+[22:10:28] MT4 recent fetch...
+[22:10:46] done, sleeping 60s
+
+[22:11:46] MT4 recent fetch...
+[22:12:03] done, sleeping 60s
+
+[22:13:03] MT4 recent fetch...
+[22:15:11] done, sleeping 60s
+
+[22:16:11] MT4 recent fetch...
+[22:16:29] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[22:16:31] done, sleeping 60s
+
+[22:17:31] MT4 recent fetch...
+[22:17:48] done, sleeping 60s
+
+[22:18:48] MT4 recent fetch...
+[22:19:03] done, sleeping 60s
+
+[22:20:03] MT4 recent fetch...
+[22:20:20] done, sleeping 60s
+
+[22:21:20] MT4 recent fetch...
+[22:21:37] done, sleeping 60s
+
+[22:22:37] MT4 recent fetch...
+[22:24:38] done, sleeping 60s
+
+[22:25:38] MT4 recent fetch...
+[22:26:38] done, sleeping 60s
+
+[22:27:38] MT4 recent fetch...
+[22:27:58] done, sleeping 60s
+
+[22:28:58] MT4 recent fetch...
+[22:29:16] done, sleeping 60s
+
+[22:30:16] MT4 recent fetch...
+[22:30:34] done, sleeping 60s
+
+[22:31:34] MT4 recent fetch...
+[22:31:51] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[22:31:53] done, sleeping 60s
+
+[22:32:53] MT4 recent fetch...
+[22:34:54] done, sleeping 60s
+
+[22:35:54] MT4 recent fetch...
+[22:36:10] done, sleeping 60s
+
+[22:37:10] MT4 recent fetch...
+[22:37:26] done, sleeping 60s
+
+[22:38:26] MT4 recent fetch...
+[22:38:49] done, sleeping 60s
+
+[22:39:49] MT4 recent fetch...
+[22:41:17] done, sleeping 60s
+
+[22:42:17] MT4 recent fetch...
+[22:42:34] done, sleeping 60s
+
+[22:43:34] MT4 recent fetch...
+[22:45:12] done, sleeping 60s
+
+[22:46:12] MT4 recent fetch...
+[22:46:29] done, sleeping 60s
+
+[22:47:29] MT4 recent fetch...
+[22:47:47] done, sleeping 60s
+
+[22:48:47] MT4 recent fetch...
+[22:49:04] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[22:49:07] done, sleeping 60s
+
+[22:50:07] MT4 recent fetch...
+[22:50:24] done, sleeping 60s
+
+[22:51:24] MT4 recent fetch...
+[22:51:40] done, sleeping 60s
+
+[22:52:40] MT4 recent fetch...
+[22:52:56] done, sleeping 60s
+
+[22:53:56] MT4 recent fetch...
+[22:55:48] done, sleeping 60s
+
+[22:56:48] MT4 recent fetch...
+[22:57:31] done, sleeping 60s
+
+[22:58:31] MT4 recent fetch...
+[22:58:48] done, sleeping 60s
+
+[22:59:48] MT4 recent fetch...
+[23:00:05] done, sleeping 60s
+
+[23:01:05] MT4 recent fetch...
+[23:01:21] done, sleeping 60s
+
+[23:02:21] MT4 recent fetch...
+[23:02:39] done, sleeping 60s
+
+[23:03:39] MT4 recent fetch...
+[23:04:58] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[23:05:01] done, sleeping 60s
+
+[23:06:01] MT4 recent fetch...
+[23:06:20] done, sleeping 60s
+
+[23:07:20] MT4 recent fetch...
+[23:07:42] done, sleeping 60s
+
+[23:08:42] MT4 recent fetch...
+[23:08:59] done, sleeping 60s
+
+[23:09:59] MT4 recent fetch...
+[23:10:19] done, sleeping 60s
+
+[23:11:19] MT4 recent fetch...
+[23:13:16] done, sleeping 60s
+
+[23:14:16] MT4 recent fetch...
+[23:15:25] done, sleeping 60s
+
+[23:16:25] MT4 recent fetch...
+[23:16:43] done, sleeping 60s
+
+[23:17:43] MT4 recent fetch...
+[23:18:00] done, sleeping 60s
+
+[23:19:00] MT4 recent fetch...
+[23:19:18] done, sleeping 60s
+
+[23:20:18] MT4 recent fetch...
+[23:20:36] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[23:20:39] done, sleeping 60s
+
+[23:21:39] MT4 recent fetch...
+[23:21:56] done, sleeping 60s
+
+[23:22:56] MT4 recent fetch...
+[23:25:15] done, sleeping 60s
+
+[23:26:15] MT4 recent fetch...
+[23:28:16] done, sleeping 60s
+
+[23:29:16] MT4 recent fetch...
+[23:29:35] done, sleeping 60s
+
+[23:30:35] MT4 recent fetch...
+[23:30:55] done, sleeping 60s
+
+[23:31:55] MT4 recent fetch...
+[23:32:12] done, sleeping 60s
+
+[23:33:12] MT4 recent fetch...
+[23:35:05] done, sleeping 60s
+
+[23:36:05] MT4 recent fetch...
+[23:36:25] done, sleeping 60s
+
+[23:37:25] MT4 recent fetch...
+[23:37:43] done, sleeping 60s
+
+[23:38:43] MT4 recent fetch...
+[23:38:59] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[23:39:02] done, sleeping 60s
+
+[23:40:02] MT4 recent fetch...
+[23:40:18] done, sleeping 60s
+
+[23:41:18] MT4 recent fetch...
+[23:41:45] done, sleeping 60s
+
+[23:42:45] MT4 recent fetch...
+[23:44:05] done, sleeping 60s
+
+[23:45:05] MT4 recent fetch...
+[23:46:18] done, sleeping 60s
+
+[23:47:18] MT4 recent fetch...
+[23:47:36] done, sleeping 60s
+
+[23:48:36] MT4 recent fetch...
+[23:48:54] done, sleeping 60s
+
+[23:49:54] MT4 recent fetch...
+[23:50:11] done, sleeping 60s
+
+[23:51:11] MT4 recent fetch...
+[23:51:29] done, sleeping 60s
+
+[23:52:29] MT4 recent fetch...
+[23:52:50] done, sleeping 60s
+
+[23:53:50] MT4 recent fetch...
+[23:55:04] MT4 balance (deposits) fetch...
+journal records (last 2d): 94863
+MT4 balance ops parsed: 406  rows offered: 406  transactions 92633 -> 92633
+MT4 transactions now:
+   deposit             12552   $416,801.36
+   withdrawal            693   $338,286.89
+   bonus_withdrawal      524   $58,169.80
+   bonus_deposit         433   $43,245.85
+[23:55:07] done, sleeping 60s
+
+[23:56:07] MT4 recent fetch...
+[23:56:29] done, sleeping 60s
+
+[23:57:29] MT4 recent fetch...
+[23:57:58] done, sleeping 60s
+
+[23:58:58] MT4 recent fetch...
+[00:00:29] done, sleeping 60s
+
+[00:01:29] MT4 recent fetch...
+[00:01:44] done, sleeping 60s
+
+[00:02:44] MT4 recent fetch...
+[00:02:59] done, sleeping 60s
+
+[00:03:59] MT4 recent fetch...
+[00:05:23] done, sleeping 60s
+
+[00:06:23] MT4 recent fetch...
+[00:06:39] done, sleeping 60s
+
+[00:07:39] MT4 recent fetch...
+[00:07:53] done, sleeping 60s
+
+[00:08:53] MT4 recent fetch...
+[00:09:08] done, sleeping 60s
+
+[00:10:08] MT4 recent fetch...
+[00:10:22] MT4 balance (deposits) fetch...
+journal records (last 2d): 61106
+MT4 balance ops parsed: 240  rows offered: 240  transactions 92633 -> 92642
+MT4 transactions now:
+   deposit             12553   $417,784.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         433   $43,245.85
+[00:10:24] done, sleeping 60s
+
+[00:11:24] MT4 recent fetch...
+[00:11:38] done, sleeping 60s
+
+[00:12:38] MT4 recent fetch...
+[00:12:51] done, sleeping 60s
+
+[00:13:51] MT4 recent fetch...
+[00:16:29] done, sleeping 60s
+
+[00:17:29] MT4 recent fetch...
+[00:18:40] done, sleeping 60s
+
+[00:19:40] MT4 recent fetch...
+[00:19:56] done, sleeping 60s
+
+[00:20:56] MT4 recent fetch...
+[00:21:11] done, sleeping 60s
+
+[00:22:11] MT4 recent fetch...
+[00:22:28] done, sleeping 60s
+
+[00:23:28] MT4 recent fetch...
+[00:25:02] done, sleeping 60s
+
+[00:26:02] MT4 recent fetch...
+[00:26:18] done, sleeping 60s
+
+[00:27:18] MT4 recent fetch...
+[00:27:35] MT4 balance (deposits) fetch...
+journal records (last 2d): 61334
+MT4 balance ops parsed: 240  rows offered: 240  transactions 92642 -> 92642
+MT4 transactions now:
+   deposit             12553   $417,784.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         433   $43,245.85
+[00:27:39] done, sleeping 60s
+
+[00:28:39] MT4 recent fetch...
+[00:28:55] done, sleeping 60s
+
+[00:29:55] MT4 recent fetch...
+[00:30:10] done, sleeping 60s
+
+[00:31:10] MT4 recent fetch...
+[00:31:25] done, sleeping 60s
+
+[00:32:25] MT4 recent fetch...
+[00:32:43] done, sleeping 60s
+
+[00:33:43] MT4 recent fetch...
+[00:35:33] done, sleeping 60s
+
+[00:36:33] MT4 recent fetch...
+[00:36:50] done, sleeping 60s
+
+[00:37:50] MT4 recent fetch...
+[00:38:06] done, sleeping 60s
+
+[00:39:06] MT4 recent fetch...
+[00:39:22] done, sleeping 60s
+
+[00:40:22] MT4 recent fetch...
+[00:40:38] done, sleeping 60s
+
+[00:41:38] MT4 recent fetch...
+[00:42:11] MT4 balance (deposits) fetch...
+journal records (last 2d): 61850
+MT4 balance ops parsed: 240  rows offered: 240  transactions 92642 -> 92642
+MT4 transactions now:
+   deposit             12553   $417,784.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         433   $43,245.85
+[00:42:15] done, sleeping 60s
+
+[00:43:15] MT4 recent fetch...
+[00:45:32] done, sleeping 60s
+
+[00:46:32] MT4 recent fetch...
+[00:46:45] done, sleeping 60s
+
+[00:47:45] MT4 recent fetch...
+[00:47:59] done, sleeping 60s
+
+[00:48:59] MT4 recent fetch...
+[00:49:16] done, sleeping 60s
+
+[00:50:16] MT4 recent fetch...
+[00:50:35] done, sleeping 60s
+
+[00:51:35] MT4 recent fetch...
+[00:52:38] done, sleeping 60s
+
+[00:53:38] MT4 recent fetch...
+[00:55:20] done, sleeping 60s
+
+[00:56:20] MT4 recent fetch...
+[00:56:37] done, sleeping 60s
+
+[00:57:37] MT4 recent fetch...
+[00:57:52] done, sleeping 60s
+
+[00:58:52] MT4 recent fetch...
+[00:59:06] MT4 balance (deposits) fetch...
+journal records (last 2d): 62303
+MT4 balance ops parsed: 240  rows offered: 240  transactions 92642 -> 92642
+MT4 transactions now:
+   deposit             12553   $417,784.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         433   $43,245.85
+[00:59:08] done, sleeping 60s
+
+[01:00:08] MT4 recent fetch...
+[01:00:22] done, sleeping 60s
+
+[01:01:22] MT4 recent fetch...
+[01:01:37] done, sleeping 60s
+
+[01:02:37] MT4 recent fetch...
+[01:02:48] done, sleeping 60s
+
+[01:03:48] MT4 recent fetch...
+[01:05:36] done, sleeping 60s
+
+[01:06:36] MT4 recent fetch...
+[01:08:16] done, sleeping 60s
+
+[01:09:16] MT4 recent fetch...
+[01:09:31] done, sleeping 60s
+
+[01:10:31] MT4 recent fetch...
+[01:10:46] done, sleeping 60s
+
+[01:11:46] MT4 recent fetch...
+[01:12:03] done, sleeping 60s
+
+[01:13:03] MT4 recent fetch...
+[01:15:09] done, sleeping 60s
+
+[01:16:09] MT4 recent fetch...
+[01:16:23] MT4 balance (deposits) fetch...
+journal records (last 2d): 62816
+MT4 balance ops parsed: 240  rows offered: 240  transactions 92642 -> 92642
+MT4 transactions now:
+   deposit             12553   $417,784.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         433   $43,245.85
+[01:16:25] done, sleeping 60s
+
+[01:17:25] MT4 recent fetch...
+[01:17:41] done, sleeping 60s
+
+[01:18:41] MT4 recent fetch...
+[01:18:53] done, sleeping 60s
+
+[01:19:53] MT4 recent fetch...
+[01:20:06] done, sleeping 60s
+
+[01:21:06] MT4 recent fetch...
+[01:21:23] done, sleeping 60s
+
+[01:22:23] MT4 recent fetch...
+[01:24:24] done, sleeping 60s
+
+[01:25:24] MT4 recent fetch...
+[01:26:38] done, sleeping 60s
+
+[01:27:38] MT4 recent fetch...
+[01:27:54] done, sleeping 60s
+
+[01:28:54] MT4 recent fetch...
+[01:29:12] done, sleeping 60s
+
+[01:30:12] MT4 recent fetch...
+[01:30:27] done, sleeping 60s
+
+[01:31:27] MT4 recent fetch...
+[01:31:44] MT4 balance (deposits) fetch...
+journal records (last 2d): 62948
+MT4 balance ops parsed: 240  rows offered: 240  transactions 92642 -> 92642
+MT4 transactions now:
+   deposit             12553   $417,784.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         433   $43,245.85
+[01:31:46] done, sleeping 60s
+
+[01:32:46] MT4 recent fetch...
+[01:33:03] done, sleeping 60s
+
+[01:34:03] MT4 recent fetch...
+[01:35:11] done, sleeping 60s
+
+[01:36:11] MT4 recent fetch...
+[01:36:25] done, sleeping 60s
+
+[01:37:25] MT4 recent fetch...
+[01:37:41] done, sleeping 60s
+
+[01:38:41] MT4 recent fetch...
+[01:38:58] done, sleeping 60s
+
+[01:39:58] MT4 recent fetch...
+[01:41:00] done, sleeping 60s
+
+[01:42:00] MT4 recent fetch...
+[01:42:18] done, sleeping 60s
+
+[01:43:18] MT4 recent fetch...
+[01:45:28] done, sleeping 60s
+
+[01:46:28] MT4 recent fetch...
+[01:46:44] done, sleeping 60s
+
+[01:47:44] MT4 recent fetch...
+[01:48:06] MT4 balance (deposits) fetch...
+journal records (last 2d): 63042
+MT4 balance ops parsed: 240  rows offered: 240  transactions 92642 -> 92642
+MT4 transactions now:
+   deposit             12553   $417,784.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         433   $43,245.85
+[01:48:31] done, sleeping 60s
+
+[01:49:31] MT4 recent fetch...
+[01:49:49] done, sleeping 60s
+
+[01:50:49] MT4 recent fetch...
+[01:51:07] done, sleeping 60s
+
+[01:52:07] MT4 recent fetch...
+[01:52:20] done, sleeping 60s
+
+[01:53:20] MT4 recent fetch...
+[01:55:10] done, sleeping 60s
+
+[01:56:10] MT4 recent fetch...
+[01:57:59] done, sleeping 60s
+
+[01:58:59] MT4 recent fetch...
+[01:59:14] done, sleeping 60s
+
+[02:00:14] MT4 recent fetch...
+[02:00:29] done, sleeping 60s
+
+[02:01:29] MT4 recent fetch...
+[02:01:44] done, sleeping 60s
+
+[02:02:44] MT4 recent fetch...
+[02:02:57] done, sleeping 60s
+
+[02:03:57] MT4 recent fetch...
+[02:05:06] MT4 balance (deposits) fetch...
+journal records (last 2d): 63100
+MT4 balance ops parsed: 242  rows offered: 242  transactions 92642 -> 92644
+MT4 transactions now:
+   deposit             12554   $418,084.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         434   $43,395.85
+[02:05:08] done, sleeping 60s
+
+[02:06:08] MT4 recent fetch...
+[02:06:23] done, sleeping 60s
+
+[02:07:23] MT4 recent fetch...
+[02:07:35] done, sleeping 60s
+
+[02:08:35] MT4 recent fetch...
+[02:08:48] done, sleeping 60s
+
+[02:09:48] MT4 recent fetch...
+[02:10:01] done, sleeping 60s
+
+[02:11:01] MT4 recent fetch...
+[02:12:33] done, sleeping 60s
+
+[02:13:33] MT4 recent fetch...
+[02:15:07] done, sleeping 60s
+
+[02:16:07] MT4 recent fetch...
+[02:16:22] done, sleeping 60s
+
+[02:17:22] MT4 recent fetch...
+[02:17:37] done, sleeping 60s
+
+[02:18:37] MT4 recent fetch...
+[02:18:50] done, sleeping 60s
+
+[02:19:50] MT4 recent fetch...
+[02:20:04] MT4 balance (deposits) fetch...
+journal records (last 2d): 65881
+MT4 balance ops parsed: 242  rows offered: 242  transactions 92644 -> 92644
+MT4 transactions now:
+   deposit             12554   $418,084.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         434   $43,395.85
+[02:20:07] done, sleeping 60s
+
+[02:21:07] MT4 recent fetch...
+[02:21:21] done, sleeping 60s
+
+[02:22:21] MT4 recent fetch...
+[02:22:35] done, sleeping 60s
+
+[02:23:35] MT4 recent fetch...
+[02:25:06] done, sleeping 60s
+
+[02:26:06] MT4 recent fetch...
+[02:27:02] done, sleeping 60s
+
+[02:28:02] MT4 recent fetch...
+[02:28:16] done, sleeping 60s
+
+[02:29:16] MT4 recent fetch...
+[02:29:30] done, sleeping 60s
+
+[02:30:30] MT4 recent fetch...
+[02:30:41] done, sleeping 60s
+
+[02:31:41] MT4 recent fetch...
+[02:32:00] done, sleeping 60s
+
+[02:33:00] MT4 recent fetch...
+[02:35:11] done, sleeping 60s
+
+[02:36:11] MT4 recent fetch...
+[02:36:26] MT4 balance (deposits) fetch...
+journal records (last 2d): 65952
+MT4 balance ops parsed: 242  rows offered: 242  transactions 92644 -> 92644
+MT4 transactions now:
+   deposit             12554   $418,084.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         434   $43,395.85
+[02:36:29] done, sleeping 60s
+
+[02:37:29] MT4 recent fetch...
+[02:37:43] done, sleeping 60s
+
+[02:38:43] MT4 recent fetch...
+[02:38:59] done, sleeping 60s
+
+[02:39:59] MT4 recent fetch...
+[02:40:18] done, sleeping 60s
+
+[02:41:18] MT4 recent fetch...
+[02:42:16] done, sleeping 60s
+
+[02:43:16] MT4 recent fetch...
+[02:45:45] done, sleeping 60s
+
+[02:46:45] MT4 recent fetch...
+[02:47:00] done, sleeping 60s
+
+[02:48:00] MT4 recent fetch...
+[02:48:16] done, sleeping 60s
+
+[02:49:16] MT4 recent fetch...
+[02:49:31] done, sleeping 60s
+
+[02:50:31] MT4 recent fetch...
+[02:50:46] done, sleeping 60s
+
+[02:51:46] MT4 recent fetch...
+[02:52:03] MT4 balance (deposits) fetch...
+journal records (last 2d): 66187
+MT4 balance ops parsed: 244  rows offered: 244  transactions 92644 -> 92646
+MT4 transactions now:
+   deposit             12555   $418,234.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         435   $43,450.85
+[02:52:06] done, sleeping 60s
+
+[02:53:06] MT4 recent fetch...
+[02:55:31] done, sleeping 60s
+
+[02:56:31] MT4 recent fetch...
+[02:57:49] done, sleeping 60s
+
+[02:58:49] MT4 recent fetch...
+[02:59:05] done, sleeping 60s
+
+[03:00:05] MT4 recent fetch...
+[03:00:55] done, sleeping 60s
+
+[03:01:55] MT4 recent fetch...
+[03:02:11] done, sleeping 60s
+
+[03:03:11] MT4 recent fetch...
+[03:05:11] done, sleeping 60s
+
+[03:06:11] MT4 recent fetch...
+[03:06:25] done, sleeping 60s
+
+[03:07:25] MT4 recent fetch...
+[03:07:40] done, sleeping 60s
+
+[03:08:40] MT4 recent fetch...
+[03:08:54] done, sleeping 60s
+
+[03:09:54] MT4 recent fetch...
+[03:10:07] MT4 balance (deposits) fetch...
+journal records (last 2d): 66342
+MT4 balance ops parsed: 245  rows offered: 245  transactions 92646 -> 92647
+MT4 transactions now:
+   deposit             12556   $418,250.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         435   $43,450.85
+[03:10:09] done, sleeping 60s
+
+[03:11:09] MT4 recent fetch...
+[03:11:26] done, sleeping 60s
+
+[03:12:26] MT4 recent fetch...
+[03:12:39] done, sleeping 60s
+
+[03:13:39] MT4 recent fetch...
+[03:15:04] done, sleeping 60s
+
+[03:16:04] MT4 recent fetch...
+[03:16:24] done, sleeping 60s
+
+[03:17:24] MT4 recent fetch...
+[03:17:45] done, sleeping 60s
+
+[03:18:45] MT4 recent fetch...
+[03:19:05] done, sleeping 60s
+
+[03:20:05] MT4 recent fetch...
+[03:20:27] done, sleeping 60s
+
+[03:21:27] MT4 recent fetch...
+[03:21:48] done, sleeping 60s
+
+[03:22:49] MT4 recent fetch...
+[03:25:38] done, sleeping 60s
+
+[03:26:38] MT4 recent fetch...
+[03:26:54] MT4 balance (deposits) fetch...
+journal records (last 2d): 66408
+MT4 balance ops parsed: 245  rows offered: 245  transactions 92647 -> 92647
+MT4 transactions now:
+   deposit             12556   $418,250.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         435   $43,450.85
+[03:26:57] done, sleeping 60s
+
+[03:27:57] MT4 recent fetch...
+[03:28:13] done, sleeping 60s
+
+[03:29:13] MT4 recent fetch...
+[03:29:27] done, sleeping 60s
+
+[03:30:27] MT4 recent fetch...
+[03:30:42] done, sleeping 60s
+
+[03:31:42] MT4 recent fetch...
+[03:31:57] done, sleeping 60s
+
+[03:32:57] MT4 recent fetch...
+[03:35:15] done, sleeping 60s
+
+[03:36:15] MT4 recent fetch...
+[03:36:28] done, sleeping 60s
+
+[03:37:28] MT4 recent fetch...
+[03:37:41] done, sleeping 60s
+
+[03:38:41] MT4 recent fetch...
+[03:38:53] done, sleeping 60s
+
+[03:39:53] MT4 recent fetch...
+[03:40:06] done, sleeping 60s
+
+[03:41:06] MT4 recent fetch...
+[03:41:18] MT4 balance (deposits) fetch...
+journal records (last 2d): 66439
+MT4 balance ops parsed: 245  rows offered: 245  transactions 92647 -> 92647
+MT4 transactions now:
+   deposit             12556   $418,250.42
+   withdrawal            697   $338,636.89
+   bonus_withdrawal      528   $58,299.80
+   bonus_deposit         435   $43,450.85
+[03:41:20] done, sleeping 60s
+
+[03:42:20] MT4 recent fetch...
+[03:42:31] done, sleeping 60s
+
+[03:43:31] MT4 recent fetch...
+[03:44:49] done, sleeping 60s
+
+[03:45:49] MT4 recent fetch...
+[03:46:01] done, sleeping 60s
+
+[03:47:01] MT4 recent fetch...
+[03:47:13] done, sleeping 60s
+
+[03:48:13] MT4 recent fetch...
+[03:48:25] done, sleeping 60s
+
+[03:49:25] MT4 recent fetch...
+[03:49:37] done, sleeping 60s
+
+[03:50:37] MT4 recent fetch...
+[03:50:49] done, sleeping 60s

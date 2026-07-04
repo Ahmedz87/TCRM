@@ -1,0 +1,139 @@
+"""
+qi_txid_dataset.py — record ALL Qi receipt details and reverse-engineer the transaction-ID format.
+
+Stores every sample in `qi_txid_samples` (txid + datetime + sender/receiver + amount + parsed
+segments) and analyses the structure. Finding so far:
+    txid = [8: YYYYMMDD date][17: 10121420010100166 fixed][6: SENDER-ID][6: per-txn value]
+The 6-digit SENDER-ID is STABLE per sending account (proven by repeat senders) — so once a sender
+has deposited, a future receipt claiming that sender with a different SENDER-ID is a forgery.
+
+Re-run to rebuild + reprint the analysis. Live deposits accumulate separately in deposit_proofs.
+"""
+from datetime import datetime
+import db_config
+
+FIXED = "10121420010100166"
+
+# (txid, "DD/MM/YYYY HH:MM", amount, sender_name, sender_acct, receiver_name, receiver_acct)
+S = [
+ ("2026062610121420010100166691806637627","26/06/2026 22:32",75000,"?","","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166441706350175","26/06/2026 20:53",40000,"بلال احمد","9608682341","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166749706582401","26/06/2026 19:44",1512000,"محمد صدام","","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166026006492179","26/06/2026 19:38",16000,"محمد خالد","5649280616","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166984906597649","26/06/2026 19:21",50000,"حمزه صبحي","910102392412","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166213206501581","26/06/2026 19:03",100000,"محمد عبدالستار","3813117490","HAMDAH AIFAN ABD","2109751632"),
+ ("2026062610121420010100166883806336739","26/06/2026 18:56",36000,"علي رعد","","HAMDAH AIFAN ABD","2109751632"),
+ ("2026062610121420010100166375906427687","26/06/2026 18:48",1500000,"محمد نزار","","HAMDAH AIFAN ABD","2109751632"),
+ ("2026062610121420010100166202506306676","26/06/2026 18:33",150000,"محمد مازن","7381533715","HAMDAH AIFAN ABD","2109751632"),
+ ("2026062610121420010100166152406436097","26/06/2026 18:10",154000,"حامد عبدالرحمن","","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166492906735635","26/06/2026 18:03",300000,"رفل سعد","2604436986","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166523406679999","26/06/2026 18:03",158000,"حيدر فيصل","6974613876","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166743806583256","26/06/2026 18:03",1500000,"موسى حسن","","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166764206475862","26/06/2026 18:00",25000,"علاء عبد","2872224783","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166072206607876","26/06/2026 17:28",1100000,"رافل عدنان","7152725912","NASREEN MAHMOUD FAYYAD","4710711542"),
+ ("2026062610121420010100166232506464889","26/06/2026 17:25",158000,"?","3071990802","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166432906586721","26/06/2026 17:22",15800,"شنأي حسام الدين","4644523443","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166466806501252","26/06/2026 17:13",79000,"علي حسين","7110872145","NASREEN MAHMOUD FAYYAD","4710711542"),
+ ("2026062610121420010100166717906629646","26/06/2026 17:07",120000,"احمد طارق","","HAMDAH AIFAN ABD","2109751632"),
+ ("2026062610121420010100166575706478387","26/06/2026 16:57",136000,"عبد الخالق اياد","2758739003","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166984906604932","26/06/2026 16:55",49000,"حمزه صبحي","910102392412","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062610121420010100166523406673002","26/06/2026 16:34",33000,"حيدر فيصل","2127362651","DUHA FARHAN SALIH","7185560914"),
+ ("2026062510121420010100166028306474205","25/06/2026 03:43",1500000,"مصطفى زياره","","MAHDIYAH HADI HUSSEIN","3991502620"),
+ ("2026062510121420010100166148806428810","25/06/2026 03:30",100000,"عبد الرحيم عمار","7769819512","MAHDIYAH HADI HUSSEIN","3991502620"),
+ ("2026062510121420010100166148806431350","25/06/2026 02:56",50000,"عبد الرحيم عمار","7769819512","MAHDIYAH HADI HUSSEIN","3991502620"),
+ ("2026062510121420010100166824506490515","25/06/2026 02:44",100000,"ياسر علي","5685395161","MAHDIYAH HADI HUSSEIN","3991502620"),
+ ("2026062510121420010100166086006503596","25/06/2026 02:16",95000,"حسين سلمان","7113479757","MAHDIYAH HADI HUSSEIN","3991502620"),
+ ("2026062510121420010100166273506453423","25/06/2026 02:07",85000,"اسعد حسين","2823670217","MAHDIYAH HADI HUSSEIN","3991502620"),
+ ("2026062510121420010100166659506528917","25/06/2026 01:48",54450,"?","917369086470","MAHDIYAH HADI HUSSEIN","3991502620"),
+ ("2026062410121420010100166906206566482","24/06/2026 19:55",309000,"اركان نبيل","2592421743","FARAH IBRAHIM SUHAIL","5197450934"),
+ ("2026062410121420010100166852706532532","24/06/2026 19:46",20000,"MAHMOUD AL ASYAWI","5114243768","DUHA FARHAN SALIH","7185560914"),
+ ("2026062410121420010100166659506527278","24/06/2026 19:21",280000,"قاسم محمد","","DUHA FARHAN SALIH","7185560914"),
+ ("2026062410121420010100166741906554412","24/06/2026 19:08",149000,"شاكر خميس","","MARIA FALEH YASIN","8599656165"),
+ ("2026062410121420010100166409106439636","24/06/2026 15:26",500000,"حسنين قاسم","","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062410121420010100166688906357638","24/06/2026 15:23",199800,"الحسين محسد","3246585370","SHAIMAA SALIH FARHAN","9982525694"),
+ ("2026062410121420010100166162106629139","24/06/2026 15:16",1400000,"جعفر حامد","","DUHA FARHAN SALIH","7185560914"),
+ ("2026062410121420010100166128806575806","24/06/2026 14:44",455000,"علي سلام","","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062410121420010100166492906711627","24/06/2026 14:38",470000,"رفل سعد","2604436986","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062410121420010100166246006644472","24/06/2026 08:44",500000,"حسين علي","","LAMIA IBRAHIM SUHAIL","7852352868"),
+ ("2026062410121420010100166558206456695","24/06/2026 08:24",999000,"محمود عبدعلي","910148655517","WALID IBRAHIM SUHAIL","2032232577"),
+ ("2026062410121420010100166371206397347","24/06/2026 03:31",75000,"عباس حسين","4238186672","KHALID IBRAHIM SUHAIL","6173130466"),
+ ("2026062310121420010100166232506430987","23/06/2026 21:14",3200000,"?","3071990802","HAMDAH AIFAN ABD","2109751632"),
+ ("2026062310121420010100166741906541469","23/06/2026 20:54",1350000,"شاكر خميس","","HUSSEIN SAAD FALAH","5750464579"),
+ ("2026062310121420010100166388606420340","23/06/2026 20:31",16500,"?","7151586711","HAMDAH AIFAN ABD","2109751632"),
+ ("2026062310121420010100166899706384553","23/06/2026 20:29",475000,"نزار عباس","","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062310121420010100166805206411735","23/06/2026 20:22",150000,"عمار محمود","","SHAIMAA SALIH FARHAN","9982525694"),
+ ("2026062310121420010100166677806702943","23/06/2026 19:19",49000,"محمد فرحان","","ASHWAQ KAZIM AWDA","6236978620"),
+ ("2026062310121420010100166125806557061","23/06/2026 15:46",45000,"فالح ياسر","","HAMDAH AIFAN ABD","2109751632"),
+ ("2026062310121420010100166960706519570","23/06/2026 15:40",35000,"عبد البد عبد الكريم","7114633675","ASHWAQ KAZIM AWDA","6236978620"),
+ ("2026062310121420010100166861206608691","23/06/2026 15:30",230000,"كرم ابراهيم","3478285350","HAYIN AMER ISMAIL","4361187489"),
+ ("2026062310121420010100166590806311211","23/06/2026 15:25",50000,"امجاد خالد","","HUSSEIN SAAD FALAH","5750464579"),
+ ("2026062310121420010100166906206549507","23/06/2026 15:13",78000,"اركان نبيل","","FARAH IBRAHIM SUHAIL","5197450934"),
+ ("2026062310121420010100166358506468753","23/06/2026 15:11",25000,"عمار شريف","910173148511","YASIR SAAD FALAH","1976805570"),
+ ("2026062310121420010100166883806290518","23/06/2026 15:09",40000,"علي رعد","","YASIR SAAD FALAH","1976805570"),
+ ("2026062310121420010100166173506292939","23/06/2026 08:07",450000,"?","","WALID IBRAHIM SUHAIL","2032232577"),
+ ("2026062310121420010100166371206391287","23/06/2026 07:59",100000,"عباس حسين","4238186672","WAFA NAFI YASIN","7489327879"),
+ ("2026062310121420010100166319106405473","23/06/2026 07:09",69000,"?","910128399607","WAFA NAFI YASIN","7489327879"),
+ ("2026062310121420010100166277106422819","23/06/2026 06:21",498000,"حيدر علي","2168967087","KHALID IBRAHIM SUHAIL","6173130466"),
+]
+
+DDL = """CREATE TABLE IF NOT EXISTS qi_txid_samples (
+    id SERIAL PRIMARY KEY, txid TEXT UNIQUE, txn_at TIMESTAMP, amount NUMERIC,
+    sender_name TEXT, sender_acct TEXT, receiver_name TEXT, receiver_acct TEXT,
+    date_part TEXT, fixed_part TEXT, sender_id TEXT, txn_part TEXT, created_at TIMESTAMPTZ DEFAULT NOW())"""
+
+
+def parse(txid):
+    d = txid
+    return d[:8], d[8:8+len(FIXED)], d[8+len(FIXED):8+len(FIXED)+6], d[8+len(FIXED)+6:]
+
+
+def main():
+    c = db_config.connect(); cur = c.cursor()
+    cur.execute(DDL)
+    for (txid, dt, amt, sn, sa, rn, ra) in S:
+        dp, fx, sid, tp = parse(txid)
+        cur.execute("""INSERT INTO qi_txid_samples
+            (txid,txn_at,amount,sender_name,sender_acct,receiver_name,receiver_acct,date_part,fixed_part,sender_id,txn_part)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (txid) DO UPDATE SET sender_acct=EXCLUDED.sender_acct, sender_name=EXCLUDED.sender_name""",
+            (txid, datetime.strptime(dt, "%d/%m/%Y %H:%M"), amt, sn, sa, rn, ra, dp, fx, sid, tp))
+    c.commit()
+
+    # --- analysis ---
+    print(f"recorded {len(S)} samples\n")
+    print("STRUCTURE: [8 date][%d fixed=%s][6 sender-id][rest per-txn]\n" % (len(FIXED), FIXED))
+    fixedset = {fx for (_, _, _, _, _, _, _) in [] }  # placeholder
+    fx_all = {parse(t[0])[1] for t in S}
+    print("fixed block constant across all? ", fx_all == {FIXED}, fx_all if fx_all != {FIXED} else "")
+    taillens = {len(parse(t[0])[2] + parse(t[0])[3]) for t in S}
+    print("tail length(s):", taillens, "| txid length(s):", {len(t[0]) for t in S})
+
+    # sender account -> set of sender-ids (should be 1 each if sender-id is keyed to the account)
+    print("\nSENDER-ID CONSISTENCY (accounts seen more than once):")
+    by_acct = {}
+    for (txid, dt, amt, sn, sa, rn, ra) in S:
+        if sa:
+            by_acct.setdefault(sa, []).append((parse(txid)[2], sn))
+    consistent = inconsistent = 0
+    for sa, lst in sorted(by_acct.items()):
+        ids = {x[0] for x in lst}
+        if len(lst) > 1:
+            ok = "CONSISTENT" if len(ids) == 1 else "*** MISMATCH ***"
+            if len(ids) == 1: consistent += 1
+            else: inconsistent += 1
+            print(f"  acct {sa:14} {lst[0][1]:18} x{len(lst)} -> sender-id {sorted(ids)}  {ok}")
+    print(f"\nrepeat-sender accounts: {consistent} consistent, {inconsistent} mismatched")
+    # same for sender NAME (catches people paying from >1 account)
+    by_name = {}
+    for (txid, dt, amt, sn, sa, rn, ra) in S:
+        if sn and sn != "?":
+            by_name.setdefault(sn, []).append(parse(txid)[2])
+    print("\nSENDER-NAME repeats:")
+    for sn, ids in sorted(by_name.items()):
+        if len(ids) > 1:
+            print(f"  {sn:20} x{len(ids)} -> sender-id {sorted(set(ids))}  {'CONSISTENT' if len(set(ids))==1 else 'MISMATCH'}")
+    c.close()
+
+
+if __name__ == "__main__":
+    main()

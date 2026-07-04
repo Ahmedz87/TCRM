@@ -1,0 +1,61 @@
+[finalize] started Thu Jul  2 00:10:58 CUT 2026
+[finalize] waiting for download to finish...
+[finalize] download state=inactive at Thu Jul  2 01:46:02 CUT 2026
+[2026-07-02 01:43:52]   kyc: got=63,000 skip=0 err=0 ~28.8GB free=271GB
+[2026-07-02 01:45:00]   kyc: got=66,000 skip=0 err=0 ~30.2GB free=270GB
+[2026-07-02 01:45:55] === tnfx_kyc DONE: got=68,373 skip=0 err=0 bytes~31.3GB
+[2026-07-02 01:45:55] ########## DOWNLOAD ALL DONE ##########
+[finalize] waiting for KYC OCR to drain...
+[finalize] KYC OCR pending=0 at Thu Jul  2 01:47:05 CUT 2026
+Running as unit: phashrcpt.service; invocation ID: de8e2cdfd6ae472fa016080e1e152c14
+[finalize] final phash done: 268521 hashes
+[finalize] mark_file_present:
+deposit_documents: file_present 236,449/236,521
+pay_qi_card: file_present 68,754/68,755
+pay_zaincash: file_present 114,644/114,697
+pay_sham_cash: file_present 2,606/2,606
+[finalize] apply_kyc_to_people:
+clients: 610 people updated; leads: 339 people updated
+  clients: ocr_applied=610 id_number=571 mother=411 dob=527 expiry=408
+  leads: ocr_applied=339 id_number=298 mother=228 dob=253 expiry=172
+[finalize] deposit_fraud_study:
+
+======================================================================
+STUDY: Qi Card  [pay_qi_card]
+======================================================================
+OCR'd receipts analysed: 8,623
+  txid present: 6,495/8,623
+  FORMAT (len 37-38): lengths={37: 3232, 38: 2862} dated=True fixed-block-after-date=''
+  sample txid: 2026041410121420010100166482105293196
+  A) REUSED SCREENSHOTS (rich phash): 10,747 groups; 1,295 span >1 client (worst 36 deposits/one image)
+  B) DUPLICATE TXIDs: 4 (worst x2)
+  -> per-row suspects (excl. reused-img): 4,321  reasons={'qi_senderid_unstable': 3299, 'amount_mismatch': 1631, 'qi_series_violation': 49, 'duplicate_txid': 4}
+  -> TOTAL flagged suspect (incl reused-img+dup): 5,431 | clean: 3,192
+  Qi sender-id: 1003 accounts stable, 493 with MULTIPLE sender-ids (forgery signal)
+
+======================================================================
+STUDY: ZainCash  [pay_zaincash]
+======================================================================
+OCR'd receipts analysed: 309
+  txid present: 46/309
+  FORMAT: lengths={9: 38, 4: 4, 6: 4} dated=False fixed-block-after-date=''
+  sample txid: 213216349
+  A) REUSED SCREENSHOTS (rich phash): 15,697 groups; 934 span >1 client (worst 32 deposits/one image)
+  B) DUPLICATE TXIDs: 0 (worst x0)
+  -> per-row suspects (excl. reused-img): 11  reasons={'amount_mismatch': 11}
+  -> TOTAL flagged suspect (incl reused-img+dup): 80 | clean: 229
+
+======================================================================
+STUDY: Sham Cash  [pay_sham_cash]
+======================================================================
+OCR'd receipts analysed: 402
+  txid present: 396/402
+  FORMAT: lengths={9: 327, 8: 65, 19: 2, 18: 1, 6: 1} dated=False fixed-block-after-date=''
+  sample txid: 300919215
+  A) REUSED SCREENSHOTS (rich phash): 207 groups; 22 span >1 client (worst 10 deposits/one image)
+  B) DUPLICATE TXIDs: 1 (worst x2)
+  -> per-row suspects (excl. reused-img): 12  reasons={'amount_mismatch': 12, 'duplicate_txid': 1}
+  -> TOTAL flagged suspect (incl reused-img+dup): 94 | clean: 308
+
+report saved -> deposit_fraud_study_report.txt
+[finalize] ALL DONE Thu Jul  2 01:56:17 CUT 2026

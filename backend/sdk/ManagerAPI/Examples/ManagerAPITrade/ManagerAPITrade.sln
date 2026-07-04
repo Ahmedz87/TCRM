@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32929.385
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ManagerAPITrade", "ManagerAPITrade.vcxproj", "{D99DCFC6-7B0A-43DD-AB1F-A3930DBD3E5A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D99DCFC6-7B0A-43DD-AB1F-A3930DBD3E5A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D99DCFC6-7B0A-43DD-AB1F-A3930DBD3E5A}.Debug|Win32.Build.0 = Debug|Win32
+		{D99DCFC6-7B0A-43DD-AB1F-A3930DBD3E5A}.Release|Win32.ActiveCfg = Release|Win32
+		{D99DCFC6-7B0A-43DD-AB1F-A3930DBD3E5A}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {30F9C934-17BA-411B-85C2-33E762BC76B6}
+	EndGlobalSection
+EndGlobal
