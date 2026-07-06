@@ -1,10 +1,10 @@
 """
 yeastar_service.py — Yeastar P-Series Cloud PBX integration (click-to-call).
 
-Credentials are baked in here on purpose: database.py Settings (pydantic) FORBIDS extra
-.env keys, so adding YEASTAR_* to .env would crash the backend. Same pattern the Meta token
-uses (baked into the fetch scripts). If the PBX app credentials are ever rotated, update the
-three constants below.
+Credentials live in yeastar_config.py (GITIGNORED — not in version control), because
+database.py Settings (pydantic) FORBIDS extra .env keys so YEASTAR_* in .env would crash the
+backend. Same local-secrets-file pattern as meta_config.py / db_config.py. If the PBX app
+credentials are rotated, update yeastar_config.py (copy yeastar_config.example.py to start).
 
 The OpenAPI access_token expires every 30 min; this module caches it in-process and refreshes
 via the long-lived (24h) refresh_token, falling back to a fresh get_token on any error.
@@ -16,10 +16,8 @@ import time
 import threading
 import urllib.request
 import urllib.error
+from yeastar_config import PBX_HOST, CLIENT_ID, CLIENT_SECRET
 
-PBX_HOST           = "tnfxdubai.ras.yeastar.com"
-CLIENT_ID          = "LY3aeeBhRL7JbW9VFAB9T5XO4eG9m1En"
-CLIENT_SECRET      = "qIz32EHW6huOjmUfDOT4NV1NqChE35D8"
 DEFAULT_CALLER_EXT = "101"          # used when the agent has no extension configured
 
 BASE_URL = f"https://{PBX_HOST}"

@@ -16,9 +16,7 @@ import meta_config
 PAGE_ID = meta_config.META_PAGE_ID
 TOKEN   = meta_config.META_ACCESS_TOKEN
 
-ctx = ssl.create_default_context()
-ctx.check_hostname = False
-ctx.verify_mode = ssl.CERT_NONE
+ctx = ssl.create_default_context()   # verify TLS: graph.facebook.com has a valid public cert
 GRAPH = "https://graph.facebook.com/v21.0"
 
 def fb_get(path):

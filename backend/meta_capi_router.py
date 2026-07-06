@@ -31,9 +31,7 @@ DATASET_ID   = meta_config.META_DATASET_ID          # <-- fill in from Meta Even
 SEND_TO_META = True       # <-- set True after DATASET_ID is configured
 GRAPH        = "https://graph.facebook.com/v21.0"
 
-ctx = ssl.create_default_context()
-ctx.check_hostname = False
-ctx.verify_mode = ssl.CERT_NONE
+ctx = ssl.create_default_context()   # verify TLS: graph.facebook.com has a valid public cert
 
 # Map CRM status → Meta standard lead stage event name
 STAGE_MAP = {

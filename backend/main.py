@@ -48,9 +48,18 @@ async def _tune_concurrency():
 # NOTE: GZipMiddleware was tried here but it is INCOMPATIBLE with the existing cache_util
 # BaseHTTPMiddleware (Starlette issue) — it blanked out responses app-wide (admin showed zeros,
 # portal couldn't load documents). Reverted. nginx already gzips responses to the browser anyway.
+# CORS: pin to the real site origin. A wildcard "*" combined with allow_credentials=True let
+# ANY website make credentialed cross-origin calls to this API on a logged-in user's behalf.
+# The frontend, portal and API are all served from https://my1.tnfx.co (same origin via nginx),
+# so browser requests are same-origin anyway; these entries cover dev + any direct-origin call.
+ALLOWED_ORIGINS = [
+    "https://my1.tnfx.co",
+    "http://localhost:3000",   # CRA dev server (frontend)
+    "http://localhost:3001",   # CRA dev server (portal)
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

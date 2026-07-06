@@ -141,7 +141,10 @@ async def get_ibs(
 
 def _build_ibs(db, _scope, p_from, p_to, page, page_size, sort, search,
                country, city, ib_level, sales_agent_id, plugit=""):
-    where = "WHERE 1=1"
+    # Show ONE row per PERSON: an IB has an MT4 + an MT5 record sharing ext_ib_id; only the
+    # primary (commission-bearing) row is listed, and its clients/volume/accounts are combined
+    # across both below. Standalone IBs (no ext_ib_id) are primary too.
+    where = "WHERE ib.is_primary IS NOT FALSE"
     params: dict = {"p_from": p_from, "p_to": p_to}
     if search:
         where += " AND (ib.name ILIKE :s OR ib.phone ILIKE :s OR ib.ib_code ILIKE :s OR ib.email ILIKE :s)"
@@ -190,12 +193,22 @@ def _build_ibs(db, _scope, p_from, p_to, page, page_size, sort, search,
     rows = db.execute(text(f"""
         SELECT
             ib.id, ib.agent_id, ib.ib_code, ib.name, ib.email, ib.phone,
-            ib.country, ib.city, ib.ib_level, ib.total_clients, ib.active_clients,
-            ib.total_volume, ib.total_commission, ib.unpaid_commission, ib.paid_commission,
+            ib.country, ib.city, ib.ib_level,
+            CASE WHEN ib.ext_ib_id IS NULL THEN ib.total_clients
+                 ELSE (SELECT COALESCE(SUM(s.total_clients),0)::int FROM ibs s WHERE s.ext_ib_id = ib.ext_ib_id) END AS total_clients,
+            ib.active_clients,
+            CASE WHEN ib.ext_ib_id IS NULL THEN ib.total_volume
+                 ELSE (SELECT COALESCE(SUM(s.total_volume),0) FROM ibs s WHERE s.ext_ib_id = ib.ext_ib_id) END AS total_volume,
+            ib.total_commission, ib.unpaid_commission, ib.paid_commission,
             ib.balance, ib.group_name,
             (SELECT COUNT(*) FROM ibs sub WHERE sub.parent_ib_id = ib.id) AS sub_ib_count,
             ib.plugit_status, ib.markup_pips, ib.ext_ib_id, ib.ib_creation_date, ib.is_sub_ib,
-            COALESCE(ib.total_payoff,0) AS total_payoff
+            COALESCE(ib.total_payoff,0) AS total_payoff,
+            CASE WHEN ib.ext_ib_id IS NULL THEN
+                    (CASE WHEN starts_with(COALESCE(ib.group_name,''),'TNFX') THEN 'MT4' ELSE 'MT5' END) || ' #' || ib.agent_id
+                 ELSE (SELECT string_agg(DISTINCT
+                        (CASE WHEN starts_with(COALESCE(s.group_name,''),'TNFX') THEN 'MT4' ELSE 'MT5' END) || ' #' || s.agent_id, '  ·  ')
+                        FROM ibs s WHERE s.ext_ib_id = ib.ext_ib_id AND s.agent_id IS NOT NULL) END AS accounts_str
         FROM ibs ib
         {where}
         ORDER BY {sort_col}
@@ -205,7 +218,7 @@ def _build_ibs(db, _scope, p_from, p_to, page, page_size, sort, search,
     # Cheap global KPIs (no deals scan) — always returned so the cards never blank.
     kpis = db.execute(text("""
         SELECT
-            COUNT(*) AS total_ibs,
+            COUNT(*) FILTER (WHERE ib.is_primary IS NOT FALSE) AS total_ibs,
             COALESCE(SUM(ib.total_clients),0) AS total_clients,
             COALESCE(SUM(ib.total_volume),0) AS total_volume,
             COALESCE(SUM(ib.total_commission),0) AS total_commission,
@@ -265,6 +278,7 @@ def _build_ibs(db, _scope, p_from, p_to, page, page_size, sort, search,
             "is_sub_ib":         bool(len(r) > 22 and r[22]),
             "total_payoff":      float((len(r) > 23 and r[23]) or 0),
             "net_commission":    float((r[12] or 0)) - float((len(r) > 23 and r[23]) or 0),
+            "accounts_str":      (len(r) > 24 and r[24]) or "",
             "trading_clients":   None,   # loaded lazily via /ibs/status-breakdown
             "status":            None,   # ditto (null -> frontend shows a "…" pill)
         } for r in rows],
@@ -587,7 +601,8 @@ async def get_ib(
     sub_ibs = db.query(models.IB).filter(models.IB.parent_ib_id == ib_id).all()
 
     # clients list with REAL deposits/withdrawals (transactions), country/city filter, campaign
-    cwhere, cparams = "c.agent = :agent", {"agent": agent, "level": level}
+    # exclude the IB's OWN account from its own client list (login = agent) — an IB is not its own client
+    cwhere, cparams = "c.agent = :agent AND c.login <> c.agent", {"agent": agent, "level": level}
     if country:
         cwhere += " AND c.country ILIKE :country"; cparams["country"] = f"%{country}%"
     if city:
@@ -641,17 +656,18 @@ async def get_ib(
             -- #101 (Zainab): the trading-account number = the person's primary login,
             -- defined exactly like the Clients list (#73): the HIGHEST POSITIVE-balance
             -- login among the same phone+platform siblings, else the highest-balance one.
+            -- NOTE: written WITHOUT a CASE in the WHERE so the ix_clients_phone_platform index
+            -- is actually used (the CASE form seq-scanned clients per row -> ~10s/IB). A client
+            -- with null/empty/'0' phone matches no sibling here, so the outer
+            -- COALESCE(acct.account_number, c.login) falls back to its own login (same result).
             SELECT COALESCE(
                 (array_agg(s.login ORDER BY s.balance DESC NULLS LAST)
                     FILTER (WHERE s.balance > 0))[1],
                 (array_agg(s.login ORDER BY s.balance DESC NULLS LAST))[1]
             ) AS account_number
             FROM clients s
-            WHERE CASE
-                    WHEN c.phone IS NOT NULL AND c.phone <> '' AND c.phone <> '0'
-                    THEN s.phone = c.phone AND COALESCE(s.platform,'MT5') = COALESCE(c.platform,'MT5')
-                    ELSE s.login = c.login
-                  END
+            WHERE c.phone IS NOT NULL AND c.phone <> '' AND c.phone <> '0'
+              AND s.phone = c.phone AND COALESCE(s.platform,'MT5') = COALESCE(c.platform,'MT5')
         ) acct ON TRUE
         WHERE {cwhere}
         ORDER BY COALESCE(td.dep,0) DESC
@@ -764,6 +780,9 @@ async def get_ib(
         "paid_commission":   float(ib.paid_commission or 0),
         "total_payoff":      float(getattr(ib, "total_payoff", 0) or 0),
         "net_commission":    float(ib.total_commission or 0) - float(getattr(ib, "total_payoff", 0) or 0),
+        "commission_excel":    float(getattr(ib, "commission_excel", 0) or 0),
+        "commission_computed": float(getattr(ib, "commission_computed", 0) or 0),
+        "commission_source":   getattr(ib, "commission_source", None) or "",
         "period": {
             "from":           p_from,
             "to":             p_to,
@@ -1119,12 +1138,17 @@ class PayCommissionRequest(BaseModel):
     amount: Optional[float] = None  # None = pay all unpaid
 
 
+_PAY_ROLES = {"super_admin", "admin", "director", "accountant"}
+
 @router.post("/pay-commission")
 async def pay_commission(
     data: PayCommissionRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    # Paying commission moves money on the books — restrict to admin/finance roles.
+    if (current_user.role or "").lower() not in _PAY_ROLES:
+        raise HTTPException(status_code=403, detail="You don't have permission to pay commissions.")
     ib = db.query(models.IB).filter(models.IB.id == data.ib_id).first()
     if not ib:
         raise HTTPException(status_code=404, detail="IB not found")

@@ -63,8 +63,28 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         }
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
+# Roles a caller may assign when creating a staff account. Only super_admin may mint
+# another super_admin; everything else is a normal staff role.
+ASSIGNABLE_ROLES = {
+    "sales_agent", "sales_manager", "team_leader", "sales_director",
+    "support", "accountant", "admin", "super_admin",
+}
+
 @router.post("/register")
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
+def register(user_data: UserCreate, db: Session = Depends(get_db),
+             current_user: models.User = Depends(get_current_user)):
+    """Create a staff account. ADMIN-ONLY — previously this was public and let anyone
+    self-assign role=super_admin (full-system takeover). Now gated: only admins may call it,
+    and the requested role is validated against an allowlist."""
+    caller_role = (current_user.role or "").lower()
+    if caller_role not in ("super_admin", "admin"):
+        raise HTTPException(status_code=403, detail="Only admins can create staff accounts.")
+    requested_role = (user_data.role or "sales_agent").lower()
+    if requested_role not in ASSIGNABLE_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {user_data.role}")
+    # Non-super-admins cannot mint a super_admin (privilege escalation guard).
+    if requested_role == "super_admin" and caller_role != "super_admin":
+        raise HTTPException(status_code=403, detail="Only a super_admin can create a super_admin.")
     existing = db.query(models.User).filter(models.User.email == user_data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -74,7 +94,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         email=user_data.email,
         hashed_password=hashed,
         phone=user_data.phone,
-        role=user_data.role,
+        role=requested_role,
         language=user_data.language
     )
     db.add(user)

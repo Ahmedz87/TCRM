@@ -26,6 +26,7 @@ backend/sms_config.py
 backend/autochartist_config.py
 backend/gateway_config.py
 backend/meta_config.py
+backend/yeastar_config.py
 backend/ts_mysql_config.py
 # throwaway diagnostic/test scripts (ad-hoc dev scratch; many embed live tokens/admin creds) — not versioned
 backend/test_*.py

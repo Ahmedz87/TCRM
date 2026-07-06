@@ -1,7 +1,7 @@
 """
 leads_router.py — Full leads management
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import get_db
@@ -401,6 +401,9 @@ def convert_lead(lead_id: int, data: dict, db: Session = Depends(get_db), curren
 
 @router.delete("/{lead_id}")
 def delete_lead(lead_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # Permanent delete — keep it above the front-line sales_agent role (they can archive instead).
+    if (current_user.role or "").lower() == "sales_agent":
+        raise HTTPException(status_code=403, detail="Sales agents can archive leads, not delete them.")
     db.execute(text("DELETE FROM leads WHERE id=:id"), {"id": lead_id})
     db.commit()
     return {"message": "Deleted"}
@@ -587,11 +590,39 @@ def check_cid(lead_id: int, data: dict, db: Session = Depends(get_db), current_u
 # ── Client Dashboard endpoints ─────────────────────────────────────────────
 
 from fastapi import APIRouter as _AR
+from fastapi import HTTPException as _HTTPException
+from fastapi import Depends as _Depends
+from auth import oauth2_scheme as _oauth2_scheme
+from database import settings as _settings
+from jose import jwt as _jwt, JWTError as _JWTError
+
 client_router = _AR(prefix="/client-dashboard", tags=["Client Dashboard"])
 
 
+def owns_login(login: int, token: str = _Depends(_oauth2_scheme)):
+    """Authorize a /client-dashboard/{login} call. These endpoints were previously PUBLIC —
+    any anonymous caller could pass any login and read that client's balance/deposits/PnL.
+    Now: a valid token is required; a CLIENT token may only access its own login; a STAFF
+    token may view any client. Raises 401 (bad/absent token) or 403 (not your account)."""
+    _401 = _HTTPException(status_code=401, detail="Could not validate credentials",
+                          headers={"WWW-Authenticate": "Bearer"})
+    try:
+        payload = _jwt.decode(token, _settings.SECRET_KEY, algorithms=[_settings.ALGORITHM])
+    except _JWTError:
+        raise _401
+    user_type = payload.get("user_type")
+    if user_type == "staff":
+        return True   # staff may view any client dashboard
+    if user_type == "client":
+        tok_login = payload.get("login")
+        if tok_login is not None and int(tok_login) == int(login):
+            return True
+        raise _HTTPException(status_code=403, detail="That account is not yours.")
+    raise _401
+
+
 @client_router.get("/kpis/{login}")
-def get_client_kpis(login: int, db: Session = Depends(get_db)):
+def get_client_kpis(login: int, db: Session = Depends(get_db), _auth: bool = Depends(owns_login)):
     """Client-facing KPIs for their own dashboard."""
     client = db.execute(text("""
         SELECT login, name, balance, equity, total_deposits, total_withdrawals,
@@ -634,7 +665,8 @@ def get_client_kpis(login: int, db: Session = Depends(get_db)):
 
 
 @client_router.post("/bonus-check/{login}")
-def check_welcome_bonus(login: int, data: dict, db: Session = Depends(get_db)):
+def check_welcome_bonus(login: int, data: dict, db: Session = Depends(get_db),
+                        _auth: bool = Depends(owns_login)):
     """Check if client is eligible for welcome bonus."""
     cid = data.get("cid","")
     ip  = data.get("ip","")

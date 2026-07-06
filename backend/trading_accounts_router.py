@@ -19,11 +19,55 @@ def get_ib_display(agent: int, db: Session) -> dict:
             return {
                 "ib_name":    ib.name,
                 "ib_code":    ib.ib_code,
-                "ib_display": f"{ib.name} ({ib.ib_code})",
+                # IB column shows the NAME ONLY (code was too long); ib_code stays available separately
+                "ib_display": ib.name or (ib.ib_code or ""),
             }
-    except:
-        pass
+    except Exception:
+        db.rollback()   # a failed query poisons the session; recover it for later queries
     return {"ib_name": "", "ib_code": str(agent), "ib_display": f"#{agent}"}
+
+
+import re as _re
+
+# roles allowed to see A/B book (dealing-desk info) — sales/everyone must NOT see it
+_BOOK_ROLES = {"admin", "backoffice", "director", "dealer", "validation"}
+
+
+def decode_group(group: str, platform: str, acct_type: str) -> dict:
+    """Decode an MT group into the human attributes the desk cares about:
+        type     : Standard / Cent / Zero / VIP / FIX / IB / Contest / Demo / ECN
+        platform : MT4 / MT5
+        islamic  : the '-IS' token means swap-free (Islamic)
+        book     : leading digit of the retail group — 1 = A-book, 2 = B-book (dealing desk only)
+        is_real  : real/live money account (Demo/Contest are not)
+    NOTE: the real type lives in the MT server group (STD\\2-STD-IS, Cent\\2-Cent-IS, VIP\\2-VIP-IS,
+    ...). TradeSoft instead labels every account '{1-7}ECN', which is a routing/tier code that does
+    NOT map to the account type (2ECN -> Standard/Cent/Zero/VIP all mixed) — so we only fall back to
+    'ECN' when the group carries no real MT type yet (account not seen on MT). The book digit is only
+    trusted on real MT retail groups, never on the TradeSoft {N}ECN label."""
+    plat = "MT4" if (platform or "").upper() == "MT4" else "MT5"
+    seg = (group or acct_type or "").replace("/", "\\").split("\\")[-1]
+    U = seg.upper()
+    tokens = [t for t in _re.split(r"[^A-Z0-9]+", U) if t]
+    islamic = "IS" in tokens
+    real = True
+    if   "DEMO" in U:                      typ = "Demo"; real = False
+    elif "CONTEST" in U:                   typ = "Contest"; real = False
+    elif "VIP" in U:                       typ = "VIP"
+    elif "FIX" in U:                       typ = "FIX"
+    elif "CENT" in U:                      typ = "Cent"
+    elif "ZERO" in U:                      typ = "Zero"
+    elif "IB" in tokens or "IB-" in U:     typ = "IB"
+    elif "STD" in U or "STANDARD" in U:    typ = "Standard"
+    elif "ECN" in U:                       typ = ""      # TradeSoft {N}ECN = routing label, NOT a real
+    #        type. Real type is unknown until the account is seen on MT, so show no type (not "ECN").
+    else:                                  typ = ""      # unknown group -> leave blank rather than guess
+    book = ""
+    if typ in ("Standard", "Cent", "Zero", "VIP", "FIX"):
+        m = _re.match(r"^(\d)", seg)
+        if m:
+            book = {"1": "A", "2": "B"}.get(m.group(1), "")
+    return {"type": typ, "platform": plat, "islamic": islamic, "is_real": real, "book": book}
 
 
 def get_agent_name(login: int, db: Session) -> str:
@@ -36,8 +80,8 @@ def get_agent_name(login: int, db: Session) -> str:
             user = db.query(models.User).filter(models.User.id == a.agent_id).first()
             if user:
                 return user.full_name
-    except:
-        pass
+    except Exception:
+        db.rollback()
     return ""
 
 
@@ -49,8 +93,8 @@ def get_created_at(login: int, reg_date: str, db: Session) -> str:
         ).order_by(models.Deal.deal_time.asc()).first()
         if d and d.deal_date:
             return d.deal_date
-    except:
-        pass
+    except Exception:
+        db.rollback()
     return reg_date or ""
 
 
@@ -70,8 +114,8 @@ def account_to_dict(ta: models.TradingAccount, db: Session, full: bool = False) 
             ).first()
             if rec:
                 cid = rec.identifier_value
-        except:
-            pass
+        except Exception:
+            db.rollback()
 
     # Get live financial data from clients table (more up to date)
     raw = db.query(models.Client).filter(models.Client.login == ta.login).first()
@@ -127,8 +171,8 @@ def account_to_dict(ta: models.TradingAccount, db: Session, full: bool = False) 
             all_ips   = [i.identifier_value for i in ids if i.identifier_type == "ip"]
             all_cids  = [i.identifier_value for i in ids if i.identifier_type == "cid"]
             all_mqids = [i.identifier_value for i in ids if i.identifier_type == "mqid"]
-        except:
-            pass
+        except Exception:
+            db.rollback()
 
         # Network connections
         connections = []
@@ -152,8 +196,8 @@ def account_to_dict(ta: models.TradingAccount, db: Session, full: bool = False) 
                         "value":   e.value or "",
                         "risk":    other.risk_score or "low",
                     })
-        except:
-            pass
+        except Exception:
+            db.rollback()
 
         # Deposits & withdrawals from deals
         deposits_list, withdrawals_list = [], []
@@ -272,8 +316,8 @@ def account_to_dict(ta: models.TradingAccount, db: Session, full: bool = False) 
                     "close_timestamp": close_time,
                     "duration_secs":   duration_secs,
                 })
-        except:
-            pass
+        except Exception:
+            db.rollback()
 
         # Calculate total floating PnL = equity - balance
         total_floating = round(float(ta.equity or ta.balance or 0) - float(ta.balance or 0), 2)
@@ -339,7 +383,9 @@ def get_trading_accounts(
     
     sort_col = "ta.balance DESC"
     if sort == "equity":    sort_col = "ta.equity DESC NULLS LAST"
-    elif sort == "new":     sort_col = "ta.reg_date DESC NULLS LAST"
+    # "new" = most recently added. reg_date is free-text/NULL for TradeSoft-imported accounts, so
+    # sort by created_at (import time) so recent MT5 accounts actually surface at the top.
+    elif sort == "new":     sort_col = "ta.created_at DESC NULLS LAST"
     elif sort == "name":    sort_col = "ta.name ASC NULLS LAST"
     elif sort == "login":   sort_col = "ta.login DESC"
     elif sort == "deposit": sort_col = "ta.total_deposits DESC NULLS LAST"
@@ -358,7 +404,7 @@ def get_trading_accounts(
             u.full_name as agent_name,
             (SELECT MIN(tx_date) FROM transactions
              WHERE login=ta.login AND tx_type='deposit' LIMIT 1) as credit_at,
-            c.archived_at, c.archive_reason
+            c.archived_at, c.archive_reason, c.created_at, ta.platform
         FROM trading_accounts ta
         LEFT JOIN ibs ib ON ib.agent_id = ta.agent
         LEFT JOIN clients c ON c.login = ta.login
@@ -372,12 +418,14 @@ def get_trading_accounts(
     except Exception as e:
         print(f"TRADING ACCOUNTS SQL ERROR: {e}")
         raise
+    show_book = (getattr(current_user, "role", "") or "").lower() in _BOOK_ROLES
     accounts = []
     for r in rows:
+        _dg = decode_group(r[4], (r[36] if len(r) > 36 else ""), r[5])
         accounts.append({
             "login": r[0], "name": r[1] or "", "email": r[2] or "",
             "phone": r[3] or "", "group_name": r[4] or "",
-            "account_type": r[5] or "live", "is_islamic": r[6] or False,
+            "account_type": _dg["type"], "is_islamic": _dg["islamic"],
             "is_ib": r[7] or False, "leverage": r[8] or 100,
             "balance": float(r[9] or 0), "equity": float(r[10] or 0),
             "credit": float(r[11] or 0), "margin_level": float(r[12] or 0),
@@ -392,11 +440,19 @@ def get_trading_accounts(
             "total_volume": float(r[27] or 0),
             "total_trades": r[28] or 0,
             "ib_name": r[29] or "", "ib_code": r[30] or "",
-            "ib_display": (f"{r[29]} ({r[30]})" if r[29] else ""),
+            # IB column = name only (the code made the column too long)
+            "ib_display": (r[29] or ""),
             "agent_name": r[31] or "", "credit_at": str(r[32]) if len(r)>32 and r[32] else "",
             "archived": bool(r[33]) if len(r) > 33 and r[33] else False,
             "archived_at": str(r[33]) if len(r) > 33 and r[33] else "",
             "archive_reason": (r[34] if len(r) > 34 else "") or "",
+            # real creation date (import/registration) so the "Created" column populates for
+            # TradeSoft accounts too (their reg_date text is empty; created_at is always set)
+            "created_at": str(r[35]) if len(r) > 35 and r[35] else "",
+            # decoded account attributes shown to everyone: platform + Real/Demo + Islamic (+ type above)
+            "platform": _dg["platform"], "is_real": _dg["is_real"],
+            # A/B book is dealing-desk info — only sent to privileged roles (sales must not see it)
+            "book": (_dg["book"] if show_book else ""),
         })
     return {"accounts": accounts, "total": total, "page": page, "page_size": page_size}
 
@@ -492,6 +548,6 @@ def save_action(
             action=action, note=note,
         ))
         db.commit()
-    except:
-        pass
+    except Exception:
+        db.rollback()   # failed commit must roll back or the session stays poisoned
     return {"message": "Action saved"}
