@@ -342,9 +342,8 @@ def run_fraud_checks(db, *, method: str, entered_txid: str, entered_amount: floa
             b4, b5 = d[25:29], d[25:30]
             try:
                 login = db.execute(text("SELECT login FROM clients WHERE id=:i"), {"i": client_id}).scalar()
-                known = db.execute(text("SELECT block4, MAX(block5) FROM client_sender_blocks "
-                                        "WHERE client_login=:c GROUP BY block4"),
-                                   {"c": login}).fetchall() if login else []
+                known = db.execute(text("SELECT block4, max_seq FROM client_sender_blocks "
+                                        "WHERE client_login=:c"), {"c": login}).fetchall() if login else []
                 if known:
                     # tolerate single-digit OCR misreads of the client's real block: a candidate is
                     # "known" if it exactly matches, OR differs from a known block by just one digit.
@@ -355,8 +354,20 @@ def run_fraud_checks(db, *, method: str, entered_txid: str, entered_amount: floa
                         reasons.append(f"⚠ Sender-block {b4} is NEW for this client (they've only ever "
                                        f"used {'/'.join(sorted(blocks4)[:3])}) — verify it's really their "
                                        f"wallet and not a receipt copied from another person.")
-                    # sequence-age is handled robustly by the curve check (4c); block5 alone is too
-                    # fragile against single-digit misreads to gate on.
+                    # 4f) the 8-digit sequence only ever INCREASES over time. This deposit is newer than
+                    #     everything in the client's history, so its sequence must be >= their highest
+                    #     ON-CURVE sequence from the same wallet. Lower = an OLD receipt of their own,
+                    #     reused (and small enough to slip inside the curve's ±400k band). Reference is
+                    #     built only from on-curve deposits, so a misread can't inflate it.
+                    seq = int(d[29:])
+                    ref = None
+                    for bk, ms in known:
+                        if ms is not None and (bk == b4 or _one_off(bk, b4)):
+                            ref = ms if ref is None else max(ref, ms)
+                    if ref is not None and seq < ref - 50_000:
+                        reasons.append(f"⚠ Transfer sequence {seq:,} is LOWER than this client's most "
+                                       f"recent transfer from the same wallet ({ref:,}) — an older/"
+                                       f"already-used receipt (Qi sequence numbers only go up). Verify.")
             except Exception:
                 pass
 
