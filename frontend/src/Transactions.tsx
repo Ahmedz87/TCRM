@@ -773,6 +773,7 @@ export default function Transactions({ readOnly = false }: { readOnly?: boolean 
                   <th style={thS}>Card / Method</th>
                   <th style={thS}>Card name / Wallet</th>
                   <th style={thS}>Wallet ID</th>
+                  <th style={thS}>Sender ID</th>
                 </>)}
                 <th style={thS}># Txns</th>
                 <th style={thS}>Sales agent</th>
@@ -847,6 +848,13 @@ export default function Transactions({ readOnly = false }: { readOnly?: boolean 
                               : <span title="Multiple candidate transactions — verify" style={{ color: '#d97706', marginLeft: 4 }}>~</span>}
                           </span>
                         ) : (tx.wallet_id || '—')}
+                      </td>
+                      <td style={{ ...tdS, fontSize: 11 }} title={tx.sender_acct ? `Full sender account: ${tx.sender_acct}` : (tx.sender_block ? `Qi sender wallet id (4-digit block)` : '')}>
+                        {tx.sender_acct
+                          ? <span style={{ fontFamily: 'monospace', color: '#0E6E6B', fontWeight: 600 }}>{tx.sender_acct}</span>
+                          : tx.sender_block
+                            ? <span style={{ fontFamily: 'monospace' }}>{tx.sender_block}<span style={{ color: '#999', fontSize: 10 }}> ·block</span></span>
+                            : '—'}
                       </td>
                     </>)}
                     <td style={{ ...tdS, textAlign: 'center' }} onClick={e=>e.stopPropagation()}>
