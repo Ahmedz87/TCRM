@@ -329,6 +329,37 @@ def run_fraud_checks(db, *, method: str, entered_txid: str, entered_amount: floa
                 except Exception:
                     pass
 
+    # 4e) per-CLIENT sender-block registry (Jul 2026 — the strongest everyday check). Each client's
+    #     Qi history has known sender-blocks: the txid's digits 25-29 (4) = the sender WALLET's fixed
+    #     id, digit 29 (5th) = the top of the global sequence (rolls +1 only every ~4 months, UP only),
+    #     digit 30 (6th) rolls ~every 39 days. So: a deposit whose 4-block this client has NEVER used
+    #     = a new/unknown wallet — could be a legit new exchanger OR a receipt copied from someone else
+    #     -> FLAG. If the 4-block IS theirs but the 5-digit is BELOW their last from that wallet -> an
+    #     old/backdated receipt -> FLAG. (client_id is always known at deposit time, unlike the wallet.)
+    if txid and method == "qcard" and client_id:
+        d = re.sub(r"\D", "", txid)
+        if len(d) == 37 and d[8:25] == "10121420010100166":
+            b4, b5 = d[25:29], d[25:30]
+            try:
+                login = db.execute(text("SELECT login FROM clients WHERE id=:i"), {"i": client_id}).scalar()
+                known = db.execute(text("SELECT block4, MAX(block5) FROM client_sender_blocks "
+                                        "WHERE client_login=:c GROUP BY block4"),
+                                   {"c": login}).fetchall() if login else []
+                if known:
+                    # tolerate single-digit OCR misreads of the client's real block: a candidate is
+                    # "known" if it exactly matches, OR differs from a known block by just one digit.
+                    blocks4 = {r[0] for r in known}
+                    def _one_off(a, b):
+                        return len(a) == len(b) == 4 and sum(x != y for x, y in zip(a, b)) <= 1
+                    if b4 not in blocks4 and not any(_one_off(b4, k) for k in blocks4):
+                        reasons.append(f"⚠ Sender-block {b4} is NEW for this client (they've only ever "
+                                       f"used {'/'.join(sorted(blocks4)[:3])}) — verify it's really their "
+                                       f"wallet and not a receipt copied from another person.")
+                    # sequence-age is handled robustly by the curve check (4c); block5 alone is too
+                    # fragile against single-digit misreads to gate on.
+            except Exception:
+                pass
+
     # 4) amount mismatch (what the client said they sent vs the receipt). For a LOCAL-currency method
     #    the receipt is in local units (IQD/SYP), so compare to the local amount — NOT the USD value.
     try:
