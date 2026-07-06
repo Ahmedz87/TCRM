@@ -838,8 +838,15 @@ export default function Transactions({ readOnly = false }: { readOnly?: boolean 
                         <MethodBadge method={methodLabel(tx)} mtype={isManual ? 'manual' : 'auto'} onClick={() => filterBy('method', tx.method)} />
                       </td>
                       <td style={{ ...tdS, color: '#666' }}>{tx.wallet_type || '—'}</td>
-                      <td style={{ ...tdS, color: '#555', fontSize: 11, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.wallet_id || ''}>
-                        {tx.wallet_id || '—'}
+                      <td style={{ ...tdS, color: '#555', fontSize: 11, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.ocr_wallet_id || tx.wallet_id || ''}>
+                        {tx.ocr_wallet_id ? (
+                          <span>
+                            <span style={{ fontFamily: 'monospace' }}>{tx.ocr_wallet_id}</span>
+                            {tx.wallet_confidence === 'confident'
+                              ? <span title="Matched from OCR'd receipt" style={{ color: '#16a34a', marginLeft: 4 }}>✓</span>
+                              : <span title="Multiple candidate transactions — verify" style={{ color: '#d97706', marginLeft: 4 }}>~</span>}
+                          </span>
+                        ) : (tx.wallet_id || '—')}
                       </td>
                     </>)}
                     <td style={{ ...tdS, textAlign: 'center' }} onClick={e=>e.stopPropagation()}>

@@ -181,12 +181,19 @@ async def get_transactions(
             placeholders = ",".join([f":ll{i}" for i in range(len(login_list))])
             where_parts.append(f"t.login IN ({placeholders})")
             for i, ll in enumerate(login_list): params[f"ll{i}"] = ll
+    # tx_date is TEXT ('YYYY-MM-DD HH24:MI:SS'), so compare as ISO STRINGS (never CAST the param to DATE —
+    # `text >= date` errors and broke the whole custom-range query). date_to is INCLUSIVE: use < next-day.
     if date_from:
-        where_parts.append("t.tx_date >= CAST(:date_from AS DATE)")
+        where_parts.append("t.tx_date >= :date_from")
         params["date_from"] = date_from
     if date_to:
-        where_parts.append("t.tx_date <= CAST(:date_to AS DATE)")
-        params["date_to"] = date_to
+        from datetime import date as _dd, timedelta as _dtd
+        try:
+            where_parts.append("t.tx_date < :date_to_next")
+            params["date_to_next"] = (_dd.fromisoformat(date_to) + _dtd(days=1)).isoformat()
+        except Exception:
+            where_parts.append("t.tx_date <= :date_to")
+            params["date_to"] = date_to + " 23:59:59"
     # Period preset (today / this_week / this_month / …) — applied only when no explicit date range
     # is given, so the table shares ONE time window with the dashboard KPI cards above it. Uses
     # index-friendly string comparison on the tx_date column (same approach as dashboard_router).
@@ -338,11 +345,13 @@ async def get_transactions(
             -- Total tx count for this client
             (SELECT COUNT(*) FROM transactions t2
              WHERE t2.login = t.login AND t2.tx_type IN ('deposit','withdrawal')) as tx_count,
-            t.currency, t.psp_reference, t.approved_at, t.deal_id as ref_id
+            t.currency, t.psp_reference, t.approved_at, t.deal_id as ref_id,
+            tw.wallet_id AS ocr_wallet_id, tw.confidence AS wallet_conf, tw.sender_acct AS ocr_sender_acct
         FROM transactions t
         LEFT JOIN clients c ON c.login = t.login
         LEFT JOIN users u ON u.id = c.assigned_agent_id
         LEFT JOIN ibs ib ON ib.agent_id = c.agent
+        LEFT JOIN transaction_wallet tw ON tw.transaction_id = t.id
         {where}
         ORDER BY {sort_col} {sort_dir_sql}
         LIMIT :limit OFFSET :offset
@@ -432,6 +441,9 @@ async def get_transactions(
             "psp_reference":    r[22] or "",
             "approved_at":      str(r[23]) if r[23] else "",
             "ref_id":           r[24],
+            "ocr_wallet_id":    r[25] or "",
+            "wallet_confidence": r[26] or "",
+            "sender_acct":      r[27] or "",
         })
 
     return {
