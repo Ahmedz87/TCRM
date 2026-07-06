@@ -25,20 +25,24 @@ from sqlalchemy import text
 
 SIGNAL_WEIGHT = {
     "cid": 1.00, "mqid": 0.97, "email": 0.92, "similar_email": 0.80, "phone": 0.90, "family": 0.90,
+    # SAME PAYMENT SENDER (same Qi card / same wallet funding both accounts) = strong financial link,
+    # desk-set to 0.50 = 50 points = 5/10 on its own (Jul 2026). NOT the same as sharing a METHOD.
+    "pay_sender": 0.50,
     # reweighted per desk (Jul 2026): IB/agent and city matter MORE than IP; IP is the weakest signal
     "ib": 0.55, "city": 0.45, "payment": 0.55, "ip": 0.30,
 }
 SIGNAL_LABEL = {
     "cid": "Same device (CID)", "mqid": "Same device (MetaQuotes ID)", "email": "Same email",
     "similar_email": "Similar email", "phone": "Same phone", "family": "Family / same phone",
+    "pay_sender": "Same payment sender (same Qi card / wallet)",
     "ip": "Same IP address", "payment": "Same payment method", "ib": "Same IB / agent", "city": "Same city",
 }
-# Signal display priority (CID, IB, City, Family, payment, IP …) — used to pick the headline reason.
-SIGNAL_ORDER = ["cid", "mqid", "email", "similar_email", "family", "phone", "ib", "payment", "ip", "city"]
+# Signal display priority — used to pick the headline reason.
+SIGNAL_ORDER = ["cid", "mqid", "email", "similar_email", "family", "phone", "pay_sender", "ib", "payment", "ip", "city"]
 
-# Connection-tab ORDER requested by the desk: device(CID) first, then IB, City, Family, Email, IP,
-# Payment. Lower number = shown first. Used to pick each ring's PRIMARY link and to rank the tab.
-LINK_PRIORITY = {"cid": 1, "mqid": 1, "ib": 2, "city": 3, "family": 4, "phone": 4,
+# Connection-tab ORDER requested by the desk: device(CID) first, then IB, City, Family, same-sender,
+# Email, IP, Payment. Lower number = shown first.
+LINK_PRIORITY = {"cid": 1, "mqid": 1, "ib": 2, "city": 3, "family": 4, "phone": 4, "pay_sender": 3,
                  "email": 5, "similar_email": 5, "payment": 6, "ip": 7, "name": 8}  # IP lowest
 
 
@@ -62,6 +66,15 @@ def _norm_email(e):
 
 # IP / device tokens shared by more than this many logins are treated as noise (NAT, shared PC bank).
 MAX_TOKEN_FANOUT = 25
+# A payment sender (Qi card / wallet) shared by more than this many clients is a money exchanger /
+# agent funding many unrelated people — NOT a family link, so it's excluded from the pay_sender signal.
+PAY_SENDER_MAX_FANOUT = 6
+
+_TABLE_CACHE = {}
+def _table_exists(db, name):
+    if name not in _TABLE_CACHE:
+        _TABLE_CACHE[name] = db.execute(text("SELECT to_regclass(:n)"), {"n": "public." + name}).scalar() is not None
+    return _TABLE_CACHE[name]
 
 
 def _phone9(p):
@@ -90,7 +103,7 @@ def _subject(db, login=None, lead_id=None):
     """Resolve the subject's identifying tokens (device ids, ips, email, phone, city, IB)."""
     if login is not None:
         c = db.execute(text("""
-            SELECT login, name, email, phone, city, country, agent
+            SELECT login, name, email, phone, city, country, agent, customer_no
             FROM clients WHERE login=:l
         """), {"l": login}).fetchone()
         if not c:
@@ -106,10 +119,10 @@ def _subject(db, login=None, lead_id=None):
                 "email": (c[2] or "").lower().strip(), "email_norm": _norm_email(c[2]),
                 "phone": c[3] or "", "phone9": _phone9(c[3]),
                 "city": (c[4] or "").strip(), "country": c[5] or "", "agent": c[6] or 0,
-                "cids": cids, "mqids": mqids, "ips": ips}
+                "customer_no": str(c[7]) if c[7] else "", "cids": cids, "mqids": mqids, "ips": ips}
     if lead_id is not None:
         l = db.execute(text("""
-            SELECT id, full_name, email, phone, city, country FROM leads WHERE id=:l
+            SELECT id, full_name, email, phone, city, country, customer_no FROM leads WHERE id=:l
         """), {"l": lead_id}).fetchone()
         if not l:
             return None
@@ -117,7 +130,7 @@ def _subject(db, login=None, lead_id=None):
                 "email": (l[2] or "").lower().strip(), "email_norm": _norm_email(l[2]),
                 "phone": l[3] or "", "phone9": _phone9(l[3]),
                 "city": (l[4] or "").strip(), "country": l[5] or "", "agent": 0,
-                "cids": [], "mqids": [], "ips": []}
+                "customer_no": str(l[6]) if l[6] else "", "cids": [], "mqids": [], "ips": []}
     return None
 
 
@@ -198,6 +211,20 @@ def score_connections(db, login=None, lead_id=None, limit=60):
         """), {"p": subj["phone9"], "self": subj["id"] if subj["kind"] == "lead" else -1}).fetchall():
             cand[("lead", lid)]["family"] = subj["phone"]
 
+    # ── strong: shared PAYMENT SENDER — two accounts funded by the SAME Qi card / wallet are directly
+    #    linked (family / shared card), unlike merely sharing a payment METHOD. High-fanout senders
+    #    (a money exchanger funding many unrelated clients) are excluded (fanout > PAY_SENDER_MAX_FANOUT).
+    if subj["login"] and _table_exists(db, "client_payment_senders"):
+        for lg, mth, key in db.execute(text("""
+            SELECT DISTINCT b.client_login, a.method, a.sender_key
+            FROM client_payment_senders a
+            JOIN client_payment_senders b
+              ON b.method=a.method AND b.sender_key=a.sender_key AND b.client_login<>a.client_login
+            WHERE a.client_login=:self AND a.fanout BETWEEN 2 AND :maxfan
+        """), {"self": subj["login"], "maxfan": PAY_SENDER_MAX_FANOUT}).fetchall():
+            if lg != subj["login"]:
+                cand[("client", lg)]["pay_sender"] = f"{mth.upper()} · {key}"
+
     if not cand:
         return {"subject": _subject_brief(subj), "connections": []}
 
@@ -209,13 +236,14 @@ def score_connections(db, login=None, lead_id=None, limit=60):
     if client_logins:
         for r in db.execute(text("""
             SELECT c.login, c.name, c.city, c.country, c.agent, COALESCE(c.balance,0),
-                   i.name AS ib_name
+                   i.name AS ib_name, c.customer_no
             FROM clients c LEFT JOIN ibs i ON i.agent_id=c.agent
             WHERE c.login=ANY(:l)
         """), {"l": client_logins}).fetchall():
             cmeta[("client", r[0])] = {"name": r[1] or f"#{r[0]}", "city": (r[2] or "").strip(),
                                        "country": r[3] or "", "agent": r[4] or 0,
-                                       "balance": float(r[5] or 0), "ib_name": r[6] or ""}
+                                       "balance": float(r[5] or 0), "ib_name": r[6] or "",
+                                       "customer_no": str(r[7]) if r[7] else ""}
     lmeta = {}
     if lead_ids:
         for r in db.execute(text("""
@@ -233,14 +261,24 @@ def score_connections(db, login=None, lead_id=None, limit=60):
             WHERE login=ANY(:l) AND method IS NOT NULL AND trim(method)<>''
               AND tx_type IN ('deposit','withdrawal')
         """), {"l": logins}).fetchall()
-        skip = {"deposit", "withdrawal", "credit", "bonus", "adjustment", ".", ""}
-        return {m for (m,) in rows if m and m not in skip and "bonus" not in m and "adjust" not in m}
+        # Qi / ZainCash / ShamCash are handled by the SAME-SENDER signal (pay_sender), NOT by "same
+        # method" — two people both using "Qi card" is not a link; using the same Qi CARD is. So drop
+        # those methods from the method-booster; keep USDT and the rest (same method still counts there).
+        skip = {"deposit", "withdrawal", "credit", "bonus", "adjustment", ".", "",
+                "qi card", "qi", "qicard", "zaincash", "zain cash", "zc", "sham cash", "shamcash", "sham"}
+        return {m for (m,) in rows if m and m not in skip and "bonus" not in m and "adjust" not in m
+                and "qi" not in m and "zain" not in m and "sham" not in m}
     subj_methods = real_methods([subj["login"]] if subj["login"] else [])
 
     out = []
+    subj_cn = subj.get("customer_no") or ""
     for key, sigs in cand.items():
         meta = cmeta.get(key) or lmeta.get(key)
         if not meta:
+            continue
+        # USER-WISE: never list the subject's OWN other trading accounts (same customer_no) as a
+        # connection — a person's multiple accounts are one user, not a link.
+        if subj_cn and meta.get("customer_no") and meta["customer_no"] == subj_cn:
             continue
         # booster: same IB
         if subj["agent"] and meta["agent"] and subj["agent"] == meta["agent"]:
@@ -256,7 +294,7 @@ def score_connections(db, login=None, lead_id=None, limit=60):
         out.append({
             "kind": key[0], "id": key[1], "login": key[1] if key[0] == "client" else None,
             "name": meta["name"], "city": meta["city"], "country": meta["country"],
-            "ib_name": meta["ib_name"], "balance": meta["balance"],
+            "ib_name": meta["ib_name"], "balance": meta["balance"], "customer_no": meta.get("customer_no", ""),
             "confidence": conf, "score10": x10, "reasons": reasons, "top_reason": top,
             "signal_count": len(sigs),
         })
@@ -282,7 +320,17 @@ def score_connections(db, login=None, lead_id=None, limit=60):
                     o["signal_count"] = len(sigset)
 
     out.sort(key=lambda o: (o["confidence"], o["signal_count"], o["balance"]), reverse=True)
-    return {"subject": _subject_brief(subj), "connections": out[:limit]}
+    # USER-WISE dedupe: collapse a candidate CUSTOMER's multiple trading accounts into ONE connection
+    # (keep the strongest). Leads + customers with no customer_no stay as-is.
+    seen, deduped = set(), []
+    for o in out:
+        cn = o.get("customer_no") or ""
+        if o["kind"] == "client" and cn:
+            if cn in seen:
+                continue
+            seen.add(cn)
+        deduped.append(o)
+    return {"subject": _subject_brief(subj), "connections": deduped[:limit]}
 
 
 def _subject_brief(subj):
@@ -497,8 +545,25 @@ def connection_groups(db, limit=60, min_size=2):
         if ra != rb:
             parent[ra] = rb
 
-    links = defaultdict(list)  # not used heavily; reason tracking
-    # device + ip from account_identifiers (fan-out capped)
+    # ── USER-WISE, not account-wise: collapse a customer's many trading accounts (logins) into ONE
+    #    node keyed by customer_no. We union CUSTOMERS — so one customer's own accounts can NEVER form a
+    #    ring; only links between DIFFERENT customers (clients/leads/IB) do. ──────────────────────────
+    cust = {}
+    for lg, cn in db.execute(text("SELECT login, customer_no FROM clients WHERE customer_no IS NOT NULL AND login IS NOT NULL")).fetchall():
+        cust[lg] = "C:" + str(cn)
+    def _ck(lg):
+        return cust.get(lg) or ("L:" + str(lg))
+    cust_logins = defaultdict(list)
+    for lg, ck in cust.items():
+        cust_logins[ck].append(lg)
+
+    links = defaultdict(list)  # customer_key pairs + reason type
+    def _union_members(members, typ):
+        cs = sorted({_ck(lg) for lg in members})           # collapse logins → customers first
+        for i in range(len(cs)):
+            for j in range(i + 1, len(cs)):
+                union(cs[i], cs[j]); links[find(cs[i])].append((cs[i], cs[j], typ))
+
     for typ, val, members in db.execute(text("""
         SELECT identifier_type, identifier_value, array_agg(DISTINCT login) m
         FROM account_identifiers
@@ -506,37 +571,32 @@ def connection_groups(db, limit=60, min_size=2):
         GROUP BY identifier_type, identifier_value
         HAVING COUNT(DISTINCT login) BETWEEN 2 AND :fan
     """), {"fan": MAX_TOKEN_FANOUT}).fetchall():
-        ms = sorted(set(members))
-        for i in range(len(ms)):
-            for j in range(i + 1, len(ms)):
-                union(ms[i], ms[j]); links[find(ms[i])].append((ms[i], ms[j], typ))
-    # shared phone
+        _union_members(members, typ)
     for phone, members in db.execute(text("""
         SELECT phone, array_agg(DISTINCT login) m FROM clients
         WHERE phone IS NOT NULL AND length(trim(phone))>=7
         GROUP BY phone HAVING COUNT(DISTINCT login) BETWEEN 2 AND :fan
     """), {"fan": MAX_TOKEN_FANOUT}).fetchall():
-        ms = sorted(set(members))
-        for i in range(len(ms)):
-            for j in range(i + 1, len(ms)):
-                union(ms[i], ms[j]); links[find(ms[i])].append((ms[i], ms[j], "phone"))
-    # similar email — group by NORMALIZED local part (dots/+tags removed) so ahmed.zaman, ahme.dzaman,
-    # ahmedzaman all link into one ring (exact-equality on the normalized inbox; safe, no false rings)
+        _union_members(members, "phone")
     _NE = _norm_email_sql("email")
     for nemail, members in db.execute(text(f"""
         SELECT {_NE} ne, array_agg(DISTINCT login) m FROM clients
         WHERE email IS NOT NULL AND email<>'' AND length({_NE})>=4
         GROUP BY {_NE} HAVING COUNT(DISTINCT login) BETWEEN 2 AND :fan
     """), {"fan": MAX_TOKEN_FANOUT}).fetchall():
-        ms = sorted(set(members))
-        for i in range(len(ms)):
-            for j in range(i + 1, len(ms)):
-                union(ms[i], ms[j]); links[find(ms[i])].append((ms[i], ms[j], "similar_email"))
+        _union_members(members, "similar_email")
 
+    # components of CUSTOMERS; keep rings of 2..fan DIFFERENT customers, then expand to their logins
     comp = defaultdict(set)
     for node in list(parent):
         comp[find(node)].add(node)
-    comps = [(root, sorted(ms)) for root, ms in comp.items() if min_size <= len(ms) <= MAX_TOKEN_FANOUT]
+    comps = []
+    for root, custs in comp.items():
+        if not (min_size <= len(custs) <= MAX_TOKEN_FANOUT):
+            continue
+        logins = [lg for ck in custs for lg in cust_logins.get(ck, [])] or \
+                 [int(ck[2:]) for ck in custs if ck.startswith("L:") and ck[2:].isdigit()]
+        comps.append((root, logins, len(custs)))
 
     # ── PRE-RANK cheaply (no deals): one pass over transactions for dep/wd/bonus per login ──
     tx_by_login = {}
@@ -548,67 +608,68 @@ def connection_groups(db, limit=60, min_size=2):
     """)).fetchall():
         tx_by_login[lg] = (float(dep), float(wd), float(bonus))
     scored = []
-    for root, members in comps:
+    for root, members, n_cust in comps:
         dep = wd = bonus = 0.0
         for lg in members:
             d, w, b = tx_by_login.get(lg, (0, 0, 0))
             dep += d; wd += w; bonus += b
         exposure = bonus + max(0.0, wd - dep)
-        scored.append((exposure, len(members), root, members))
-    # keep the most exposed components, then run the heavy per-group analysis only on those
+        scored.append((exposure, n_cust, root, members))
     scored.sort(reverse=True, key=lambda x: (x[0], x[1]))
     top = scored[:max(limit * 2, limit)]
 
-    # identity per member — distinguish ONE trader's own multiple accounts (same phone + same name)
-    # from a ring of DIFFERENT people sharing a device/IP. The Connections tab should only show the
-    # latter; a single trader's own accounts are normal (and, if abusing, belong on the Abuse page).
-    all_member_logins = sorted({lg for _, _, _, ms in top for lg in ms})
-    ident = {}
-    if all_member_logins:
-        for lg, ph, nm, em in db.execute(text("""
-            SELECT login, RIGHT(regexp_replace(COALESCE(phone,''),'[^0-9]','','g'),9), name, email
-            FROM clients WHERE login=ANY(:l)
-        """), {"l": all_member_logins}).fetchall():
-            ident[lg] = (ph if ph and len(ph) >= 7 else "", _norm_name(nm), _norm_email(em))
-
     groups = []
-    for exposure, size, root, members in top:
+    for exposure, n_cust, root, members in top:
         st = group_stats(db, members)
+        cmembers = _collapse_by_customer(st["members"], cust)   # ONE row per customer, accounts summed
         verdicts = classify_group(st)
         sev = max((v["severity"] for v in verdicts), key=_risk_rank, default="low")
         reasons = sorted({r[2] for r in links.get(root, [])},
                          key=lambda s: SIGNAL_ORDER.index(s) if s in SIGNAL_ORDER else 99)
-        phones = {ident.get(lg, ("", "", ""))[0] for lg in members if ident.get(lg, ("", "", ""))[0]}
-        names = {ident.get(lg, ("", "", ""))[1] for lg in members if ident.get(lg, ("", "", ""))[1]}
-        emails = {ident.get(lg, ("", "", ""))[2] for lg in members if ident.get(lg, ("", "", ""))[2]}
-        n_people = max(len(phones), len(names)) or len(members)
-        # ONE client's own accounts (exclude from the different-people rings):
-        #  • single phone AND single (fuzzy) name  → same person, OR
-        #  • single phone AND single email         → same person (no two DIFFERENT people share both).
-        # Family = same phone but DIFFERENT names, which stays (len(names)>1).
-        same_person = ((len(phones) <= 1 and len(names) <= 1 and bool(phones or names))
-                       or (len(phones) <= 1 and len(emails) <= 1 and bool(phones) and bool(emails)))
-        # primary link = the highest-priority signal that actually links this ring (CID first)
         primary = sorted(reasons, key=lambda s: LINK_PRIORITY.get(s, 99))[0] if reasons else "link"
         groups.append({
-            "id": int(root), "size": len(members), "members": st["members"],
+            "id": min(members) if members else 0, "size": len(members), "members": cmembers,
             "totals": st["totals"], "ib_names": st["ib_names"], "dominant_ib": st["dominant_ib"],
             "link_reasons": reasons, "primary_link": primary, "verdicts": verdicts, "severity": sev,
-            "same_person": same_person, "n_people": n_people,
+            "same_person": False, "n_people": n_cust, "_logins": members,
             "top_verdict": verdicts[0]["title"] if verdicts else "Linked accounts",
         })
-    # Connections tab = rings of DIFFERENT people only (drop a single trader's own-account clusters)
-    multi = [g for g in groups if not g["same_person"]]
-    # ORDER as the desk asked: by link type (CID → IB → City → Family → Email → IP → Payment), then
-    # by severity, then by money exposure — so device-linked rings surface first.
-    multi.sort(key=lambda g: (LINK_PRIORITY.get(g["primary_link"], 99),
-                              -_risk_rank(g["severity"]),
-                              -(g["totals"].get("bonus", 0) + max(0, g["totals"].get("net_to_clients", 0)))))
-    out_groups = multi[:limit]
-    # attach the CONNECTION detail (what actually links the members) only to the groups we return
+    # ORDER: link type (CID → IB → City → Family → Email → IP → Payment) then severity then exposure
+    groups.sort(key=lambda g: (LINK_PRIORITY.get(g["primary_link"], 99),
+                               -_risk_rank(g["severity"]),
+                               -(g["totals"].get("bonus", 0) + max(0, g["totals"].get("net_to_clients", 0)))))
+    out_groups = groups[:limit]
+    # connection detail uses ALL logins of the ring's customers (so cross-customer links are found)
     for g in out_groups:
-        g["links"] = group_links(db, [m["login"] for m in g["members"]])
+        g["links"] = group_links(db, g.pop("_logins"))
     return out_groups
+
+
+def _collapse_by_customer(members, cust):
+    """Collapse a ring's per-login member rows into ONE row per CUSTOMER (a person may hold several
+    trading accounts). Sums money; keeps a representative name/city/IB; counts the accounts."""
+    by = {}
+    for m in members:
+        ck = cust.get(m.get("login")) or ("L:" + str(m.get("login")))
+        g = by.get(ck)
+        if not g:
+            by[ck] = {**m, "accounts": 1, "logins": [m.get("login")]}
+        else:
+            for k in ("deposits", "withdrawals", "bonus", "pnl", "trades"):
+                if m.get(k) is not None:
+                    g[k] = (g.get(k) or 0) + m[k]
+            g["accounts"] += 1
+            g["logins"].append(m.get("login"))
+            if not g.get("ib_name") and m.get("ib_name"):
+                g["ib_name"] = m["ib_name"]
+            if not g.get("city") and m.get("city"):
+                g["city"] = m["city"]
+            g["is_islamic"] = g.get("is_islamic") or m.get("is_islamic")
+            if m.get("win_rate") is not None:
+                g["win_rate"] = max(g.get("win_rate") or 0, m["win_rate"])
+    out = list(by.values())
+    out.sort(key=lambda x: (x.get("deposits", 0) + x.get("withdrawals", 0)), reverse=True)
+    return out
 
 
 def group_links(db, logins):

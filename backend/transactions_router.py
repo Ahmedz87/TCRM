@@ -346,7 +346,8 @@ async def get_transactions(
             (SELECT COUNT(*) FROM transactions t2
              WHERE t2.login = t.login AND t2.tx_type IN ('deposit','withdrawal')) as tx_count,
             t.currency, t.psp_reference, t.approved_at, t.deal_id as ref_id,
-            tw.wallet_id AS ocr_wallet_id, tw.confidence AS wallet_conf, tw.sender_acct AS ocr_sender_acct
+            tw.wallet_id AS ocr_wallet_id, tw.confidence AS wallet_conf, tw.sender_acct AS ocr_sender_acct,
+            tw.sender_block AS ocr_sender_block
         FROM transactions t
         LEFT JOIN clients c ON c.login = t.login
         LEFT JOIN users u ON u.id = c.assigned_agent_id
@@ -444,6 +445,7 @@ async def get_transactions(
             "ocr_wallet_id":    r[25] or "",
             "wallet_confidence": r[26] or "",
             "sender_acct":      r[27] or "",
+            "sender_block":     r[28] or "",
         })
 
     return {
