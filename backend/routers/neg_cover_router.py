@@ -72,7 +72,16 @@ def _set_cfg(enabled=None, skip_abuse=None):
     finally:
         db.close()
 
+import os as _os
+# Only ONE process may run the auto-cover loop — it opens an MT5Manager connection (one per MT
+# login) and writes cover trades. When we run several uvicorn instances behind nginx, the web
+# instances set RUN_INPROC_LOOPS=0 so ONLY the primary instance runs it; default "1" preserves
+# the single-instance behavior.
+_INPROC_LOOPS = _os.getenv("RUN_INPROC_LOOPS", "1") != "0"
+
 def _start_auto_thread():
+    if not _INPROC_LOOPS:
+        return   # web-only instance — the primary instance runs the cover loop
     if not _auto_running["on"]:
         _auto_running["on"] = True
         t = threading.Thread(target=_auto_loop, daemon=True)
@@ -605,4 +614,5 @@ def _boot_autocover():
             _start_auto_thread()
     except Exception as e:
         print(f"neg auto-cover boot error: {e}")
-threading.Thread(target=_boot_autocover, daemon=True).start()
+if _INPROC_LOOPS:   # web-only instances (RUN_INPROC_LOOPS=0) never boot the MT5 cover loop
+    threading.Thread(target=_boot_autocover, daemon=True).start()

@@ -8,6 +8,7 @@ from sqlalchemy import text
 from datetime import datetime, timedelta
 import json
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import models, auth
 from database import get_db
 from auth import get_current_user
@@ -489,6 +490,11 @@ def log_call_result(
 
 
 # ── EVENT-DRIVEN AUTO-DIALER ──────────────────────────────────────────────
+# Bounded pool for the off-request PBX dials — caps concurrent dials (and threads) so a burst
+# of agents can't spawn unbounded threads. 30 covers the expected max simultaneous agents.
+_DIAL_POOL = ThreadPoolExecutor(max_workers=30, thread_name_prefix="dial")
+
+
 def _place_dial_bg(agent_id, ext, phone):
     """Place the PBX dial OFF the request thread (the PBX HTTP call can take seconds). Updates
     the agent's active-call from 'dialing' -> 'ringing' (or 'dial_failed'). Daemon thread."""
@@ -560,8 +566,7 @@ def auto_next(
            "cj": json.dumps(contact)})
     db.commit()
 
-    threading.Thread(target=_place_dial_bg, args=(current_user.id, ext, contact.get("phone")),
-                     daemon=True).start()
+    _DIAL_POOL.submit(_place_dial_bg, current_user.id, ext, contact.get("phone"))
     return {**contact, "call_status": "dialing"}
 
 
