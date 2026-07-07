@@ -106,12 +106,19 @@ def place_call(
     if not phone:
         return {"ok": False, "error": "no phone number"}
     # The logged-in user's own extension is the source of truth (follows them across
-    # browsers). Fall back to an explicit body value, then the service default (101).
+    # browsers). Fall back to an explicit body value.
     ext = (getattr(current_user, "extension", None) or "").strip()
     if not ext:
         ext = (data.get("extension") or "").strip()
     if ext in ("", "100", "TOKEN", "YOUR_YEASTAR_IP"):
         ext = None
+    # SAFETY: never silently fall back to DEFAULT_CALLER_EXT (101). That extension belongs to a
+    # real person (the owner), so an unmapped agent dialing would ring the OWNER's phone, the
+    # agent would never connect, and every such call ended up logged as "no answer" (this was the
+    # single biggest cause of the dialer's ~99% no-answer rate). Refuse instead and tell the agent.
+    if not ext:
+        return {"ok": False, "error": "no_extension",
+                "errmsg": "Set your PBX extension in Settings before dialing (your click-to-call has no extension mapped)."}
     res = yeastar_service.dial(phone, caller=ext)
     ok = isinstance(res, dict) and res.get("errcode") == 0
     return {
@@ -388,11 +395,11 @@ def log_call_result(
 
     # Save call action to timeline (client or lead)
     if lead_id:
-        # Save to lead notes
+        # Save to lead notes as a clean, dated line (was double-bracketed "[[Power Dialer]...]").
         db.execute(text("""
-            UPDATE leads SET notes = CONCAT(COALESCE(notes,''), '\n', :note), updated_at=NOW()
+            UPDATE leads SET notes = CONCAT(COALESCE(notes,''), :nl, :note), updated_at=NOW()
             WHERE id = :lid
-        """), {"note": f"[{final_comment}]", "lid": lead_id})
+        """), {"nl": "\n", "note": f"{now:%Y-%m-%d %H:%M} · {final_comment}", "lid": lead_id})
     elif login:
         db.execute(text("""
             INSERT INTO call_actions (login, agent_id, action, note, created_at)
@@ -510,6 +517,11 @@ def stop_session(
 ):
     db.execute(text("UPDATE dialer_sessions SET status='stopped' WHERE id=:sid"),
                {"sid": session_id})
+    # Purge this session's queue rows. Without this, every stopped session left its whole
+    # contact list behind as 'pending' forever — the queue had grown to ~876k orphan rows.
+    # All outcomes are already persisted to dialer_call_logs + the client/lead timeline, so
+    # nothing is lost by clearing the transient queue.
+    db.execute(text("DELETE FROM dialer_queue WHERE session_id=:sid"), {"sid": session_id})
     db.commit()
     return {"ok": True}
 
@@ -522,7 +534,7 @@ def call_history(
 ):
     offset = (page - 1) * page_size
     rows = db.execute(text("""
-        SELECT l.id, l.login, c.name, l.outcome, l.comment, l.called_at, u.name as agent
+        SELECT l.id, l.login, c.name, l.outcome, l.comment, l.called_at, u.full_name as agent
         FROM dialer_call_logs l
         LEFT JOIN clients c ON c.login = l.login
         LEFT JOIN users u ON u.id = l.agent_id
