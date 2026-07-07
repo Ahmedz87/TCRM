@@ -258,6 +258,14 @@ def start_session(
         if not items:
             return {"error": "No assigned contacts to dial"}
 
+    # BATCH the run: dial only the TOP N (as the page sent them, i.e. current sort order),
+    # not the entire list. When these are worked, being called drops them in priority; the
+    # sales rep then starts the next run for the next batch. Keeps each run small + focused
+    # and stops the queue from ballooning (sessions used to load the whole 160k-lead list).
+    total_available = len(items)
+    BATCH_SIZE = int(data.get("batch_size") or 20)
+    items = items[:BATCH_SIZE]
+
     result = db.execute(text("""
         INSERT INTO dialer_sessions (agent_id, status, filters, total, source, created_at)
         VALUES (:agent, 'active', :filters, :total, :source, NOW())
@@ -278,7 +286,8 @@ def start_session(
             """), {"sid": session_id, "lead_id": item_id, "pos": pos})
 
     db.commit()
-    return {"session_id": session_id, "total": len(items)}
+    return {"session_id": session_id, "total": len(items),
+            "batch_size": BATCH_SIZE, "total_available": total_available}
 
 # ── GET NEXT CLIENT TO CALL ───────────────────────────────────────────────
 def _pick_next(db, session_id):

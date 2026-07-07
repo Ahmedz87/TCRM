@@ -631,9 +631,12 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
         {phase === 'done' && (
           <div style={{ padding:'20px 14px 16px', textAlign:'center' }}>
             <div style={{ fontSize:28, marginBottom:6 }}>🎉</div>
-            <div style={{ fontSize:15, fontWeight:700, color:'#00e5a0', marginBottom:4 }}>Session complete</div>
-            <div style={{ fontSize:11, color:'#667', marginBottom:14 }}>
+            <div style={{ fontSize:15, fontWeight:700, color:'#00e5a0', marginBottom:4 }}>Batch complete</div>
+            <div style={{ fontSize:11, color:'#667', marginBottom:8 }}>
               {stats.done} connected · {stats.exhausted} unreachable
+            </div>
+            <div style={{ fontSize:11, color:'#9aa3b2', marginBottom:14 }}>
+              Close and press <b>Power Dial</b> again for the next 20.
             </div>
             <button onClick={onClose}
               style={{ width:'100%', padding:'11px', background:'#373f4d', border:'1px solid #2a2f3a',
