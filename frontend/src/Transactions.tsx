@@ -845,11 +845,9 @@ export default function Transactions({ readOnly = false }: { readOnly?: boolean 
                               <span style={{ fontFamily: 'monospace', color: '#0E6E6B', fontWeight: 600 }}>{tx.sender_acct}</span>
                               {tx.wallet_confidence === 'ambiguous' && <span title="Multiple candidate transactions — verify" style={{ color: '#d97706', marginLeft: 4 }}>~</span>}
                             </span>)
-                          : tx.wallet_id
-                            ? <span style={{ fontFamily: 'monospace' }}>{tx.wallet_id}</span>
-                            : tx.sender_block
-                              ? <span style={{ fontFamily: 'monospace', color: '#999' }}>{tx.sender_block}<span style={{ fontSize: 10 }}> ·block</span></span>
-                              : '—'}
+                          : tx.sender_block
+                            ? <span style={{ fontFamily: 'monospace', color: '#888' }} title="Qi sender wallet id (4-digit block) — full account not yet read">{tx.sender_block}<span style={{ fontSize: 10 }}> ·block</span></span>
+                            : '—'}
                       </td>
                     </>)}
                     <td style={{ ...tdS, textAlign: 'center' }} onClick={e=>e.stopPropagation()}>
