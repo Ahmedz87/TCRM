@@ -773,7 +773,6 @@ export default function Transactions({ readOnly = false }: { readOnly?: boolean 
                   <th style={thS}>Card / Method</th>
                   <th style={thS}>Card name / Wallet</th>
                   <th style={thS}>Wallet ID</th>
-                  <th style={thS}>Sender ID</th>
                 </>)}
                 <th style={thS}># Txns</th>
                 <th style={thS}>Sales agent</th>
@@ -839,22 +838,18 @@ export default function Transactions({ readOnly = false }: { readOnly?: boolean 
                         <MethodBadge method={methodLabel(tx)} mtype={isManual ? 'manual' : 'auto'} onClick={() => filterBy('method', tx.method)} />
                       </td>
                       <td style={{ ...tdS, color: '#666' }}>{tx.wallet_type || '—'}</td>
-                      <td style={{ ...tdS, color: '#555', fontSize: 11, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={tx.ocr_wallet_id || tx.wallet_id || ''}>
-                        {tx.ocr_wallet_id ? (
-                          <span>
-                            <span style={{ fontFamily: 'monospace' }}>{tx.ocr_wallet_id}</span>
-                            {tx.wallet_confidence === 'confident'
-                              ? <span title="Matched from OCR'd receipt" style={{ color: '#16a34a', marginLeft: 4 }}>✓</span>
-                              : <span title="Multiple candidate transactions — verify" style={{ color: '#d97706', marginLeft: 4 }}>~</span>}
-                          </span>
-                        ) : (tx.wallet_id || '—')}
-                      </td>
-                      <td style={{ ...tdS, fontSize: 11 }} title={tx.sender_acct ? `Full sender account: ${tx.sender_acct}` : (tx.sender_block ? `Qi sender wallet id (4-digit block)` : '')}>
+                      <td style={{ ...tdS, color: '#555', fontSize: 11, maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          title={tx.sender_acct ? `Sender: ${tx.sender_acct}` : (tx.wallet_id || (tx.sender_block ? `Qi sender block ${tx.sender_block} (4 digits — full account not read)` : ''))}>
                         {tx.sender_acct
-                          ? <span style={{ fontFamily: 'monospace', color: '#0E6E6B', fontWeight: 600 }}>{tx.sender_acct}</span>
-                          : tx.sender_block
-                            ? <span style={{ fontFamily: 'monospace' }}>{tx.sender_block}<span style={{ color: '#999', fontSize: 10 }}> ·block</span></span>
-                            : '—'}
+                          ? (<span>
+                              <span style={{ fontFamily: 'monospace', color: '#0E6E6B', fontWeight: 600 }}>{tx.sender_acct}</span>
+                              {tx.wallet_confidence === 'ambiguous' && <span title="Multiple candidate transactions — verify" style={{ color: '#d97706', marginLeft: 4 }}>~</span>}
+                            </span>)
+                          : tx.wallet_id
+                            ? <span style={{ fontFamily: 'monospace' }}>{tx.wallet_id}</span>
+                            : tx.sender_block
+                              ? <span style={{ fontFamily: 'monospace', color: '#999' }}>{tx.sender_block}<span style={{ fontSize: 10 }}> ·block</span></span>
+                              : '—'}
                       </td>
                     </>)}
                     <td style={{ ...tdS, textAlign: 'center' }} onClick={e=>e.stopPropagation()}>
