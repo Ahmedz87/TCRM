@@ -372,24 +372,26 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
     apiGet(`/dialer/session/${sessionId}/stats`).then(setStats).catch(() => {});
   }, [sessionId]);
 
-  // ── CALL NEXT — always re-queries so rescheduled/high-score clients jump to top ──
+  // ── CALL NEXT — auto-dials the next contact server-side (auto-answer on the agent leg) ──
+  // The backend picks the next contact, places the PBX call, and records it as this agent's
+  // active call. The polling effect below then watches its live status: on a real ANSWER it
+  // pops the card; on no-answer/off/rejected the worker auto-logs + reschedules and we advance.
   const callNext = useCallback(async () => {
     if (!runningRef.current) return;
     clearTimeout(noAnswerRef.current);
-    // Small pause to let DB update (reschedule writes) settle
-    await new Promise(r => setTimeout(r, 300));
-    const data = await apiGet(`/dialer/session/${sessionId}/next`);
-    if (data.done) { setPhase('done'); return; }
+    await new Promise(r => setTimeout(r, 300));   // let reschedule writes settle
+    const data = await apiPost(`/dialer/session/${sessionId}/auto-next`, {});
+    if (data?.error === 'no_extension') {
+      setDialResult({ ok: false, errmsg: data.errmsg || 'Set your PBX extension in Settings.' });
+      runningRef.current = false; setPhase('paused'); return;
+    }
+    if (data?.done) { setPhase('done'); return; }
     setCurrent(data);
     setCallingName(data.name);
     setPhase('calling');
-    setDialResult(null);
+    setDialResult(data.dial_ok ? { ok: true, caller: '' }
+                              : { ok: false, errmsg: data.dial_error || 'PBX rejected the call' });
     loadStats();
-    const dr = await yeastarCall(data.phone);
-    setDialResult(dr);
-    // NO auto-advance: the dialer now STAYS on this contact while it rings in Linkus.
-    // The agent watches the call (ringing -> off/on -> answered/rejected) and clicks the
-    // outcome (No answer / Off / Rejected / Answered); only THEN do we move to the next.
   }, [sessionId, loadStats]);
 
   // Auto-start on mount
@@ -428,6 +430,29 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
     loadStats();
     callNext();
   }, [callNext, loadStats]);
+
+  // ── AUTO-ADVANCE — poll the live call status while a call is ringing ──────
+  // The event worker (dialer_events.py) updates the call's status from real PBX events:
+  //   answered            -> pop the customer card + ring the agent
+  //   no_answer/off/reject -> it already auto-logged + rescheduled; we just move to the next.
+  // If the worker is down, status stays 'ringing' and the agent uses the manual buttons below
+  // (graceful fallback — nothing breaks, it just isn't automatic).
+  useEffect(() => {
+    if (phase !== 'calling') return;
+    const iv = setInterval(async () => {
+      if (!runningRef.current) return;
+      let st: any;
+      try { st = await apiGet('/dialer/active-call'); } catch { return; }
+      if (!st || !st.status) return;
+      if (st.status === 'answered') {
+        handleAnswered();
+      } else if (st.status === 'no_answer' || st.status === 'rejected' || st.status === 'off') {
+        loadStats();
+        callNext();
+      }
+    }, 1500);
+    return () => clearInterval(iv);
+  }, [phase, handleAnswered, callNext, loadStats]);
 
   const stopDialer = async () => {
     runningRef.current = false;
@@ -552,13 +577,16 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
             {/* PBX result so the agent knows the call really went out */}
             {dialResult && (dialResult.ok
               ? <div style={{ textAlign:'center', fontSize:11, color:'#00e5a0', marginBottom:12 }}>
-                  📞 Sent to PBX — pick up your ext <b>{dialResult.caller}</b> to connect
+                  📞 Auto-dialing — your headset connects automatically. Waiting for answer…
                 </div>
               : <div style={{ textAlign:'center', fontSize:11, color:'#ff5d6c', marginBottom:12,
                   background:'rgba(255,93,108,0.1)', border:'1px solid rgba(255,93,108,0.3)', borderRadius:8, padding:'6px 8px' }}>
                   ⚠ Call not placed: {dialResult.errmsg || 'PBX rejected'}
                 </div>
             )}
+            <div style={{ textAlign:'center', fontSize:10, color:'#667', marginBottom:8 }}>
+              Advances automatically on the outcome. Use the buttons only if it doesn't.
+            </div>
             <button onClick={handleAnswered}
               style={{ width:'100%', padding:'13px', background:'linear-gradient(135deg,#00c87a,#00e5a0)',
                 border:'none', borderRadius:12, color:'#262c36', fontSize:14, fontWeight:700,

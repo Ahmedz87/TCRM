@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timedelta
+import json
 import models, auth
 from database import get_db
 from auth import get_current_user
@@ -88,6 +89,42 @@ def _ensure_dialer_cols():
         db.close()
 
 _ensure_dialer_cols()
+
+
+def _ensure_active_calls_table():
+    """Per-agent 'current call' slot for the event-driven auto-dialer. The WebSocket worker
+    (dialer_events.py) correlates Yeastar call events to the row by agent_ext, updates `status`
+    (ringing/answered/no_answer/rejected/off), and the frontend polls GET /dialer/active-call
+    to auto-advance. One row per agent (their single in-flight dialer call)."""
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS dialer_active_calls (
+                agent_id        INTEGER PRIMARY KEY,
+                agent_ext       VARCHAR(20),
+                session_id      INTEGER,
+                queue_id        INTEGER,
+                login           BIGINT,
+                lead_id         BIGINT,
+                callee          VARCHAR(40),
+                name            VARCHAR(200),
+                status          VARCHAR(20),
+                call_id         VARCHAR(64),
+                outcome_applied BOOLEAN DEFAULT FALSE,
+                contact_json    TEXT,
+                started_at      TIMESTAMP,
+                updated_at      TIMESTAMP
+            )
+        """))
+        db.execute(text("CREATE INDEX IF NOT EXISTS idx_dac_ext ON dialer_active_calls(agent_ext)"))
+        db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
+
+_ensure_active_calls_table()
 
 
 # ── YEASTAR CLICK-TO-CALL ─────────────────────────────────────────────────
@@ -243,13 +280,10 @@ def start_session(
     return {"session_id": session_id, "total": len(items)}
 
 # ── GET NEXT CLIENT TO CALL ───────────────────────────────────────────────
-@router.get("/session/{session_id}/next")
-def get_next(
-    session_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    """Get the next client to call in the queue."""
+def _pick_next(db, session_id):
+    """Pick the next contact to call for a session (NO dialing). Returns the contact dict,
+    or {"done": True, "next_scheduled_at": ...} when nothing is due right now.
+    Shared by GET /next (preview) and POST /auto-next (event-driven auto-dialer)."""
     # Check session source
     sess = db.execute(text("SELECT source FROM dialer_sessions WHERE id=:sid"), {"sid": session_id}).fetchone()
     source = sess[0] if sess else "clients"
@@ -329,125 +363,191 @@ def get_next(
         "last_comment":   (row[15] or "").strip(),
     }
 
-# ── LOG CALL RESULT ───────────────────────────────────────────────────────
-@router.post("/call/result")
-def log_call_result(
-    data: dict,
+
+@router.get("/session/{session_id}/next")
+def get_next(
+    session_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Log the result of a call attempt.
-    outcome: 'answered' | 'no_answer' | 'rejected' | 'off' | 'call_later' | 'done'
-    """
-    queue_id   = data.get("queue_id")
-    session_id = data.get("session_id")
-    login      = data.get("login")
-    outcome    = data.get("outcome")  # answered/no_answer/rejected/off/call_later/done
-    comment    = data.get("comment", "")
-    call_later_at = data.get("call_later_at")  # ISO string if call_later
+    """Preview the next contact to call (does not dial)."""
+    return _pick_next(db, session_id)
 
+# ── SHARED OUTCOME LOGIC (used by the manual endpoint AND the WebSocket worker) ──
+def apply_outcome(db, *, session_id, queue_id, login, lead_id, outcome, comment="",
+                  agent_id=None, call_later_at=None):
+    """Record a call outcome: log it, write the comment to the contact's timeline, reset the
+    contact's dynamic priority (drops it off the top of the list), and reschedule per the
+    retry ladder. Does NOT commit — the caller commits. Returns (final_comment, attempt).
+
+    outcome: 'answered' | 'no_answer' | 'rejected' | 'off' | 'call_later' | 'done'
+    Called from POST /call/result (agent-driven) and from dialer_events.py (auto-detected)."""
     now = datetime.utcnow()
 
-    # Get current attempt
-    row = db.execute(text("""
-        SELECT attempt, created_at FROM dialer_queue WHERE id = :qid
-    """), {"qid": queue_id}).fetchone()
+    row = db.execute(text("SELECT attempt, created_at FROM dialer_queue WHERE id = :qid"),
+                     {"qid": queue_id}).fetchone()
     attempt = (row[0] if row else 0) + 1
     first_call_hour = (row[1].hour if row and row[1] else now.hour)
 
-    # Auto-comments for non-answered calls
     auto_comments = {
         "no_answer": f"[Power Dialer] No answer — attempt {attempt}. Auto-scheduled for retry.",
         "rejected":  f"[Power Dialer] Call rejected by client — attempt {attempt}. Auto-scheduled for retry.",
-        "off":       f"[Power Dialer] Phone switched off — attempt {attempt}. Auto-scheduled for retry.",
+        "off":       f"[Power Dialer] Phone switched off / unreachable — attempt {attempt}. Auto-scheduled for retry.",
         "answered":  f"[Power Dialer] Connected — {comment}" if comment else "[Power Dialer] Connected.",
         "done":      f"[Power Dialer] Connected & done — {comment}" if comment else "[Power Dialer] Connected & closed.",
         "call_later": f"[Power Dialer] Client requested callback. Scheduled for {call_later_at}. Note: {comment}",
     }
     final_comment = comment if outcome in ("answered", "done") and comment else auto_comments.get(outcome, comment)
 
-    # Log call
     db.execute(text("""
         INSERT INTO dialer_call_logs (session_id, login, queue_id, agent_id, outcome, comment, called_at)
         VALUES (:sid, :login, :qid, :agent, :outcome, :comment, NOW())
-    """), {
-        "sid": session_id, "login": login, "qid": queue_id,
-        "agent": current_user.id, "outcome": outcome, "comment": final_comment
-    })
+    """), {"sid": session_id, "login": login, "qid": queue_id,
+           "agent": agent_id, "outcome": outcome, "comment": final_comment})
 
-    # Reset the dynamic priority for this contact (whatever the outcome): being called
-    # zeroes the 14-day ramp + clears event bonuses, so they drop off the top and climb back.
-    # short outcome label for the "Last call" column (answered/done -> connected)
+    # Reset the dynamic priority (being called zeroes the 14-day ramp + event bonuses -> the
+    # contact drops off the top of the list and climbs back over time).
     short_outcome = {"answered": "connected", "done": "connected"}.get(outcome, outcome)
-    connected = short_outcome == "connected"   # the first real ANSWER ends the 100-pt boost
-    lead_id = data.get("lead_id")
+    connected = short_outcome == "connected"
     if lead_id:
         db.execute(text("""UPDATE leads SET last_call_at = NOW(), last_call_outcome = :oc,
                            first_connected_at = COALESCE(first_connected_at, CASE WHEN :conn THEN NOW() END)
                            WHERE id = :lid"""),
                    {"oc": short_outcome, "conn": connected, "lid": lead_id})
+        db.execute(text("""UPDATE leads SET notes = CONCAT(COALESCE(notes,''), :nl, :note), updated_at=NOW()
+                           WHERE id = :lid"""),
+                   {"nl": "\n", "note": f"{now:%Y-%m-%d %H:%M} · {final_comment}", "lid": lead_id})
     elif login:
         db.execute(text("""UPDATE clients SET last_call_at = NOW(), last_call_outcome = :oc,
                            first_connected_at = COALESCE(first_connected_at, CASE WHEN :conn THEN NOW() END)
                            WHERE login = :l"""),
                    {"oc": short_outcome, "conn": connected, "l": login})
+        db.execute(text("""INSERT INTO call_actions (login, agent_id, action, note, created_at)
+                           VALUES (:login, :agent, :action, :note, NOW())"""),
+                   {"login": login, "agent": agent_id, "action": f"dialer_{outcome}", "note": final_comment})
 
-    # Save call action to timeline (client or lead)
-    if lead_id:
-        # Save to lead notes as a clean, dated line (was double-bracketed "[[Power Dialer]...]").
-        db.execute(text("""
-            UPDATE leads SET notes = CONCAT(COALESCE(notes,''), :nl, :note), updated_at=NOW()
-            WHERE id = :lid
-        """), {"nl": "\n", "note": f"{now:%Y-%m-%d %H:%M} · {final_comment}", "lid": lead_id})
-    elif login:
-        db.execute(text("""
-            INSERT INTO call_actions (login, agent_id, action, note, created_at)
-            VALUES (:login, :agent, :action, :note, NOW())
-        """), {
-            "login": login, "agent": current_user.id,
-            "action": f"dialer_{outcome}", "note": final_comment
-        })
-
-    # Determine next queue status
+    # Next queue status
     if outcome == "done":
-        # Fully done — remove from queue
         db.execute(text("UPDATE dialer_queue SET status='done', attempt=:a WHERE id=:qid"),
                    {"a": attempt, "qid": queue_id})
-
     elif outcome == "call_later":
-        # Agent chose specific time — reschedule to top
         scheduled = datetime.fromisoformat(call_later_at) if call_later_at else now + timedelta(hours=1)
-        db.execute(text("""
-            UPDATE dialer_queue SET status='pending', attempt=:a, scheduled_at=:s, position=-1
-            WHERE id=:qid
-        """), {"a": attempt, "s": scheduled, "qid": queue_id})
-
+        db.execute(text("""UPDATE dialer_queue SET status='pending', attempt=:a, scheduled_at=:s, position=-1
+                           WHERE id=:qid"""), {"a": attempt, "s": scheduled, "qid": queue_id})
     elif outcome in ("no_answer", "rejected", "off"):
-        # Smart reschedule
         next_time = next_retry_time(attempt, now, first_call_hour)
         if next_time:
-            db.execute(text("""
-                UPDATE dialer_queue SET status='pending', attempt=:a, scheduled_at=:s
-                WHERE id=:qid
-            """), {"a": attempt, "s": next_time, "qid": queue_id})
+            db.execute(text("""UPDATE dialer_queue SET status='pending', attempt=:a, scheduled_at=:s
+                               WHERE id=:qid"""), {"a": attempt, "s": next_time, "qid": queue_id})
         else:
-            # Max attempts reached — mark done
             db.execute(text("UPDATE dialer_queue SET status='max_attempts', attempt=:a WHERE id=:qid"),
                        {"a": attempt, "qid": queue_id})
-            db.execute(text("""
-                INSERT INTO call_actions (login, agent_id, action, note, created_at)
-                VALUES (:login, :agent, 'dialer_max_attempts',
-                'Power Dialer: max call attempts reached. Removed from queue.', NOW())
-            """), {"login": login, "agent": current_user.id})
-
+            if login:
+                db.execute(text("""INSERT INTO call_actions (login, agent_id, action, note, created_at)
+                    VALUES (:login, :agent, 'dialer_max_attempts',
+                    'Power Dialer: max call attempts reached. Removed from queue.', NOW())"""),
+                    {"login": login, "agent": agent_id})
     elif outcome == "answered":
-        # Just answered — wait for done
         db.execute(text("UPDATE dialer_queue SET attempt=:a WHERE id=:qid"),
                    {"a": attempt, "qid": queue_id})
+    return final_comment, attempt
 
+
+# ── LOG CALL RESULT (agent-driven: Answered->Done / Callback, or manual fallback) ──
+@router.post("/call/result")
+def log_call_result(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Log the result of a call attempt (agent action).
+    outcome: 'answered' | 'no_answer' | 'rejected' | 'off' | 'call_later' | 'done'"""
+    outcome = data.get("outcome")
+    final_comment, attempt = apply_outcome(
+        db, session_id=data.get("session_id"), queue_id=data.get("queue_id"),
+        login=data.get("login"), lead_id=data.get("lead_id"),
+        outcome=outcome, comment=data.get("comment", ""),
+        agent_id=current_user.id, call_later_at=data.get("call_later_at"),
+    )
+    # This call is finished for the agent — clear their active-call slot so the worker/poller
+    # doesn't also act on it.
+    db.execute(text("""UPDATE dialer_active_calls SET status=:s, outcome_applied=TRUE, updated_at=NOW()
+                       WHERE agent_id=:a AND COALESCE(outcome_applied,FALSE)=FALSE"""),
+               {"s": outcome, "a": current_user.id})
     db.commit()
     return {"ok": True, "comment": final_comment, "attempt": attempt}
+
+
+# ── EVENT-DRIVEN AUTO-DIALER ──────────────────────────────────────────────
+@router.post("/session/{session_id}/auto-next")
+def auto_next(
+    session_id: int,
+    data: dict = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """One step of the automatic dialer: pick the next contact, place an AUTO-ANSWER dial to
+    them (agent's phone connects with no manual accept), and record it as this agent's active
+    call. The WebSocket worker (dialer_events.py) then detects the outcome; the frontend polls
+    GET /dialer/active-call and, on a terminal non-answer, calls this endpoint again — so the
+    dialer advances by itself and only stops on the agent for a real answer."""
+    ext = (getattr(current_user, "extension", None) or "").strip()
+    if not ext:
+        return {"error": "no_extension",
+                "errmsg": "Set your PBX extension in Settings before dialing."}
+
+    contact = _pick_next(db, session_id)
+    if contact.get("done"):
+        db.execute(text("DELETE FROM dialer_active_calls WHERE agent_id=:a"), {"a": current_user.id})
+        db.commit()
+        return contact
+
+    is_lead = contact.get("source") == "leads"
+    login   = None if is_lead else contact.get("login")
+    lead_id = contact.get("lead_id")
+
+    # Place the dial with auto-answer on the agent leg (no manual "accept").
+    res = yeastar_service.dial(contact.get("phone"), caller=ext, auto_answer=True)
+    ok  = isinstance(res, dict) and res.get("errcode") == 0
+    call_id = str((res or {}).get("call_id") or (res or {}).get("callid") or "")
+    digits  = "".join(c for c in str(contact.get("phone") or "") if c.isdigit())
+    callee  = digits if digits.startswith("00") else ("00" + digits)
+
+    db.execute(text("""
+        INSERT INTO dialer_active_calls
+            (agent_id, agent_ext, session_id, queue_id, login, lead_id, callee, name,
+             status, call_id, outcome_applied, contact_json, started_at, updated_at)
+        VALUES (:aid,:ext,:sid,:qid,:login,:lead,:callee,:name,:status,:cid,FALSE,:cj,NOW(),NOW())
+        ON CONFLICT (agent_id) DO UPDATE SET
+            agent_ext=:ext, session_id=:sid, queue_id=:qid, login=:login, lead_id=:lead,
+            callee=:callee, name=:name, status=:status, call_id=:cid, outcome_applied=FALSE,
+            contact_json=:cj, started_at=NOW(), updated_at=NOW()
+    """), {"aid": current_user.id, "ext": ext, "sid": session_id, "qid": contact.get("queue_id"),
+           "login": login, "lead": lead_id, "callee": callee, "name": contact.get("name"),
+           "status": "ringing" if ok else "dial_failed", "cid": call_id,
+           "cj": json.dumps(contact)})
+    db.commit()
+    return {**contact, "dial_ok": ok, "dial_error": (res or {}).get("errmsg"),
+            "call_status": "ringing" if ok else "dial_failed"}
+
+
+@router.get("/active-call")
+def active_call(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """Frontend polls this ~1/sec. Returns the live status of the agent's current dialer call:
+      ringing  -> still dialing / waiting
+      answered -> customer picked up: ring the agent + pop the customer card
+      no_answer/rejected/off -> worker already auto-logged + rescheduled; frontend auto-advances
+      idle     -> no active call."""
+    row = db.execute(text("""SELECT status, contact_json, outcome_applied
+                             FROM dialer_active_calls WHERE agent_id=:a"""),
+                     {"a": current_user.id}).fetchone()
+    if not row:
+        return {"status": "idle"}
+    try:
+        contact = json.loads(row[1]) if row[1] else {}
+    except Exception:
+        contact = {}
+    return {"status": row[0] or "ringing", "outcome_applied": bool(row[2]), "contact": contact}
 
 
 # ── GET QUEUE LIST ────────────────────────────────────────────────────────

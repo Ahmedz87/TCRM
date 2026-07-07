@@ -103,9 +103,17 @@ def _ensure_token():
         return None
 
 
-def dial(callee, caller=None):
+def get_token_and_host():
+    """For the WebSocket event worker: return (access_token, pbx_host) or (None, host)."""
+    return _ensure_token(), PBX_HOST
+
+
+def dial(callee, caller=None, auto_answer=False):
     """
     Place a click-to-call: ring `caller` (agent extension) first, then connect to `callee`.
+    With auto_answer=True the PBX asks the agent's IP phone / Linkus to AUTO-ANSWER the agent
+    leg (no manual "accept the call" step) — the agent hears ringback while the customer is
+    dialed. Requires the agent's phone/Linkus to support & allow auto-answer.
     Returns the raw PBX response dict; errcode == 0 means accepted.
     Retries once with a fresh token if the PBX reports an auth error.
     """
@@ -123,6 +131,8 @@ def dial(callee, caller=None):
     if not tok:
         return {"errcode": -1, "errmsg": "could not obtain PBX token"}
     payload = {"caller": caller, "callee": callee}
+    if auto_answer:
+        payload["auto_answer"] = "yes"
     res = _http("/openapi/v1.0/call/dial", payload, token=tok)
     # auth-ish failures -> force a fresh token and retry once
     if isinstance(res, dict) and res.get("errcode") not in (0, None):
