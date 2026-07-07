@@ -11,7 +11,7 @@ for ($i = 0; $i -lt 30; $i++) {
 }
 
 Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
-    Where-Object { $_.CommandLine -match 'uvicorn|meta_poller' } |
+    Where-Object { $_.CommandLine -match 'uvicorn|meta_poller|dialer_events' } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Get-Process nginx -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 3
@@ -22,4 +22,8 @@ Start-Process -FilePath "C:\nginx\nginx.exe" -ArgumentList "-p","C:\nginx" -Work
 Start-Process -FilePath $py -ArgumentList "-m","uvicorn","main:app","--host","0.0.0.0","--port","8000" -WorkingDirectory $be -WindowStyle Hidden
 Start-Sleep -Seconds 5
 Start-Process -FilePath $py -ArgumentList "meta_poller.py" -WorkingDirectory $be -WindowStyle Hidden
-Log "core started (nginx, backend, meta_poller)"
+Start-Process -FilePath $py -ArgumentList "enrich_loop.py" -WorkingDirectory $be -WindowStyle Hidden
+# Power Dialer call-status worker (Yeastar WebSocket -> auto-advance). Network + DB only,
+# no interactive desktop needed, so it runs fine here under SYSTEM at boot.
+Start-Process -FilePath $py -ArgumentList "dialer_events.py" -WorkingDirectory $be -WindowStyle Hidden -RedirectStandardOutput "$be\logs\dialer_events.out" -RedirectStandardError "$be\logs\dialer_events.err"
+Log "core started (nginx, backend, meta_poller, enrich_loop, dialer_events)"

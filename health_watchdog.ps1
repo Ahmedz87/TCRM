@@ -14,6 +14,13 @@ if (-not (Get-Process nginx -ErrorAction SilentlyContinue)) {
   Start-Process -FilePath "C:\nginx\nginx.exe" -ArgumentList "-p","C:\nginx" -WorkingDirectory "C:\nginx" -WindowStyle Hidden
 }
 
+# Power Dialer event worker (Yeastar WebSocket -> auto-advance) — restart if it died.
+if (-not (Get-CimInstance Win32_Process -Filter "Name='python.exe'" | Where-Object { $_.CommandLine -like '*dialer_events*' })) {
+  Log "[watchdog] dialer_events down -> starting"
+  $dpy = "C:\broker-crm\backend\venv\Scripts\python.exe"; $dbe = "C:\broker-crm\backend"
+  Start-Process -FilePath $dpy -ArgumentList "dialer_events.py" -WorkingDirectory $dbe -WindowStyle Hidden -RedirectStandardOutput "$dbe\logs\dialer_events.out" -RedirectStandardError "$dbe\logs\dialer_events.err"
+}
+
 $healthy = $false
 try {
   $r = Invoke-WebRequest -Uri "http://localhost:8000/health/full" -TimeoutSec 6 -UseBasicParsing
