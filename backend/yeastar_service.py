@@ -103,8 +103,14 @@ def _ensure_token():
         return None
 
 
-def get_token_and_host():
-    """For the WebSocket event worker: return (access_token, pbx_host) or (None, host)."""
+def get_token_and_host(force=False):
+    """For the WebSocket event worker: return (access_token, pbx_host).
+    force=True does a full fresh login (used when the PBX reports TOKEN EXPIRED on the
+    open WebSocket — the cached token may look valid by time but the PBX rejected it)."""
+    if force:
+        with _lock:
+            _store(_fresh_token())
+        return _token, PBX_HOST
     return _ensure_token(), PBX_HOST
 
 

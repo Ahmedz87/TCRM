@@ -238,12 +238,18 @@ async def _heartbeat(ws):
             return
 
 
-async def run_once():
-    token, host = yeastar_service.get_token_and_host()
+CONNECTION_LIFETIME = 1200   # reconnect every 20 min with a FRESH token (PBX tokens expire ~30 min)
+
+
+async def run_once(force_token=False):
+    # Always start a connection on a fresh/valid token. If we're reconnecting because the PBX
+    # said TOKEN EXPIRED, force a full re-login (the time-based cache can still look valid).
+    token, host = yeastar_service.get_token_and_host(force=force_token)
     if not token:
-        _log("no PBX token; retrying"); return
+        _log("no PBX token; retrying"); return False
     url = f"wss://{host}/openapi/v1.0/subscribe?access_token={token}"
     _log(f"connecting {host} ...")
+    start = time.monotonic()
     async with websockets.connect(url, ssl=yeastar_service._CTX, ping_interval=None) as ws:
         await ws.send(json.dumps(SUBSCRIBE_MSG))
         _log("subscribed to 30011/30012/30015")
@@ -251,21 +257,32 @@ async def run_once():
         try:
             async for frame in ws:
                 _raw(frame)
+                # PBX rejects the token on the open socket -> reconnect with a fresh one.
+                if '"errcode":10004' in frame or "TOKEN EXPIRED" in frame:
+                    _log("PBX token expired -> reconnecting with a fresh token")
+                    return True
+                # Proactively refresh before the ~30-min expiry so we never go deaf.
+                if time.monotonic() - start > CONNECTION_LIFETIME:
+                    _log("proactive token refresh (20 min) -> reconnecting")
+                    return True
                 etype, payload = _extract(frame)
                 if etype in (EV_CALL_STATUS, EV_CALL_END, EV_CALL_FAILED):
                     handle_event(etype, payload)
         finally:
             hb.cancel()
+    return False
 
 
 async def main():
     _log(f"dialer_events worker starting (debug={DEBUG})")
+    force = False
     while True:
         try:
-            await run_once()
+            force = bool(await run_once(force_token=force))
         except Exception:
             _log("connection error:\n" + traceback.format_exc())
-        await asyncio.sleep(5)   # reconnect backoff
+            force = True   # a dropped connection is often auth-related; re-login on reconnect
+        await asyncio.sleep(3)   # reconnect backoff
 
 
 if __name__ == "__main__":
