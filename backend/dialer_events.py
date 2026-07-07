@@ -152,25 +152,47 @@ def _apply_terminal(db, row, outcome):
 
 
 def handle_event(etype, payload):
-    """Correlate one event to an active call and drive its status."""
+    """Correlate one event to an active call and drive its status.
+
+    CRITICAL: a customer outcome (no_answer/rejected/off) is applied ONLY when the event
+    actually involves the CUSTOMER leg (callee present). A failure that is purely the AGENT's
+    own extension (e.g. '486 Busy Here' on ext 390 because the agent's phone didn't auto-answer
+    and the customer was never dialed) must NOT be logged against the customer — otherwise the
+    dialer burns the queue with false 'rejected' outcomes on people who were never called."""
     db = SessionLocal()
     try:
         agent_ext, callee, cust_answered = _corr(payload)
-        row = _find_active_call(db, agent_ext=agent_ext or None, callee=callee or None)
-        if not row:
-            return
 
         if etype == EV_CALL_STATUS:
-            if cust_answered:
-                _set_status(db, row[0], "answered"); db.commit()
-                _log(f"customer answered -> agent {row[0]} card pops")
-            return  # otherwise still ringing
-
-        if etype == EV_CALL_FAILED:
-            _apply_terminal(db, row, _reason_to_outcome(str(payload.get("reason") or "")))
+            if cust_answered and callee:
+                row = _find_active_call(db, callee=callee)
+                if row:
+                    _set_status(db, row[0], "answered"); db.commit()
+                    _log(f"customer answered -> agent {row[0]} card pops")
             return
 
-        if etype == EV_CALL_END:  # CDR = authoritative final outcome
+        if etype == EV_CALL_FAILED:
+            if not callee:
+                # Agent-leg-only failure: the agent's phone was busy/declined and the customer
+                # was NOT dialed. Flag the agent's slot so the UI can say "your phone didn't
+                # pick up" — but do NOT log a customer outcome.
+                if agent_ext:
+                    row = _find_active_call(db, agent_ext=agent_ext)
+                    if row:
+                        _set_status(db, row[0], "agent_no_answer"); db.commit()
+                        _log(f"agent leg failed (ext {agent_ext}) — NOT logged against customer")
+                return
+            row = _find_active_call(db, callee=callee)
+            if row:
+                _apply_terminal(db, row, _reason_to_outcome(str(payload.get("reason") or "")))
+            return
+
+        if etype == EV_CALL_END:  # CDR = authoritative final outcome; always carries call_to
+            if not callee:
+                return
+            row = _find_active_call(db, callee=callee)
+            if not row:
+                return
             outcome = _cdr_to_outcome(str(payload.get("status") or ""))
             talk = int(payload.get("talk_duration") or 0)
             if outcome == "answered" and talk > 0:
@@ -205,10 +227,13 @@ def _extract(frame):
 
 
 async def _heartbeat(ws):
+    # Keepalive. IMPORTANT: re-send the FULL topic list, never an empty one — sending
+    # {"topic_list": []} re-subscribes to NOTHING and silently kills the event stream after
+    # the first heartbeat (observed on this firmware: events stopped 30s after connect).
     while True:
         await asyncio.sleep(HEARTBEAT_SECS)
         try:
-            await ws.send(json.dumps({"topic_list": []}))  # keepalive; adjust if firmware differs
+            await ws.send(json.dumps(SUBSCRIBE_MSG))
         except Exception:
             return
 

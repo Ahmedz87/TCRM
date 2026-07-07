@@ -449,6 +449,13 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
       } else if (st.status === 'no_answer' || st.status === 'rejected' || st.status === 'off') {
         loadStats();
         callNext();
+      } else if (st.status === 'agent_no_answer' || st.status === 'dial_failed') {
+        // The AGENT's own phone didn't take the call (auto-answer off / busy / declined) — the
+        // customer was never dialed. Don't advance (that would burn the queue); pause and tell
+        // the agent to fix their phone, then Resume retries.
+        runningRef.current = false;
+        setDialResult({ ok: false, errmsg: "Your phone didn't pick up the call. Turn on auto-answer in Linkus (or accept the call on your phone), then press Resume." });
+        setPhase('paused');
       }
     }, 1500);
     return () => clearInterval(iv);
@@ -605,6 +612,12 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
         {phase === 'paused' && (
           <div style={{ padding:'14px', textAlign:'center' }}>
             <div style={{ color:'#9aa3b2', fontSize:12, marginBottom:12 }}>⏸ Dialer paused</div>
+            {dialResult && !dialResult.ok && dialResult.errmsg && (
+              <div style={{ fontSize:11, color:'#ff5d6c', marginBottom:12, lineHeight:1.5,
+                background:'rgba(255,93,108,0.1)', border:'1px solid rgba(255,93,108,0.3)', borderRadius:8, padding:'8px 10px' }}>
+                ⚠ {dialResult.errmsg}
+              </div>
+            )}
             <button onClick={() => { runningRef.current = true; callNext(); }}
               style={{ width:'100%', padding:'13px', background:'linear-gradient(135deg,#00c87a,#00e5a0)',
                 border:'none', borderRadius:12, color:'#262c36', cursor:'pointer', fontSize:14, fontWeight:700, fontFamily:'inherit' }}>
