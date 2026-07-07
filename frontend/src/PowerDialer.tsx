@@ -389,8 +389,9 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
     setCurrent(data);
     setCallingName(data.name);
     setPhase('calling');
-    setDialResult(data.dial_ok ? { ok: true, caller: '' }
-                              : { ok: false, errmsg: data.dial_error || 'PBX rejected the call' });
+    // Dial is placed asynchronously server-side; show "dialing" optimistically. If it fails to
+    // place, the /active-call poll returns 'dial_failed' and pauses with a message.
+    setDialResult({ ok: true, caller: '' });
     loadStats();
   }, [sessionId, loadStats]);
 

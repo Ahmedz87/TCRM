@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timedelta
 import json
+import threading
 import models, auth
 from database import get_db
 from auth import get_current_user
@@ -479,6 +480,29 @@ def log_call_result(
 
 
 # ── EVENT-DRIVEN AUTO-DIALER ──────────────────────────────────────────────
+def _place_dial_bg(agent_id, ext, phone):
+    """Place the PBX dial OFF the request thread (the PBX HTTP call can take seconds). Updates
+    the agent's active-call from 'dialing' -> 'ringing' (or 'dial_failed'). Daemon thread."""
+    from database import SessionLocal
+    try:
+        res = yeastar_service.dial(phone, caller=ext, auto_answer=True)
+    except Exception:
+        res = {"errcode": -1, "errmsg": "dial exception"}
+    ok = isinstance(res, dict) and res.get("errcode") == 0
+    call_id = str((res or {}).get("call_id") or (res or {}).get("callid") or "")
+    db = SessionLocal()
+    try:
+        # Only advance from 'dialing' — never clobber a status the event worker already set.
+        db.execute(text("""UPDATE dialer_active_calls SET status=:s, call_id=:cid, updated_at=NOW()
+                           WHERE agent_id=:a AND status='dialing'"""),
+                   {"s": "ringing" if ok else "dial_failed", "cid": call_id, "a": agent_id})
+        db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
+
+
 @router.post("/session/{session_id}/auto-next")
 def auto_next(
     session_id: int,
@@ -505,30 +529,31 @@ def auto_next(
     is_lead = contact.get("source") == "leads"
     login   = None if is_lead else contact.get("login")
     lead_id = contact.get("lead_id")
-
-    # Place the dial with auto-answer on the agent leg (no manual "accept").
-    res = yeastar_service.dial(contact.get("phone"), caller=ext, auto_answer=True)
-    ok  = isinstance(res, dict) and res.get("errcode") == 0
-    call_id = str((res or {}).get("call_id") or (res or {}).get("callid") or "")
     digits  = "".join(c for c in str(contact.get("phone") or "") if c.isdigit())
     callee  = digits if digits.startswith("00") else ("00" + digits)
 
+    # Record the active call as 'dialing' FIRST, then place the PBX call in a BACKGROUND
+    # thread. The PBX HTTP call can take seconds; doing it inline would tie up a request
+    # thread, and with many agents auto-dialing that saturates the single uvicorn worker and
+    # hangs the whole API (this took the site down once). The frontend polls /active-call, so
+    # it sees 'dialing' -> 'ringing' -> outcome without this request ever blocking on the PBX.
     db.execute(text("""
         INSERT INTO dialer_active_calls
             (agent_id, agent_ext, session_id, queue_id, login, lead_id, callee, name,
              status, call_id, outcome_applied, contact_json, started_at, updated_at)
-        VALUES (:aid,:ext,:sid,:qid,:login,:lead,:callee,:name,:status,:cid,FALSE,:cj,NOW(),NOW())
+        VALUES (:aid,:ext,:sid,:qid,:login,:lead,:callee,:name,'dialing',NULL,FALSE,:cj,NOW(),NOW())
         ON CONFLICT (agent_id) DO UPDATE SET
             agent_ext=:ext, session_id=:sid, queue_id=:qid, login=:login, lead_id=:lead,
-            callee=:callee, name=:name, status=:status, call_id=:cid, outcome_applied=FALSE,
+            callee=:callee, name=:name, status='dialing', call_id=NULL, outcome_applied=FALSE,
             contact_json=:cj, started_at=NOW(), updated_at=NOW()
     """), {"aid": current_user.id, "ext": ext, "sid": session_id, "qid": contact.get("queue_id"),
            "login": login, "lead": lead_id, "callee": callee, "name": contact.get("name"),
-           "status": "ringing" if ok else "dial_failed", "cid": call_id,
            "cj": json.dumps(contact)})
     db.commit()
-    return {**contact, "dial_ok": ok, "dial_error": (res or {}).get("errmsg"),
-            "call_status": "ringing" if ok else "dial_failed"}
+
+    threading.Thread(target=_place_dial_bg, args=(current_user.id, ext, contact.get("phone")),
+                     daemon=True).start()
+    return {**contact, "call_status": "dialing"}
 
 
 @router.get("/active-call")
