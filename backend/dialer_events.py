@@ -79,26 +79,46 @@ def _raw(frame):
         pass
 
 
-def _parse_members(payload):
-    """Return list of (number, status) legs from a 30011 payload, defensively."""
-    out = []
+def _legs(payload):
+    """Flatten members[] into leg dicts, tagging each with its kind (extension/outbound/...).
+    Calibrated to the live firmware: members = [{"extension":{number,member_status}}] and
+    [{"outbound":{from,to,member_status}}]."""
+    legs = []
     members = payload.get("members") or payload.get("member") or []
     if isinstance(members, dict):
         members = [members]
     for m in members:
         if not isinstance(m, dict):
             continue
-        # a member may wrap the leg under 'inbound'/'outbound'/'extension'
-        leg = m
-        for k in ("inbound", "outbound", "extension"):
-            if isinstance(m.get(k), dict):
-                leg = m[k]
-                break
-        num = str(leg.get("number") or leg.get("from") or leg.get("to") or "")
-        st  = str(leg.get("status") or leg.get("member_status") or m.get("status") or "").upper()
-        if num or st:
-            out.append((num, st))
-    return out
+        for k in ("extension", "outbound", "inbound", "trunk"):
+            d = m.get(k)
+            if isinstance(d, dict):
+                leg = dict(d); leg["_kind"] = k; legs.append(leg)
+    return legs
+
+
+def _corr(payload):
+    """Extract (agent_ext, callee, cust_answered) from any 30011/30012/30015 payload.
+    Real fields: CDR uses top-level call_from/call_to; failure/status use members[].outbound.to
+    for the customer and members[].extension.number for the agent leg."""
+    agent_ext = ""; callee = ""; cust_answered = False
+    cf = str(payload.get("call_from") or "")
+    ct = str(payload.get("call_to") or "")
+    if cf and cf.isdigit() and len(cf) <= 6:
+        agent_ext = cf
+    if ct:
+        callee = ct
+    for leg in _legs(payload):
+        num = str(leg.get("number") or "")
+        to  = str(leg.get("to") or "")
+        st  = str(leg.get("member_status") or leg.get("status") or "").upper()
+        if leg["_kind"] == "extension" and num and len(num) <= 6:
+            agent_ext = agent_ext or num
+        if to and len(to) > 6:
+            callee = callee or to
+        if st in ("ANSWERED", "ANSWER") and ((to and len(to) > 6) or (num and len(num) > 6)):
+            cust_answered = True
+    return agent_ext, callee, cust_answered
 
 
 def _find_active_call(db, agent_ext=None, callee=None):
@@ -135,43 +155,26 @@ def handle_event(etype, payload):
     """Correlate one event to an active call and drive its status."""
     db = SessionLocal()
     try:
-        # Which extension/callee does this event concern?
-        agent_ext = str(payload.get("caller") or payload.get("ext") or "")
-        callee    = str(payload.get("callee") or payload.get("to") or "")
-        members   = _parse_members(payload) if etype == EV_CALL_STATUS else []
-
-        # Try to pull an extension/number from members if not top-level.
-        if not agent_ext and members:
-            for num, _ in members:
-                if num and len(num) <= 6:   # extensions are short; customer numbers are long
-                    agent_ext = num
-                    break
-
+        agent_ext, callee, cust_answered = _corr(payload)
         row = _find_active_call(db, agent_ext=agent_ext or None, callee=callee or None)
         if not row:
             return
 
         if etype == EV_CALL_STATUS:
-            # customer leg answered? (a long-number member in ANSWER/ANSWERED)
-            for num, st in members:
-                if num and len(num) > 6 and st in ("ANSWERED", "ANSWER"):
-                    _set_status(db, row[0], "answered"); db.commit()
-                    _log(f"customer answered -> agent {row[0]} card pops")
-                    return
-            # otherwise still ringing; nothing terminal here
-            return
+            if cust_answered:
+                _set_status(db, row[0], "answered"); db.commit()
+                _log(f"customer answered -> agent {row[0]} card pops")
+            return  # otherwise still ringing
 
         if etype == EV_CALL_FAILED:
-            outcome = _reason_to_outcome(str(payload.get("reason") or ""))
-            _apply_terminal(db, row, outcome)
+            _apply_terminal(db, row, _reason_to_outcome(str(payload.get("reason") or "")))
             return
 
-        if etype == EV_CALL_END:  # CDR
+        if etype == EV_CALL_END:  # CDR = authoritative final outcome
             outcome = _cdr_to_outcome(str(payload.get("status") or ""))
             talk = int(payload.get("talk_duration") or 0)
             if outcome == "answered" and talk > 0:
-                # customer genuinely talked; leave 'answered' for the agent to close (Done/callback).
-                _set_status(db, row[0], "answered"); db.commit()
+                _set_status(db, row[0], "answered"); db.commit()   # agent closes via Done/callback
             else:
                 _apply_terminal(db, row, outcome if outcome != "answered" else "no_answer")
             return
