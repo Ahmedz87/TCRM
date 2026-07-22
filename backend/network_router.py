@@ -12,15 +12,191 @@ import connection_engine as CE
 router = APIRouter(prefix="/network", tags=["Network"])
 
 
+def _entity_of(db, login, lead_id):
+    if login:
+        cn = db.execute(text("SELECT customer_no FROM clients WHERE login=:l"), {"l": login}).scalar()
+        return f"C{cn}" if cn else None
+    if lead_id:
+        return f"L{lead_id}"
+    return None
+
+
+def _resolve_entities(db, ents):
+    """entity-key -> {name, login, kind, score, state}. One representative login per client customer."""
+    out = {}
+    cns = [e[1:] for e in ents if e.startswith("C")]
+    lids = [int(e[1:]) for e in ents if e.startswith("L")]
+    if cns:
+        for cn, nm, lg, st, sc, ctry in db.execute(text("""
+            SELECT DISTINCT ON (customer_no) customer_no, name, login, relation_state,
+                   COALESCE(network_score,0), country
+            FROM clients WHERE customer_no = ANY(:c)
+            ORDER BY customer_no, COALESCE(total_deposits,0) DESC, login
+        """), {"c": cns}).fetchall():
+            out[f"C{cn}"] = {"name": nm or f"#{lg}", "login": lg, "kind": "client",
+                             "state": st, "score10": int(sc or 0), "country": ctry or ""}
+    if lids:
+        for lid, nm, st, sc, ctry in db.execute(text("""
+            SELECT id, full_name, relation_state, COALESCE(network_score,0), country
+            FROM leads WHERE id = ANY(:l)
+        """), {"l": lids}).fetchall():
+            out[f"L{lid}"] = {"name": nm or f"Lead #{lid}", "login": None, "kind": "lead",
+                              "id": lid, "state": st, "score10": int(sc or 0), "country": ctry or ""}
+    return out
+
+
 @router.get("/connections")
 def get_connections(login: int = Query(0), lead_id: int = Query(0),
                     db: Session = Depends(get_db),
                     current_user: models.User = Depends(get_current_user)):
-    """Ranked connections for one client (login) or lead (lead_id), most-certain first,
-    each with a confidence % + x/10 score + the signals that fired."""
+    """Who this client/lead is related to — read from the ONE ledger (entity_relations), so the popup,
+    the badge and the Related/Unrelated tables can never disagree. Each row carries the signals that
+    fired + the other party's x/10 + why."""
     if not login and not lead_id:
         return {"subject": None, "connections": []}
-    return CE.score_connections(db, login=login or None, lead_id=lead_id or None)
+    me = _entity_of(db, login or None, lead_id or None)
+    st = CE.stored_subject_score(db, login=login or None, lead_id=lead_id or None)
+    base = {"subject": {"login": login or None, "lead_id": lead_id or None, **st},
+            "score10": st["score10"], "level": st["level"], "colour": st["colour"], "reason": st["reason"],
+            "connections": []}
+    if not me:
+        return base
+    rows = db.execute(text("""
+        SELECT CASE WHEN ent_a = :me THEN ent_b ELSE ent_a END AS other,
+               signals, strength, top_reason, last_seen
+        FROM entity_relations WHERE ent_a = :me OR ent_b = :me
+    """), {"me": me}).fetchall()
+    if not rows:
+        return base
+    meta = _resolve_entities(db, [r[0] for r in rows])
+    conns = []
+    for other, signals, strength, top_reason, last_seen in rows:
+        m = meta.get(other, {"name": other, "login": None, "kind": "client", "score10": 0, "country": ""})
+        reasons = [{"type": s, "label": CE.SIGNAL_LABEL.get(s, s), "value": ""} for s in (signals or [])]
+        reasons.sort(key=lambda r: CE.LINK_PRIORITY.get(r["type"], 99))
+        conns.append({**m, "reasons": reasons, "strength": strength, "top_reason": top_reason,
+                      "since": str(last_seen)[:10] if last_seen else ""})
+    # strongest links first (decisive, then more signals)
+    conns.sort(key=lambda c: (c["strength"] != "decisive", -len(c["reasons"]), -c["score10"]))
+    base["connections"] = conns
+    return base
+
+
+@router.get("/relations")
+def list_relations(view: str = Query("related"), search: str = Query(""), state: str = Query(""),
+                   kind: str = Query(""), sort: str = Query("time"), page: int = Query(1, ge=1),
+                   page_size: int = Query(50, ge=1, le=200),
+                   db: Session = Depends(get_db),
+                   current_user: models.User = Depends(get_current_user)):
+    """The two tables. view='related' → everyone WITH a relation (entity_status, with the reason);
+    view='unrelated' → everyone clean (clients+leads with no relation). `total` always reflects the
+    ACTIVE filters. Default sort = newest caught first."""
+    off = (page - 1) * page_size
+    if view == "related":
+        w = ["is_related"]
+        p: dict = {"lim": page_size, "off": off}
+        if search:
+            w.append("(name ILIKE :s OR ent ILIKE :s)"); p["s"] = f"%{search}%"
+        if state:
+            w.append("relation_state = :st"); p["st"] = state
+        if kind:
+            w.append("kind = :k"); p["k"] = kind
+        wc = " AND ".join(w)
+        total = db.execute(text(f"SELECT COUNT(*) FROM entity_status WHERE {wc}"), p).scalar() or 0
+        order = {"time": "latest_at DESC NULLS LAST, network_score DESC",
+                 "score": "network_score DESC, n_related DESC",
+                 "links": "n_related DESC, network_score DESC"}.get(sort, "latest_at DESC NULLS LAST")
+        rows = db.execute(text(f"""
+            SELECT ent, name, kind, n_related, network_score, network_level, top_reason,
+                   relation_state, has_decisive, bonus_status, latest_at
+            FROM entity_status WHERE {wc}
+            ORDER BY {order} LIMIT :lim OFFSET :off"""), p).fetchall()
+        return {"view": "related", "total": total, "page": page, "page_size": page_size,
+                "rows": [{"ent": r[0], "name": r[1] or r[0], "kind": r[2], "n_related": r[3],
+                          "network_score": r[4] or 0, "network_level": r[5], "top_reason": r[6],
+                          "state": r[7], "decisive": bool(r[8]), "bonus_status": r[9],
+                          "since": str(r[10])[:10] if r[10] else "",
+                          "login": (None if r[0].startswith("L") else _rep_login(db, r[0])),
+                          "lead_id": (int(r[0][1:]) if r[0].startswith("L") else None)} for r in rows]}
+    # unrelated — clean clients + leads (no relation). Depositors here are the NDA / FTD-pending set.
+    p = {"lim": page_size, "off": off}
+    cli_search = lead_search = st_flt_c = st_flt_l = ""
+    if search:
+        cli_search = "AND c.name ILIKE :s"; lead_search = "AND l.full_name ILIKE :s"; p["s"] = f"%{search}%"
+    if state:
+        st_flt_c = "AND COALESCE(c.relation_state,'unfunded_clean') = :st"
+        st_flt_l = "AND COALESCE(l.relation_state,'unfunded_clean') = :st"; p["st"] = state
+    # ts = the row's own time: a client's first deposit (or reg date), a lead's created_at → newest first
+    total = db.execute(text(f"""
+        SELECT (SELECT COUNT(DISTINCT c.customer_no) FROM clients c
+                WHERE c.customer_no IS NOT NULL AND COALESCE(c.network_score,0)=0 {cli_search} {st_flt_c})
+             + (SELECT COUNT(*) FROM leads l WHERE COALESCE(l.network_score,0)=0 {lead_search} {st_flt_l})
+    """), p).scalar() or 0
+    rows = db.execute(text(f"""
+        SELECT ent, name, kind, login, lead_id, state, ts FROM (
+            SELECT DISTINCT ON (c.customer_no) 'C'||c.customer_no AS ent, c.name AS name,
+                   'client' AS kind, c.login AS login, NULL::bigint AS lead_id,
+                   COALESCE(c.relation_state,'unfunded_clean') AS state,
+                   COALESCE(NULLIF(c.first_deposit_at,''), NULLIF(c.reg_date,''), '') AS ts
+            FROM clients c
+            WHERE c.customer_no IS NOT NULL AND COALESCE(c.network_score,0)=0 {cli_search} {st_flt_c}
+            ORDER BY c.customer_no, COALESCE(c.total_deposits,0) DESC
+        ) cc
+        UNION ALL
+        SELECT 'L'||l.id, l.full_name, 'lead', NULL::bigint, l.id,
+               COALESCE(l.relation_state,'unfunded_clean'), COALESCE(l.created_at::text,'')
+        FROM leads l WHERE COALESCE(l.network_score,0)=0 {lead_search} {st_flt_l}
+        ORDER BY ts DESC
+        LIMIT :lim OFFSET :off
+    """), p).fetchall()
+    return {"view": "unrelated", "total": total, "page": page, "page_size": page_size,
+            "rows": [{"ent": r[0], "name": r[1] or r[0], "kind": r[2], "login": r[3],
+                      "lead_id": r[4], "state": r[5], "since": str(r[6])[:10] if r[6] else ""} for r in rows]}
+
+
+def _rep_login(db, ent):
+    if not ent.startswith("C"):
+        return None
+    return db.execute(text("SELECT login FROM clients WHERE customer_no=:c "
+                           "ORDER BY COALESCE(total_deposits,0) DESC, login LIMIT 1"),
+                      {"c": ent[1:]}).scalar()
+
+
+@router.get("/relations/summary")
+def relations_summary(db: Session = Depends(get_db),
+                      current_user: models.User = Depends(get_current_user)):
+    """Headline counts for the two-table page."""
+    st = dict(db.execute(text("SELECT relation_state, COUNT(*) FROM entity_status GROUP BY 1")).fetchall())
+    related = db.execute(text("SELECT COUNT(*) FROM entity_status WHERE is_related")).scalar() or 0
+    decisive = db.execute(text("SELECT COUNT(*) FROM entity_status WHERE has_decisive")).scalar() or 0
+    nda = db.execute(text("SELECT COUNT(DISTINCT customer_no) FROM clients WHERE is_nda")).scalar() or 0
+    ftd_pending = db.execute(text("SELECT COUNT(DISTINCT customer_no) FROM clients "
+                                  "WHERE relation_state='ftd_pending'")).scalar() or 0
+    # the FULL clean side (not just NDA depositors) — clean clients + clean leads, so the two table
+    # counts are comparable (related 81k vs clean ~149k, not the misleading "14k").
+    clean = db.execute(text("""
+        SELECT (SELECT COUNT(DISTINCT customer_no) FROM clients
+                WHERE customer_no IS NOT NULL AND COALESCE(network_score,0)=0)
+             + (SELECT COUNT(*) FROM leads WHERE COALESCE(network_score,0)=0)""")).scalar() or 0
+    return {"related": related, "clean": clean, "decisive": decisive,
+            "states": st, "nda": nda, "ftd_pending": ftd_pending}
+
+
+@router.get("/bonus-eligibility")
+def bonus_eligibility(login: int = Query(0), lead_id: int = Query(0),
+                      db: Session = Depends(get_db),
+                      current_user: models.User = Depends(get_current_user)):
+    """Welcome-bonus check (BEFORE deposit). A lead/client with a DECISIVE or FAMILY relation to an
+    existing customer can't claim the $50 bonus; a weak-only relation → manual review; else eligible."""
+    me = _entity_of(db, login or None, lead_id or None)
+    if not me:
+        return {"eligible": True, "status": "eligible", "reason": ""}
+    row = db.execute(text("""SELECT bonus_status, has_decisive, top_reason, is_related
+                             FROM entity_status WHERE ent=:e"""), {"e": me}).fetchone()
+    if not row:
+        return {"eligible": True, "status": "eligible", "reason": "no relation found"}
+    status = row[0] or ("blocked" if row[1] else ("review" if row[3] else "eligible"))
+    return {"eligible": status == "eligible", "status": status, "reason": row[2] or ""}
 
 
 @router.get("/connection-groups")
@@ -344,8 +520,24 @@ def traverse_network(
         if not new_identifiers:
             break
 
+        # PERF (Jul 7 2026 outage fix): this loop was O(n^3) — for EVERY connected account it
+        # rescanned login_list × identifiers (line ~380) and deduped edges by scanning all_edges
+        # linearly. One hot identifier shared by thousands of accounts pinned an AnyIO worker on
+        # the GIL forever and hung the ENTIRE API (even /health). Now: precomputed source map +
+        # edge-key set (O(1)) and hard caps — the graph is for a human to read, cap what we return.
+        MAX_PER_IDENT = 100     # accounts pulled per shared IP/CID
+        MAX_NODES = 400         # total graph size cap
+        src_map = {}
+        for i in identifiers:
+            src_map.setdefault((i[1], i[2]), []).append(i[0])
+        edge_keys = {e["key"] for e in all_edges}
+        truncated = False
+
         # Step 2: Find all accounts using those IPs/CIDs
         for id_type, id_value in new_identifiers:
+            if len(all_nodes) >= MAX_NODES:
+                truncated = True
+                break
             connected = db.execute(text("""
                 SELECT DISTINCT ai.login, c.name, c.balance, c.country, c.city,
                        c.agent, ib.name as ib_name, ib.ib_code
@@ -354,11 +546,17 @@ def traverse_network(
                 LEFT JOIN ibs ib ON ib.agent_id = c.agent
                 WHERE ai.identifier_type = :t AND ai.identifier_value = :v
                 AND ai.login != ALL(:exclude)
-            """), {"t": id_type, "v": id_value, "exclude": list(visited_logins)}).fetchall()
+                LIMIT :cap
+            """), {"t": id_type, "v": id_value, "exclude": list(visited_logins),
+                   "cap": MAX_PER_IDENT}).fetchall()
 
+            sources = src_map.get((id_type, id_value), [])
             for conn in connected:
                 conn_login = conn[0]
                 if conn_login and conn_login not in visited_logins:
+                    if len(all_nodes) >= MAX_NODES:
+                        truncated = True
+                        break
                     visited_logins.add(conn_login)
                     new_logins_this_layer.add(conn_login)
 
@@ -376,14 +574,10 @@ def traverse_network(
                             "connect_via": id_value,
                         }
 
-                    # Find the source login(s) that share this identifier
-                    sources = [l for l in login_list if any(
-                        i[0] == l and i[1] == id_type and i[2] == id_value
-                        for i in identifiers
-                    )]
                     for src in sources:
                         edge_key = f"{min(src, conn_login)}-{max(src, conn_login)}-{id_type}"
-                        if not any(e.get("key") == edge_key for e in all_edges):
+                        if edge_key not in edge_keys:
+                            edge_keys.add(edge_key)
                             all_edges.append({
                                 "key": edge_key,
                                 "from": src, "to": conn_login,
@@ -392,6 +586,8 @@ def traverse_network(
                             })
 
         current_layer_logins = new_logins_this_layer
+        if truncated:
+            break
 
     # Also add same-family connections (same phone prefix, city, IB)
     all_login_list = list(all_nodes.keys())

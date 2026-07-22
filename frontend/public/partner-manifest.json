@@ -1,0 +1,15 @@
+{
+  "short_name": "TNFX Partners",
+  "name": "TNFX Partners",
+  "description": "Your TNFX Introducing Broker dashboard — clients, commission, challenges.",
+  "icons": [
+    { "src": "logo192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
+    { "src": "logo512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ],
+  "start_url": "/?login=1",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0b0c0f",
+  "background_color": "#0b0c0f"
+}

@@ -85,6 +85,28 @@ def on_verified(db, registration_id):
     sales_id = crow[2] if crow else None
     client_name = name_en   # English name for the (formal, English) notification emails
 
+    # ── AML / SANCTIONS SCREEN (P0-16) — before provisioning any real account ──
+    # Screen the (Latin) name against OFAC/UN lists. A high-confidence match HOLDS onboarding for
+    # compliance instead of auto-provisioning; all matches are recorded in the review queue either way.
+    try:
+        import aml_screening
+        hold, hits = aml_screening.screen_registration(db, registration_id, name=name_en, dob=str(getattr(r, "dob", "") or ""), by="onboarding")
+        if hold:
+            db.execute(text("UPDATE registrations SET status='aml_hold' WHERE id=:r"), {"r": registration_id})
+            db.commit()
+            try:
+                import audit
+                audit.log(db, "system", "aml_hold", "registration", registration_id, None,
+                          {"name": name_en, "top": hits[0]["score"], "matched": hits[0]["matched_name"], "source": hits[0]["source"]})
+            except Exception:
+                db.rollback()
+            print(f"[postverify] AML HOLD reg {registration_id}: {name_en} ~ {hits[0]['matched_name']} ({hits[0]['score']})", flush=True)
+            return {"ok": False, "aml_hold": True, "hits": len(hits),
+                    "message": "Account held for compliance review (sanctions screening)."}
+    except Exception as e:
+        db.rollback()
+        print(f"[postverify] AML screen error reg {registration_id}: {e}", flush=True)  # never block onboarding on a screen bug
+
     # ── PROVISION the trading account ──
     # MT5 -> REAL account on the live server via the bridge. If the bridge fails (or MT4, whose
     # provisioning bridge isn't wired), fall back to a simulated login so verification isn't blocked
@@ -95,9 +117,12 @@ def on_verified(db, registration_id):
         try:
             import mt_provision
             group = mt_provision.real_group(r.account_type, r.islamic)
-            res = mt_provision.create_account(group, first, last, leverage=lev, email=r.email or "",
-                                              phone=r.phone or "", country=r.country or "", city=r.city or "",
-                                              agent=int(agent_login or 0))
+            # idempotent: same intent_key as /register/activate ("reg_<id>") so the two paths can
+            # never each create an account for the same registration.
+            res = mt_provision.create_account_idempotent(
+                db, f"reg_{registration_id}", group, first, last, leverage=lev, email=r.email or "",
+                phone=r.phone or "", country=r.country or "", city=r.city or "",
+                agent=int(agent_login or 0))
         except Exception as e:
             res = {"ok": False, "error": str(e)}
         if res.get("ok"):

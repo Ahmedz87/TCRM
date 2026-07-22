@@ -5,9 +5,7 @@ Paste the entire output back.
 """
 import MT5Manager
 
-MT5_SERVER   = "192.109.15.62:443"
-MT5_LOGIN    = 1025
-MT5_PASSWORD = "ZjFb!vA0"
+from mt_secrets import MT5_SERVER, MT5_LOGIN, MT5_PASSWORD
 
 m = MT5Manager.ManagerAPI()
 if not m.Connect(MT5_SERVER, MT5_LOGIN, MT5_PASSWORD):

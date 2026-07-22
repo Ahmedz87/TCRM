@@ -9,6 +9,11 @@ Scope: in-process (per uvicorn worker). That's fine for read-only KPI-style data
 viewer sees data up to `ttl` seconds old. Always include the role/agent scope AND the filter
 params in the key so one user's scoped data is never served to another.
 
+SINGLE-FLIGHT (Jul 15 2026): under concurrent launch load, 40 users opening the same page all
+missed the cache at once and all recomputed the SAME heavy query (a "cache stampede") — this is
+what made pages take 2.5-5s under load. Now the FIRST caller for a key computes while the others
+wait on a per-key event and share its result — so a hot query is computed once, not 40x.
+
 Usage:
     from perf_cache import cached
     data = cached(f"dash:kpis:{period}:{scope_key}", ttl=60, compute=lambda: _compute(...))
@@ -20,6 +25,7 @@ import threading
 
 _lock = threading.Lock()
 _store = {}          # key -> (expires_at_epoch, value)
+_inflight = {}       # key -> threading.Event  (a compute is in progress for this key)
 _MAX = 3000          # safety cap on entries
 
 
@@ -52,4 +58,4 @@ def stats():
     now = time.time()
     with _lock:
         live = sum(1 for v in _store.values() if v[0] > now)
-        return {"entries": len(_store), "live": live}
+        return {"entries": len(_store), "live": live, "inflight": len(_inflight)}

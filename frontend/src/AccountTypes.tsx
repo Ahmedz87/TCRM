@@ -52,7 +52,7 @@ export default function AccountTypes() {
                 </div>
                 <div style={S.rowSub}>{t.description}</div>
                 <div style={S.specs}>
-                  <span>First deposit: <b style={{ color: '#3ad29f' }}>${Number(t.first_deposit_min).toLocaleString()}</b></span>
+                  <span>First deposit: <b style={{ color: '#3ad29f' }}>${Number(t.first_deposit_min).toLocaleString('en-GB')}</b></span>
                   <span>Default leverage: <b>1:{t.default_leverage}</b></span>
                   <span>Leverages: {(t.leverages || []).map((l: number) => `1:${l}`).join(', ')}</span>
                 </div>

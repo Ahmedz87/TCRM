@@ -10,8 +10,9 @@ from datetime import datetime, timezone, timedelta
 import bridge
 from mt5_deal_worker import fmt
 
-SERVER = "192.109.15.62:443"
-LOGIN, PW = 3027, "Malakies@008"     # MT5-C, idle
+import mt_managers as _M
+SERVER = _M.MT5_SERVER
+LOGIN, PW = _M.MT5["C"]     # MT5-C, idle
 STEP = timedelta(days=2)
 
 

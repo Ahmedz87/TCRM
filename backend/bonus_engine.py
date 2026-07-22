@@ -730,10 +730,10 @@ def claim_welcome(db: Session, client_id: int) -> dict:
     amount = float(st["amount"])
     logins = client_logins(db, client_id)
     login = logins[0] if logins else None
-    db.execute(text("""
+    grant_id = db.execute(text("""
         INSERT INTO bonus_grants (client_id, login, kind, deposit_amount, amount, status)
-        VALUES (:c,:l,'welcome',0,:a,'credited')
-    """), {"c": client_id, "l": login, "a": amount})
+        VALUES (:c,:l,'welcome',0,:a,'credited') RETURNING id
+    """), {"c": client_id, "l": login, "a": amount}).scalar()
     db.execute(text("""
         INSERT INTO bonus_welcome (client_id, login, status, amount, claimed_at, updated_at)
         VALUES (:c,:l,'claimed',:a,NOW(),NOW())
@@ -741,6 +741,13 @@ def claim_welcome(db: Session, client_id: int) -> dict:
     """), {"c": client_id, "l": login, "a": amount})
     db.execute(text("UPDATE clients SET credit = COALESCE(credit,0) + :a WHERE id=:id"),
                {"a": amount, "id": client_id})
+    # DURABLE MT credit: enqueue in the SAME transaction as the grant (transactional outbox) so the
+    # real MT credit can never be lost on a restart. The worker (job_worker.py) runs it idempotently.
+    try:
+        import job_queue
+        job_queue.enqueue_tx(db, "bonus_mt_credit", {"grant_id": grant_id}, key=f"bonus_grant_{grant_id}")
+    except Exception as e:
+        print(f"[bonus] enqueue welcome credit failed (grant {grant_id}): {e}", flush=True)
     db.commit()
     # The real MT credit + email run in the BACKGROUND (see push_welcome_credit) so the Claim button
     # returns INSTANTLY and the KPI rolls straight to the next bonus (50% deposit) — no waiting on the bridge.
@@ -749,36 +756,22 @@ def claim_welcome(db: Session, client_id: int) -> dict:
 
 
 def push_welcome_credit(client_id: int):
-    """Background step after claim_welcome: push the $50 to the REAL MT account as CREDIT (type 3) so it
-    shows on the terminal + survives the bridge sync, and email the client. Opens its own DB session;
-    never raises. Idempotent enough for one retry (the DB grant is the source of truth)."""
+    """Enqueue a DURABLE MT-credit job for the client's latest welcome grant. The actual credit +
+    email run in job_worker.py (handler bonus_mt_credit), idempotently. claim_welcome already
+    enqueues this in-transaction; this wrapper covers the admin inline path and collapses to the
+    same job by idempotency key, so it can never double-credit. Opens its own session; never raises."""
     db = SessionLocal()
     try:
-        row = db.execute(text("""
-            SELECT g.login, g.amount, c.name, c.email FROM bonus_grants g JOIN clients c ON c.id=g.client_id
+        gid = db.execute(text("""
+            SELECT g.id FROM bonus_grants g
             WHERE g.client_id=:id AND g.kind='welcome' AND g.status<>'cancelled' ORDER BY g.id DESC LIMIT 1
-        """), {"id": client_id}).fetchone()
-        if not row:
+        """), {"id": client_id}).scalar()
+        if not gid:
             return
-        login, amount = row[0], float(row[1] or 0)
-        if login and int(login) > 0:
-            try:
-                import mt_provision
-                res = mt_provision.credit_account(int(login), amount, "TNFX Welcome Bonus", credit_type=3)
-                if not res.get("ok"):
-                    print(f"[bonus] MT credit failed for login {login}: {res.get('error')}", flush=True)
-            except Exception as e:
-                print(f"[bonus] MT credit exception for login {login}: {e}", flush=True)
-        try:
-            import email_send
-            if row[3] and email_send.configured():
-                nm = (row[2] or "").split(" ")[0]
-                body = (f"Dear {nm},\n\nWe are pleased to inform you that your ${amount:,.0f} welcome bonus has been "
-                        f"credited to your TNFX trading account{(' #' + str(login)) if login else ''}. It appears as "
-                        "Credit on your terminal and increases your available trading margin.\n\nKind regards,\nTNFX")
-                email_send.send(row[3], f"Your ${amount:,.0f} TNFX welcome bonus has been credited", body)
-        except Exception as e:
-            print(f"[bonus] welcome email failed for client {client_id}: {e}", flush=True)
+        import job_queue
+        job_queue.enqueue(db, "bonus_mt_credit", {"grant_id": gid}, key=f"bonus_grant_{gid}")
+    except Exception as e:
+        print(f"[bonus] enqueue welcome credit failed for client {client_id}: {e}", flush=True)
     finally:
         db.close()
 

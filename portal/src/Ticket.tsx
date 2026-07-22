@@ -108,9 +108,9 @@ export function TicketModal({ onClose, aiMode, defaultSection }: { onClose: () =
             )}
 
             <label style={{ ...S.lbl, marginTop: 14 }}>{aiMode ? 'Your instruction' : 'Your note'}</label>
-            <textarea value={note} onChange={e => setNote(e.target.value)} rows={4}
+            <textarea value={note} onChange={e => setNote(e.target.value)} rows={4} dir="auto"
               placeholder={aiMode ? 'e.g. "Always greet in Arabic and mention the current deposit bonus."' : 'Describe the issue. You can paste a screenshot here (Ctrl+V).'}
-              style={{ ...S.input, resize: 'vertical', fontFamily: 'inherit' }} />
+              style={{ ...S.input, resize: 'vertical', fontFamily: 'inherit', textAlign: 'start' }} />
 
             {!aiMode && (
               <>
@@ -202,7 +202,7 @@ export default function MyTicketsPage() {
               <button style={S.x} onClick={() => setDetail(null)}>✕</button>
             </div>
             <div style={{ fontSize: 12, color: TH.muted, marginBottom: 8 }}>{detail.section} · {detail.created_at}</div>
-            <div style={{ fontSize: 14, color: TH.text, whiteSpace: 'pre-wrap', lineHeight: 1.5, marginBottom: 12 }}>{detail.note}</div>
+            <div dir="auto" style={{ fontSize: 14, color: TH.text, whiteSpace: 'pre-wrap', lineHeight: 1.5, marginBottom: 12, textAlign: 'start' }}>{detail.note}</div>
             {detail.screenshot && <img src={detail.screenshot} alt="screenshot" style={{ width: '100%', borderRadius: 8, border: `1px solid ${TH.border2}`, marginBottom: 12 }} />}
 
             {detail.replies?.length > 0 && (
@@ -212,7 +212,7 @@ export default function MyTicketsPage() {
                     <div style={{ fontSize: 11, color: rp.author_type === 'client' ? TH.accent : '#a855f7', fontWeight: 700 }}>
                       {rp.author_type === 'client' ? '🙋 You' : '🛠 Support'} · {rp.at}
                     </div>
-                    <div style={{ fontSize: 13, color: TH.text, whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 2 }}>{rp.body}</div>
+                    <div dir="auto" style={{ fontSize: 13, color: TH.text, whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 2, textAlign: 'start' }}>{rp.body}</div>
                   </div>
                 ))}
               </div>
@@ -222,8 +222,8 @@ export default function MyTicketsPage() {
               <div style={{ fontSize: 12.5, color: TH.accent, marginTop: 12, fontWeight: 700 }}>✓ This ticket is closed.</div>
             ) : (
               <>
-                <textarea value={reply} onChange={e => setReply(e.target.value)} rows={3}
-                  placeholder="Reply to support…" style={{ ...S.input, resize: 'vertical', fontFamily: 'inherit', marginTop: 12 }} />
+                <textarea value={reply} onChange={e => setReply(e.target.value)} rows={3} dir="auto"
+                  placeholder="Reply to support…" style={{ ...S.input, resize: 'vertical', fontFamily: 'inherit', marginTop: 12, textAlign: 'start' }} />
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                   <button onClick={() => send(false)} disabled={busy || !reply.trim()} style={{ ...S.submit, marginTop: 0, flex: 1, opacity: (busy || !reply.trim()) ? 0.5 : 1, background: 'linear-gradient(90deg,#a855f7,#7c3aed)' }}>Send reply</button>
                   <button onClick={() => send(true)} disabled={busy} style={{ padding: '12px 18px', borderRadius: 9, background: 'transparent', border: `1px solid ${TH.accent}`, color: TH.accent, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>✓ Close ticket</button>

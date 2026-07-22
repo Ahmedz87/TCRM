@@ -14,9 +14,7 @@ import db_config
 import psycopg2
 import MT5Manager as m
 
-SERVER = "192.109.15.62:443"
-LOGIN  = 1025
-PASS   = "ZjFb!vA0"
+from mt_secrets import MT5_SERVER as SERVER, MT5_LOGIN as LOGIN, MT5_PASSWORD as PASS
 
 
 def sample_logins():

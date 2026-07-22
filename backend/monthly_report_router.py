@@ -36,7 +36,7 @@ COLUMNS = [
     ("verified",     "Verified"),
     ("kyc_pending",  "KYC Pending"),
     ("no_kyc",       "No KYC"),
-    ("nda",          "NDA (new depositors)"),
+    ("nda",          "New Clients (genuine, active)"),
     ("dep_clients",  "Depositing clients"),
     ("wd_clients",   "Withdrawing clients"),
     ("deposits",     "Deposits $"),
@@ -195,10 +195,19 @@ def report_schema(db: Session = Depends(get_db), current_user: models.User = Dep
     return rb.get_schema(db)
 
 
+def _scoped_params(db, req, current_user):
+    """Report params + department scoping (agent -> own clients, manager -> team,
+    admin/director -> everything). Same rule as the AI chat and the dashboard."""
+    import rbac
+    p = req.dict()
+    p["scope_agent_ids"] = rbac.scope_agent_ids(db, current_user)
+    return p
+
+
 @router.post("/run")
 def run_builder(req: ReportRequest, db: Session = Depends(get_db),
                 current_user: models.User = Depends(get_current_user)):
-    return rb.run_report(db, req.category, req.dict())
+    return rb.run_report(db, req.category, _scoped_params(db, req, current_user))
 
 
 def _build_report_xlsx(result: dict):
@@ -255,7 +264,7 @@ def _build_report_xlsx(result: dict):
 @router.post("/run/export")
 def export_builder(req: ReportRequest, db: Session = Depends(get_db),
                    current_user: models.User = Depends(get_current_user)):
-    result = rb.run_report(db, req.category, req.dict())
+    result = rb.run_report(db, req.category, _scoped_params(db, req, current_user))
     buf = _build_report_xlsx(result)
     fname = f"{result['category']}_report.xlsx"
     return StreamingResponse(

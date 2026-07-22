@@ -21,6 +21,8 @@ except Exception:
 DB = dict(host=db_config.DB_HOST, port=db_config.DB_PORT, dbname=db_config.DB_NAME, user=db_config.DB_USER, password=db_config.DB_PASSWORD)
 NORM = """CASE
     WHEN u.lead_source ILIKE '%google%' THEN 'google'
+    WHEN u.lead_source ILIKE '%tiktok%' OR u.lead_source ILIKE '%tik-tok%' THEN 'tiktok'
+    WHEN u.lead_source ILIKE '%snap%' THEN 'snapchat'
     WHEN u.lead_source ILIKE '%meta%' OR u.lead_source ILIKE '%facebook%' OR lower(u.lead_source)='fb' THEN 'facebook'
     WHEN lower(u.lead_source)='ig' OR u.lead_source ILIKE '%instagram%' THEN 'instagram'
     WHEN u.lead_source ~ '^[0-9]+$' THEN 'affiliate'

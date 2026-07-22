@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiGet, apiPut, apiPost, apiPatch, apiDelete } from './api';
+import { CT } from './crmTable';
 
 // Bonus settings: global config (welcome / deposit tiers / withdraw mins / margin floor /
 // blocked countries) + special-offer CRUD (percent, cap, min deposit, countries, deadline).
@@ -69,10 +70,10 @@ export default function BonusSettings() {
 
       {stats && (
         <div style={S.kpis}>
-          <Kpi label="Welcome paid" value={`$${stats.welcome_total.toLocaleString()}`} />
-          <Kpi label="Deposit bonus paid" value={`$${stats.deposit_total.toLocaleString()}`} />
-          <Kpi label="Special offers paid" value={`$${stats.special_total.toLocaleString()}`} />
-          <Kpi label="Clawed back" value={`$${stats.clawed_back.toLocaleString()}`} color="#e0b341" />
+          <Kpi label="Welcome paid" value={`$${stats.welcome_total.toLocaleString('en-GB')}`} />
+          <Kpi label="Deposit bonus paid" value={`$${stats.deposit_total.toLocaleString('en-GB')}`} />
+          <Kpi label="Special offers paid" value={`$${stats.special_total.toLocaleString('en-GB')}`} />
+          <Kpi label="Clawed back" value={`$${stats.clawed_back.toLocaleString('en-GB')}`} color="#e0b341" />
           <Kpi label="Clients with bonus" value={stats.clients} />
         </div>
       )}
@@ -92,28 +93,28 @@ export default function BonusSettings() {
         {reviews.length === 0 ? (
           <div style={{ fontSize: 13, color: '#8A93A3', marginTop: 14, padding: '10px 0' }}>No pending reviews — nothing to action. ✅</div>
         ) : (
-          <div style={{ marginTop: 14, overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <div style={{ marginTop: 14, ...CT.scroll }}>
+            <table style={CT.table}>
               <thead>
-                <tr style={{ textAlign: 'left', color: '#8A93A3', fontSize: 11, textTransform: 'uppercase' }}>
+                <tr style={CT.theadTr}>
                   {['Client', 'Contact', 'Login', 'Location', 'Matched signals', 'Actions'].map(h => (
-                    <th key={h} style={{ padding: '8px 10px', borderBottom: '1px solid #2c333f' }}>{h}</th>
+                    <th key={h} style={CT.th()}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {reviews.map(r => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #232a35' }}>
-                    <td style={{ padding: '10px', color: '#e6e9ef', fontWeight: 600 }}>{r.name || '—'}</td>
-                    <td style={{ padding: '10px', color: '#9aa3b2' }}>{r.email || r.phone || '—'}</td>
-                    <td style={{ padding: '10px', color: '#9aa3b2' }}>{r.login || '—'}</td>
-                    <td style={{ padding: '10px', color: '#9aa3b2' }}>{[r.city, r.country].filter(Boolean).join(', ') || '—'}</td>
-                    <td style={{ padding: '10px' }}>
+                  <tr key={r.id} style={CT.row()}>
+                    <td style={{ ...CT.td, color: '#e6e9ef', fontWeight: 600 }}>{r.name || '—'}</td>
+                    <td style={{ ...CT.td, color: '#9aa3b2' }}>{r.email || r.phone || '—'}</td>
+                    <td style={{ ...CT.td, color: '#9aa3b2' }}>{r.login || '—'}</td>
+                    <td style={{ ...CT.td, color: '#9aa3b2' }}>{[r.city, r.country].filter(Boolean).join(', ') || '—'}</td>
+                    <td style={{ ...CT.td, whiteSpace: 'normal' }}>
                       {(r.matched || '').split(',').filter(Boolean).map((m: string, i: number) => (
                         <span key={i} style={{ display: 'inline-block', margin: '2px 4px 2px 0', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, color: '#E8B84B', background: 'rgba(232,184,75,0.12)', border: '1px solid rgba(232,184,75,0.35)' }}>{m.trim()}</span>
                       ))}
                     </td>
-                    <td style={{ padding: '10px', whiteSpace: 'nowrap' }}>
+                    <td style={CT.td}>
                       <button onClick={() => decideReview(r.id, 'approve')} style={{ marginRight: 8, padding: '6px 14px', borderRadius: 7, border: 'none', background: 'linear-gradient(90deg,#3ad29f,#2bb88a)', color: '#06231a', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Approve</button>
                       <button onClick={() => decideReview(r.id, 'reject')} style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid #f0556a', background: 'transparent', color: '#f0556a', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>Reject</button>
                     </td>
@@ -161,8 +162,8 @@ export default function BonusSettings() {
           <div />
         </div>
         <div style={S.hint}>
-          e.g. {cfg.dep_tier1_pct}% on the first ${Number(cfg.dep_tier1_cap).toLocaleString()} of deposits, then {cfg.dep_tier2_pct}% above —
-          capped at ${Number(cfg.dep_total_cap).toLocaleString()} total. A deposit of $2,000 → ${(cfg.dep_tier1_cap * cfg.dep_tier1_pct / 100).toLocaleString()} + ${((2000 - cfg.dep_tier1_cap) * cfg.dep_tier2_pct / 100).toLocaleString()}.
+          e.g. {cfg.dep_tier1_pct}% on the first ${Number(cfg.dep_tier1_cap).toLocaleString('en-GB')} of deposits, then {cfg.dep_tier2_pct}% above —
+          capped at ${Number(cfg.dep_total_cap).toLocaleString('en-GB')} total. A deposit of $2,000 → ${(cfg.dep_tier1_cap * cfg.dep_tier1_pct / 100).toLocaleString('en-GB')} + ${((2000 - cfg.dep_tier1_cap) * cfg.dep_tier2_pct / 100).toLocaleString('en-GB')}.
           Withdrawals are blocked if they would drop margin level below {cfg.margin_floor_pct}%.
         </div>
       </div>
@@ -183,7 +184,7 @@ export default function BonusSettings() {
           <div /><div />
         </div>
         <div style={S.hint}>
-          A client can claim a ${Number(cfg.birthday_amount ?? 100).toLocaleString()} gift from {cfg.birthday_before_days ?? 5} days before to {cfg.birthday_after_days ?? 2} days after their
+          A client can claim a ${Number(cfg.birthday_amount ?? 100).toLocaleString('en-GB')} gift from {cfg.birthday_before_days ?? 5} days before to {cfg.birthday_after_days ?? 2} days after their
           birthday, IF they deposited within the last {cfg.birthday_deposit_window_days ?? 365} days. In that window the client is boosted +100 on the
           Clients page with a 🎂; a successful call clears the boost (cake turns gold), and a claim turns it green.
         </div>
@@ -210,7 +211,7 @@ export default function BonusSettings() {
                 {o.name} {!o.active && <span style={S.pill}>off</span>}
               </div>
               <div style={S.hint}>
-                {o.percent}% up to ${o.cap.toLocaleString()} · min deposit ${o.min_deposit.toLocaleString()}
+                {o.percent}% up to ${o.cap.toLocaleString('en-GB')} · min deposit ${o.min_deposit.toLocaleString('en-GB')}
                 {o.ends_at ? ` · ends ${o.ends_at.slice(0, 16)}` : ' · no deadline'}
                 {o.countries?.length ? ` · ${o.countries.join(', ')}` : ' · all countries'}
               </div>

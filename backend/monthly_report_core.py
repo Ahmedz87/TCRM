@@ -40,6 +40,15 @@ DISTINCT = ["nda", "dep_clients", "wd_clients"]
 ALL_FIELDS = ADDITIVE + DISTINCT
 
 
+# Canonical money filters — kept IDENTICAL to dashboard_router._DEP / _WD so the Monthly Report
+# totals equal the Dashboard (single source of truth for "genuine deposit" / "real withdrawal").
+_DEP_WHERE = (r"tx_type='deposit' AND amount < 1000000 AND COALESCE(method,'') <> 'MT5' "
+              r"AND COALESCE(method,'') !~* '(deposit\s*[/ ]?\s*fix|balance\s*fix|deposit\s*fee"
+              r"|negative\s*balance|stop\s*out\s*comp|reverting\s*cap|capital\s*refund|cash\s*back"
+              r"|credit\s*(in|out)|bonus\s*adjustment)'")
+_WD_WHERE = "tx_type='withdrawal' AND amount < 1000000 AND COALESCE(status,'') <> 'rejected'"
+
+
 def _month_bounds(year, month):
     start = date(year, month, 1)
     end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
@@ -63,19 +72,23 @@ def compute_range(execq, start, end):
     r["reg_accounts"], r["verified"], r["kyc_pending"], r["no_kyc"] = (
         int(row[0]), int(row[1]), int(row[2]), int(row[3]))
 
-    # deposits
-    row = execq("""
+    # deposits — GENUINE client deposits only, MUST match dashboard_router._DEP so the Monthly
+    # Report equals the Dashboard: exclude internal MT balance adjustments (method='MT5' or an
+    # internal-label method) and the >=$1M rows. (_dup / balance_fix / negative_cover are already
+    # a different tx_type, so tx_type='deposit' already drops them.)
+    row = execq(f"""
         SELECT count(DISTINCT login), coalesce(sum(amount),0), count(*)
         FROM transactions
-        WHERE tx_type = 'deposit' AND tx_date >= :sd AND tx_date < :ed
+        WHERE {_DEP_WHERE} AND tx_date >= :sd AND tx_date < :ed
     """, {"sd": sd, "ed": ed})[0]
     r["dep_clients"], r["deposits"], r["dep_count"] = int(row[0]), float(row[1]), int(row[2])
 
-    # withdrawals
-    row = execq("""
+    # withdrawals — REAL withdrawals only (matches dashboard_router._WD): exclude REJECTED ones
+    # (a rejected withdrawal was reverted/refunded, so the money never left) and the >=$1M rows.
+    row = execq(f"""
         SELECT count(DISTINCT login), coalesce(sum(abs(amount)),0), count(*)
         FROM transactions
-        WHERE tx_type = 'withdrawal' AND tx_date >= :sd AND tx_date < :ed
+        WHERE {_WD_WHERE} AND tx_date >= :sd AND tx_date < :ed
     """, {"sd": sd, "ed": ed})[0]
     r["wd_clients"], r["withdrawals"], r["wd_count"] = int(row[0]), float(row[1]), int(row[2])
 

@@ -9,6 +9,7 @@ from database import get_db
 from auth import get_current_user
 import models
 import transfer_engine as TE
+import rbac
 
 router = APIRouter(prefix="/transfer", tags=["transfer"])
 
@@ -16,9 +17,10 @@ MANAGER_ROLES = {"super_admin", "admin", "director", "sales_manager"}
 
 
 def _can_manage(user) -> bool:
-    role = (getattr(user, "role", "") or "").lower()
-    title = (getattr(user, "title", "") or "").lower()
-    return role in MANAGER_ROLES or "team leader" in title
+    # Desk rule (Jul 2026): moving records between agents — in bulk, auto-distribute, resolving
+    # transfer requests, or releasing to a manager — is restricted to admins and Rahaf ONLY.
+    # (Was managers + team leaders; tightened alongside the per-record change-agent lock.)
+    return rbac.may_reassign_agent(user)
 
 
 def _ensure(db):
@@ -89,6 +91,8 @@ def auto_distribute(payload: dict, db: Session = Depends(get_db), user=Depends(g
 # ── transfer-out of my data (agent self-service from client page / call popup) ──
 @router.post("/out")
 def transfer_out(payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    if not _can_manage(user):
+        raise HTTPException(403, "Only admins can change the sales agent")
     _ensure(db)
     rtype = payload.get("record_type", "client")
     key = payload.get("record_key")

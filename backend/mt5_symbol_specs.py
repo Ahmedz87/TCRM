@@ -10,9 +10,7 @@ import db_config
 import psycopg2
 from psycopg2.extras import execute_values
 
-SERVER = "192.109.15.62:443"
-LOGIN  = 1025
-PASS   = "ZjFb!vA0"
+from mt_secrets import MT5_SERVER as SERVER, MT5_LOGIN as LOGIN, MT5_PASSWORD as PASS
 PG_DSN = db_config.DSN
 
 

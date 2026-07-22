@@ -41,9 +41,10 @@ def main():
         txids.add(t)
 
     by_day, feed = {}, []
+    # txid = [8 date][17 fixed][4-5 block][8 seq] -> 37 or 38 digits; seq = LAST 8
     for tx, snd, rcv, amt, odt in bulk:
         t = norm(tx)
-        if len(t) != 37 or t[8:25] != FIXED:
+        if len(t) not in (37, 38) or t[8:25] != FIXED:
             continue
         try:
             d = datetime.date(int(t[:4]), int(t[4:6]), int(t[6:8]))
@@ -51,16 +52,16 @@ def main():
             continue
         if not (datetime.date(2020, 1, 1) <= d <= datetime.date.today() + datetime.timedelta(days=1)):
             continue
-        by_day.setdefault(d, []).append(int(t[29:]))
-        if t not in txids:
+        by_day.setdefault(d, []).append(int(t[-8:]))
+        if t not in txids and len(t) == 37:   # samples table keeps the 37-digit layout
             feed.append((t, snd.strip(), rcv.strip(), amt, t[:8], FIXED, t[25:31], t[31:]))
             txids.add(t)
     for t in list(txids):
         tt = norm(t)
-        if len(tt) == 37 and tt[8:25] == FIXED:
+        if len(tt) in (37, 38) and tt[8:25] == FIXED:
             try:
                 d = datetime.date(int(tt[:4]), int(tt[4:6]), int(tt[6:8]))
-                by_day.setdefault(d, []).append(int(tt[29:]))
+                by_day.setdefault(d, []).append(int(tt[-8:]))
             except ValueError:
                 pass
 

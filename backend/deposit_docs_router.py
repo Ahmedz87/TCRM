@@ -97,6 +97,12 @@ def fraud_summary(db=Depends(get_db), user=Depends(get_current_user)):
 
 @router.get("/kyc/client/{login}")
 def kyc_docs(login: int, db=Depends(get_db), user=Depends(get_current_user)):
+    # go-live hardening: identity documents (ID number, DOB, mother's name) are for
+    # compliance roles only — not the whole floor.
+    from fastapi import HTTPException as _HTTPX
+    if (getattr(user, "role", "") or "").lower() not in (
+            "super_admin", "admin", "backoffice", "validation", "director"):
+        raise _HTTPX(status_code=403, detail="Compliance roles only")
     rows = db.execute(text("""
         SELECT id, doc_type, filename, ocr_status,
                ocr_json->>'full_name_latin' AS name, ocr_json->>'id_number' AS id_number,

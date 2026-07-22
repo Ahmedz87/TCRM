@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
 
 // WhatsApp broadcast via Wati — pick a segment + an approved template, test on one number,
 // then send to the whole segment (with a confirm gate). Broadcasts must use an approved template.
@@ -8,7 +9,7 @@ const card: React.CSSProperties = { background: 'var(--bg-card,#2c333e)', border
 const cap: React.CSSProperties = { fontSize: 11, color: '#8a93a5', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, fontWeight: 700 };
 const input: React.CSSProperties = { padding: '9px 11px', background: '#1c2231', border: '1px solid #3a4252', borderRadius: 8, color: '#e6e9ef', fontSize: 13 };
 const btn = (bg: string, fg = '#06251b'): React.CSSProperties => ({ padding: '9px 14px', background: bg, border: 'none', borderRadius: 8, color: fg, fontSize: 13, fontWeight: 700, cursor: 'pointer' });
-const fmt = (n: number) => (n || 0).toLocaleString();
+const fmt = (n: number) => (n || 0).toLocaleString('en-GB');
 
 export default function WatiBroadcast() {
   const [segments, setSegments] = useState<any[]>([]);
@@ -183,20 +184,22 @@ export default function WatiBroadcast() {
       {broadcasts.length > 0 && (
         <div style={card}>
           <div style={cap}>Recent broadcasts</div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-            <thead><tr style={{ color: '#8a93a5', textAlign: 'left' }}>{['Template', 'Segment', 'Recipients', 'Sent', 'Failed', 'Status', 'By', 'When'].map(h => <th key={h} style={{ padding: 7 }}>{h}</th>)}</tr></thead>
-            <tbody>{broadcasts.map(b => (
-              <tr key={b.id} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4' }}>
-                <td style={{ padding: 7 }}>{b.template}</td>
-                <td style={{ padding: 7, color: '#8a93a5' }}>{b.segment_key}</td>
-                <td style={{ padding: 7 }}>{fmt(b.recipients)}</td>
-                <td style={{ padding: 7, color: '#00e5a0' }}>{fmt(b.sent)}</td>
-                <td style={{ padding: 7, color: b.failed ? '#ff8888' : '#8a93a5' }}>{fmt(b.failed)}</td>
-                <td style={{ padding: 7 }}><span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: b.status === 'sent' ? '#00e5a022' : b.status === 'partial' ? '#5c451f44' : '#5c1f1f44', color: b.status === 'sent' ? '#00e5a0' : b.status === 'partial' ? '#e9c97f' : '#ff8888' }}>{b.status}</span></td>
-                <td style={{ padding: 7, color: '#8a93a5' }}>{b.created_by}</td>
-                <td style={{ padding: 7, color: '#8a93a5' }}>{(b.created_at || '').toString().slice(0, 16).replace('T', ' ')}</td>
-              </tr>))}</tbody>
-          </table>
+          <div style={CT.scroll}>
+            <table style={CT.table}>
+              <thead><tr style={CT.theadTr}>{['Template', 'Segment', 'Recipients', 'Sent', 'Failed', 'Status', 'By', 'When'].map(h => <th key={h} style={CT.th(false, ['Recipients', 'Sent', 'Failed'].includes(h) ? 'right' : 'left')}>{h}</th>)}</tr></thead>
+              <tbody>{broadcasts.map(b => (
+                <tr key={b.id} style={CT.row()}>
+                  <td style={CT.td}>{b.template}</td>
+                  <td style={{ ...CT.td, color: '#8a93a5' }}>{b.segment_key}</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(b.recipients)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: '#00e5a0' }}>{fmt(b.sent)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: b.failed ? '#ff8888' : '#8a93a5' }}>{fmt(b.failed)}</td>
+                  <td style={CT.td}><span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: b.status === 'sent' ? '#00e5a022' : b.status === 'partial' ? '#5c451f44' : '#5c1f1f44', color: b.status === 'sent' ? '#00e5a0' : b.status === 'partial' ? '#e9c97f' : '#ff8888' }}>{b.status}</span></td>
+                  <td style={{ ...CT.td, color: '#8a93a5' }}>{b.created_by}</td>
+                  <td style={{ ...CT.td, color: '#8a93a5' }}>{(b.created_at || '').toString().slice(0, 16).replace('T', ' ')}</td>
+                </tr>))}</tbody>
+            </table>
+          </div>
         </div>
       )}
 

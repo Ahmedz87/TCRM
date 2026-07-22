@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
 
-const fmtUSD = (n: number) => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n || 0)).toLocaleString();
+const fmtUSD = (n: number) => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n || 0)).toLocaleString('en-GB');
 const CAT_LABEL: Record<string, string> = { XAUUSD: 'Gold (XAUUSD)', FX: 'Forex', METAL: 'Metals', CRYPTO: 'Crypto', OTHER: 'Other' };
 
 const inp: React.CSSProperties = { width: 64, padding: '5px 7px', background: '#11141a', border: '1px solid #2a3142', borderRadius: 6, color: '#e0e0e0', fontSize: 12, outline: 'none', textAlign: 'right' };
-const th: React.CSSProperties = { padding: '8px 12px', textAlign: 'left', color: '#667', fontWeight: 600, fontSize: 10, textTransform: 'uppercase', letterSpacing: .4, borderBottom: '1px solid #373f4d', position: 'sticky', top: 0, background: '#262c36' };
-const td: React.CSSProperties = { padding: '7px 12px', borderBottom: '1px solid #2c333e', fontSize: 12 };
 
 function MarkupTable({ atype, rows, onSaved }: { atype: string; rows: any[]; onSaved: () => void }) {
   const [edits, setEdits] = useState<Record<string, { bid: string; ask: string }>>({});
@@ -27,8 +26,8 @@ function MarkupTable({ atype, rows, onSaved }: { atype: string; rows: any[]; onS
   const order = ['XAUUSD', 'FX', 'METAL', 'CRYPTO', 'OTHER'].filter(c => cats[c]);
 
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-      <thead><tr>{['Symbol', 'Contract size', 'Digits', 'Quote ccy', 'Bid markup', 'Ask markup', 'Total (pts)', ''].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+    <table style={CT.table}>
+      <thead><tr style={CT.theadTr}>{['Symbol', 'Contract size', 'Digits', 'Quote ccy', 'Bid markup', 'Ask markup', 'Total (pts)', ''].map(h => <th key={h} style={CT.th()}>{h}</th>)}</tr></thead>
       <tbody>
         {order.map(cat => (
           <React.Fragment key={cat}>
@@ -39,15 +38,15 @@ function MarkupTable({ atype, rows, onSaved }: { atype: string; rows: any[]; onS
               const ask = e ? parseFloat(e.ask) || 0 : r.ask;
               const dirty = e && (bid !== r.bid || ask !== r.ask);
               return (
-                <tr key={r.symbol_norm}>
-                  <td style={{ ...td, fontWeight: 600, color: '#cfd6e0' }}>{r.symbol}</td>
-                  <td style={{ ...td, color: '#9aa3b2' }}>{r.contract_size != null ? Number(r.contract_size).toLocaleString() : '—'}</td>
-                  <td style={{ ...td, color: '#9aa3b2' }}>{r.digits != null ? r.digits : '—'}</td>
-                  <td style={{ ...td, color: '#00aaff', fontWeight: 600 }}>{r.quote_currency || '—'}</td>
-                  <td style={td}><input style={inp} value={e ? e.bid : String(r.bid)} onChange={ev => setVal(r.symbol_norm, 'bid', ev.target.value, r)} onBlur={() => save(r)} /></td>
-                  <td style={td}><input style={inp} value={e ? e.ask : String(r.ask)} onChange={ev => setVal(r.symbol_norm, 'ask', ev.target.value, r)} onBlur={() => save(r)} /></td>
-                  <td style={{ ...td, color: '#00e5a0', fontWeight: 700 }}>{Math.abs(bid) + Math.abs(ask)}</td>
-                  <td style={td}>{dirty && <span style={{ fontSize: 10, color: '#ffaa00' }}>● unsaved (tab out to save)</span>}</td>
+                <tr key={r.symbol_norm} style={CT.row()}>
+                  <td style={{ ...CT.td, fontWeight: 600, color: '#cfd6e0' }}>{r.symbol}</td>
+                  <td style={{ ...CT.td, color: '#9aa3b2' }}>{r.contract_size != null ? Number(r.contract_size).toLocaleString('en-GB') : '—'}</td>
+                  <td style={{ ...CT.td, color: '#9aa3b2' }}>{r.digits != null ? r.digits : '—'}</td>
+                  <td style={{ ...CT.td, color: '#00aaff', fontWeight: 600 }}>{r.quote_currency || '—'}</td>
+                  <td style={CT.td}><input style={inp} value={e ? e.bid : String(r.bid)} onChange={ev => setVal(r.symbol_norm, 'bid', ev.target.value, r)} onBlur={() => save(r)} /></td>
+                  <td style={CT.td}><input style={inp} value={e ? e.ask : String(r.ask)} onChange={ev => setVal(r.symbol_norm, 'ask', ev.target.value, r)} onBlur={() => save(r)} /></td>
+                  <td style={{ ...CT.td, color: '#00e5a0', fontWeight: 700 }}>{Math.abs(bid) + Math.abs(ask)}</td>
+                  <td style={CT.td}>{dirty && <span style={{ fontSize: 10, color: '#ffaa00' }}>● unsaved (tab out to save)</span>}</td>
                 </tr>
               );
             })}
@@ -76,30 +75,32 @@ function OthersTab() {
         {rows.length} traded symbol(s) are <b>not</b> in any markup sheet. Add a markup (pick the account type, enter Bid/Ask points) — it then moves into that tab.
       </div>
       <div style={{ background: '#262c36', border: '1px solid #373f4d', borderRadius: 10, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr>{['Symbol', 'Lots', 'Markup earned', 'Add to', 'Bid', 'Ask', ''].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+        <div style={CT.scroll}>
+        <table style={CT.table}>
+          <thead><tr style={CT.theadTr}>{['Symbol', 'Lots', 'Markup earned', 'Add to', 'Bid', 'Ask', ''].map(h => <th key={h} style={CT.th()}>{h}</th>)}</tr></thead>
           <tbody>
             {rows.length === 0 ? <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: '#556' }}>All traded symbols are covered 🎉</td></tr>
               : rows.map((r: any) => {
                 const e = draft[r.symbol_norm] || { at: 'STD', bid: '', ask: '' };
                 return (
-                  <tr key={r.symbol_norm}>
-                    <td style={{ ...td, fontWeight: 600, color: '#cfd6e0' }}>{r.sample} <span style={{ color: '#667', fontSize: 10 }}>({r.symbol_norm})</span></td>
-                    <td style={{ ...td, color: '#9aa3b2' }}>{Math.round(r.lots).toLocaleString()}</td>
-                    <td style={{ ...td, color: '#00e5a0' }}>{fmtUSD(r.markup_usd)}</td>
-                    <td style={td}>
+                  <tr key={r.symbol_norm} style={CT.row()}>
+                    <td style={{ ...CT.td, fontWeight: 600, color: '#cfd6e0' }}>{r.sample} <span style={{ color: '#667', fontSize: 10 }}>({r.symbol_norm})</span></td>
+                    <td style={{ ...CT.td, color: '#9aa3b2' }}>{Math.round(r.lots).toLocaleString('en-GB')}</td>
+                    <td style={{ ...CT.td, color: '#00e5a0' }}>{fmtUSD(r.markup_usd)}</td>
+                    <td style={CT.td}>
                       <select value={e.at} onChange={ev => set(r.symbol_norm, 'at', ev.target.value)} style={{ ...inp, width: 80, textAlign: 'left' }}>
                         {['STD', 'VIP', 'FIX', 'ZERO', 'CENT'].map(t => <option key={t}>{t}</option>)}
                       </select>
                     </td>
-                    <td style={td}><input style={inp} value={e.bid} onChange={ev => set(r.symbol_norm, 'bid', ev.target.value)} placeholder="0" /></td>
-                    <td style={td}><input style={inp} value={e.ask} onChange={ev => set(r.symbol_norm, 'ask', ev.target.value)} placeholder="0" /></td>
-                    <td style={td}><button onClick={() => add(r)} style={{ padding: '5px 12px', background: '#00e5a0', border: 'none', borderRadius: 6, color: '#0a0c10', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Add</button></td>
+                    <td style={CT.td}><input style={inp} value={e.bid} onChange={ev => set(r.symbol_norm, 'bid', ev.target.value)} placeholder="0" /></td>
+                    <td style={CT.td}><input style={inp} value={e.ask} onChange={ev => set(r.symbol_norm, 'ask', ev.target.value)} placeholder="0" /></td>
+                    <td style={CT.td}><button onClick={() => add(r)} style={{ padding: '5px 12px', background: '#00e5a0', border: 'none', borderRadius: 6, color: '#0a0c10', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Add</button></td>
                   </tr>
                 );
               })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -133,21 +134,23 @@ function CrossCheck() {
         <input type="checkbox" checked={onlyLosing} onChange={e => setOnlyLosing(e.target.checked)} /> Show only losing symbols
       </label>
       <div style={{ background: '#262c36', border: '1px solid #373f4d', borderRadius: 10, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr>{['Symbol', 'Lots', 'Markup earned', 'IB paid', 'Net', ''].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+        <div style={CT.scroll}>
+        <table style={CT.table}>
+          <thead><tr style={CT.theadTr}>{['Symbol', 'Lots', 'Markup earned', 'IB paid', 'Net', ''].map(h => <th key={h} style={CT.th()}>{h}</th>)}</tr></thead>
           <tbody>
             {rows.map((r: any, i: number) => (
-              <tr key={i} style={{ background: r.losing ? 'rgba(255,93,108,0.07)' : 'transparent' }}>
-                <td style={{ ...td, fontWeight: 600, color: '#cfd6e0' }}>{r.symbol}</td>
-                <td style={{ ...td, color: '#9aa3b2' }}>{Math.round(r.lots).toLocaleString()}</td>
-                <td style={{ ...td, color: '#00e5a0' }}>{fmtUSD(r.markup_usd)}</td>
-                <td style={{ ...td, color: '#ff8c00' }}>{fmtUSD(r.ib_usd)}</td>
-                <td style={{ ...td, color: r.net_usd >= 0 ? '#00aaff' : '#ff5d6c', fontWeight: 600 }}>{fmtUSD(r.net_usd)}</td>
-                <td style={td}>{r.losing && <span style={{ fontSize: 10, color: '#ff5d6c', fontWeight: 700 }}>LOSING</span>}</td>
+              <tr key={i} style={{ ...CT.row(), background: r.losing ? 'rgba(255,93,108,0.07)' : 'transparent' }}>
+                <td style={{ ...CT.td, fontWeight: 600, color: '#cfd6e0' }}>{r.symbol}</td>
+                <td style={{ ...CT.td, color: '#9aa3b2' }}>{Math.round(r.lots).toLocaleString('en-GB')}</td>
+                <td style={{ ...CT.td, color: '#00e5a0' }}>{fmtUSD(r.markup_usd)}</td>
+                <td style={{ ...CT.td, color: '#ff8c00' }}>{fmtUSD(r.ib_usd)}</td>
+                <td style={{ ...CT.td, color: r.net_usd >= 0 ? '#00aaff' : '#ff5d6c', fontWeight: 600 }}>{fmtUSD(r.net_usd)}</td>
+                <td style={CT.td}>{r.losing && <span style={{ fontSize: 10, color: '#ff5d6c', fontWeight: 700 }}>LOSING</span>}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

@@ -67,8 +67,18 @@ def main():
 
     my = pymysql.connect(**MY); mc = my.cursor(pymysql.cursors.SSDictCursor)
     cols = ",".join(RECEIPT_COLS)
+    # --recent N : only pull deposits created in the last N days (cheap, for the frequent near-real-time
+    # pull). No flag = full idempotent rebuild (the nightly safety net). ON CONFLICT makes both safe.
+    import sys as _sys
+    _recent = ""
+    if "--recent" in _sys.argv:
+        try:
+            _d = int(_sys.argv[_sys.argv.index("--recent") + 1])
+        except Exception:
+            _d = 2
+        _recent = f" AND created_at >= (NOW() - INTERVAL {_d} DAY)"
     mc.execute(f"""SELECT id, user_id, account_number, amount, currency, payment_method, status, created_at, {cols}
-                   FROM fx_transactions_view WHERE type='deposit'""")
+                   FROM fx_transactions_view WHERE type='deposit'{_recent}""")
     batch=[]; total=0; rows_with_doc=0
     ins = """INSERT INTO deposit_documents
       (ts_txn_id, legacy_user_id, account_number, amount, currency, payment_method_raw, payment_method, status, tx_date, receipt_slot, receipt_filename, receipt_url)

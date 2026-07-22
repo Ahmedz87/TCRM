@@ -7,9 +7,8 @@ from ctypes import c_int, c_void_p, POINTER, WINFUNCTYPE, byref, cast
 import os
 
 DLL_PATH   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mtmanapi64.dll")
-MT4_SERVER = b"192.109.17.53:443"
-MT4_LOGIN  = 1025
-MT4_PASSWORD = b"Aqjf0pJ"
+from mt_secrets import MT4_SERVER, MT4 as _MT4
+MT4_LOGIN, MT4_PASSWORD = _MT4["A"]
 
 V_MEM_FREE = 3
 V_CONNECT  = 6

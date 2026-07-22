@@ -41,6 +41,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     user = db.query(models.User).filter(models.User.email == email).first()
     if user is None:
         raise credentials_exception
+    # Frozen / deactivated / blocked staff lose API access immediately (go-live hardening) —
+    # previously only the login screen checked these flags, so existing tokens kept working.
+    if (getattr(user, "is_frozen", False) or getattr(user, "is_blocked", False)
+            or getattr(user, "is_active", True) is False):
+        raise HTTPException(status_code=403, detail="Account is deactivated")
     # Reject sessions issued before this user's password was last changed (logs out old tokens).
     tva = getattr(user, "tokens_valid_after", None)
     if tva is not None:

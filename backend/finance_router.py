@@ -87,9 +87,11 @@ VALID_PERIODS = (
     "this_year", "last_year", "all_time",
 )
 
+# The first four feed the Admin dashboard "Net-deposit profit" KPI (deposits − these costs).
+# _live_expenses in dashboard_router buckets by keyword, so the names here can evolve freely.
 EXPENSE_CATEGORIES = [
-    "Salaries", "Marketing", "Office", "Software", "Banking & PSP fees",
-    "Travel", "Legal & Compliance", "Bonuses payout", "Infrastructure", "Other",
+    "Wages", "Marketing", "Tech", "Office (rent/insurance/visa)",
+    "Banking & PSP fees", "Legal & Compliance", "Bonuses payout", "Travel", "Other",
 ]
 EXPENSE_STATUSES = ["draft", "issued", "approved", "paid", "void"]
 
@@ -190,11 +192,22 @@ def _ensure_expense_table(db: Session):
 
 
 def _next_day(p_to: str) -> str:
-    """Exclusive upper bound for a string-range date filter ('YYYY-MM-DD' -> next day)."""
+    """Exclusive upper bound for an INCLUSIVE end date — the start of the NEXT Iraqi day
+    in UTC ('YYYY-MM-DD 21:00:00', see crm_tz). Pair with _day_lo() on the from-bound."""
     try:
-        return (date.fromisoformat(p_to) + timedelta(days=1)).isoformat()
+        from crm_tz import day_hi
+        return day_hi(p_to)
     except Exception:
         return p_to + "~"
+
+
+def _day_lo(p_from: str) -> str:
+    """Inclusive lower bound — start of the Iraqi day in UTC (prev day 21:00)."""
+    try:
+        from crm_tz import day_lo
+        return day_lo(p_from)
+    except Exception:
+        return p_from
 
 
 # ── Overview KPIs ─────────────────────────────────────────────────────────────
@@ -215,7 +228,7 @@ def finance_overview(
 def _build_finance_overview(db, period):
     p_from, p_to = get_period_dates(period)
     p = {
-        "f": p_from, "t_next": _next_day(p_to),
+        "f": _day_lo(p_from), "t_next": _next_day(p_to),
         "mt5_adj": MT5_ADJUST_METHOD, "internal_re": INTERNAL_LABEL_RE,
     }
 
@@ -231,7 +244,7 @@ def _build_finance_overview(db, period):
         FROM transactions
         WHERE tx_type='withdrawal' AND COALESCE(status,'')<>'rejected'
           AND tx_date >= :f AND tx_date < :t_next
-    """), {"f": p_from, "t_next": _next_day(p_to)}).fetchone()
+    """), {"f": _day_lo(p_from), "t_next": _next_day(p_to)}).fetchone()
     deposits = float(dep[0] or 0)
     withdrawals = float(wth[0] or 0)
 
@@ -293,7 +306,7 @@ def _build_finance_overview(db, period):
     exp_period = db.execute(text("""
         SELECT COALESCE(SUM(amount),0), COUNT(*) FROM finance_expenses
         WHERE status <> 'void' AND exp_date >= :f AND exp_date < :t_next
-    """), {"f": p_from, "t_next": _next_day(p_to)}).fetchone()
+    """), {"f": _day_lo(p_from), "t_next": _next_day(p_to)}).fetchone()
     expenses_period = round(float(exp_period[0] or 0), 2)
 
     return {
@@ -358,7 +371,7 @@ def finance_ledger(
         params["s"] = f"%{search}%"
     if date_from:
         where.append("t.tx_date >= :date_from")
-        params["date_from"] = date_from
+        params["date_from"] = _day_lo(date_from)
     if date_to:
         where.append("t.tx_date < :date_to_next")
         params["date_to_next"] = _next_day(date_to)
@@ -467,7 +480,7 @@ def list_expenses(
         params["s"] = f"%{search}%"
     if date_from:
         where.append("exp_date >= :date_from")
-        params["date_from"] = date_from
+        params["date_from"] = _day_lo(date_from)
     if date_to:
         where.append("exp_date < :date_to_next")
         params["date_to_next"] = _next_day(date_to)

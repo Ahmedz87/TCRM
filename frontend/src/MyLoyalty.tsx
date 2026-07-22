@@ -10,7 +10,7 @@ const TIERS: any = {
 };
 const ORDER = ['bronze', 'silver', 'gold', 'platinum'];
 const MEDAL: any = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
-const fmt = (n: number) => Math.round(n || 0).toLocaleString();
+const fmt = (n: number) => Math.round(n || 0).toLocaleString('en-GB');
 
 const STATUS_STYLE: any = {
   won:        { label: 'Won 🎉',     c: '#34D399', bg: 'rgba(52,211,153,0.14)' },
@@ -128,7 +128,10 @@ function LoyaltyView({ data, rewards, refs, toast, inviteOpen, inv, setInviteOpe
   const nextBigPct = nextBig ? Math.min(100, Math.round((data.points_balance / nextBig.cost_points) * 100)) : 100;
   useEffect(() => { const id = setTimeout(() => setRewardW(nextBigPct), 400); return () => clearTimeout(id); }, [nextBigPct]);
 
+  // Days the client actually traded — from trade_days (all trading days in the last 60d, accurate)
+  // with the recent ledger + last trade as a fallback for older API responses.
   const activeDays = new Set<string>();
+  (data.trade_days || []).forEach((d: string) => { if (d) activeDays.add(d); });
   (data.ledger || []).forEach((l: any) => { if (l.date) activeDays.add(l.date); });
   if (data.last_trade_date) activeDays.add(data.last_trade_date);
 
@@ -146,7 +149,8 @@ function LoyaltyView({ data, rewards, refs, toast, inviteOpen, inv, setInviteOpe
         </span>
       </div>
 
-      <div style={{ position: 'relative', background: 'linear-gradient(160deg,#141821,#0d1016)', border: `1px solid ${t.accent}55`, borderRadius: 20, padding: 26, marginBottom: 14, overflow: 'hidden' }}>
+      <div className="loy-top">
+      <div style={{ position: 'relative', background: 'linear-gradient(160deg,#141821,#0d1016)', border: `1px solid ${t.accent}55`, borderRadius: 20, padding: 26, overflow: 'hidden' }}>
         <div style={{ ...S.sheen }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap', position: 'relative' }}>
           <div style={{ position: 'relative', width: 104, height: 104, flex: '0 0 auto' }}>
@@ -177,6 +181,8 @@ function LoyaltyView({ data, rewards, refs, toast, inviteOpen, inv, setInviteOpe
             </div>
           </div>
         )}
+      </div>
+      <MonthCalendar activeDays={activeDays} accent={t.accent} accent2={t.accent2} />
       </div>
 
       {nextBig && (
@@ -210,8 +216,6 @@ function LoyaltyView({ data, rewards, refs, toast, inviteOpen, inv, setInviteOpe
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 9.5, color: '#5a6373', letterSpacing: '0.08em', textTransform: 'uppercase' }}><span>~30 days ago</span><span>Today ●</span></div>
       </div>
-
-      <MonthCalendar activeDays={activeDays} accent={t.accent} accent2={t.accent2} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
         <Chip label="Streak" value={`${Math.round(streakCount)}d`} sub="days 🔥" color={t.accent} accent={t.accent} />
@@ -321,46 +325,67 @@ function MonthCalendar({ activeDays, accent, accent2 }: any) {
   const startDow = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = now.getDate();
-  const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const monthName = now.toLocaleString('default', { month: 'long' });
   const pad = (n: number) => String(n).padStart(2, '0');
   const cells: any[] = [];
   for (let i = 0; i < startDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  const activeCount = cells.filter(d => d && activeDays.has(`${year}-${pad(month + 1)}-${pad(d)}`)).length;
+
+  // Traded days this month, and missed WEEKDAYS so far (weekends don't count — markets closed).
+  let tradedCount = 0, missedCount = 0;
+  for (let d = 1; d <= today; d++) {
+    const dow = new Date(year, month, d).getDay();
+    const traded = activeDays.has(`${year}-${pad(month + 1)}-${pad(d)}`);
+    if (traded) tradedCount++;
+    else if (dow !== 0 && dow !== 6 && d < today) missedCount++;
+  }
 
   return (
-    <div style={S.panel}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-        <span style={S.eyebrow}>Active days · {monthName}</span>
-        <span style={{ fontSize: 11, color: '#9aa3b3' }}><b style={{ color: accent }}>{activeCount}</b> active this month</span>
-      </div>
-      <div style={{ maxWidth: 392, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 10, color: '#5a6373', letterSpacing: '0.06em', fontWeight: 700, paddingBottom: 4 }}>{d}</div>)}
-          {cells.map((d, i) => {
-            if (!d) return <div key={i} />;
-            const key = `${year}-${pad(month + 1)}-${pad(d)}`;
-            const active = activeDays.has(key);
-            const isToday = d === today;
-            const isWeekend = (i % 7 === 0 || i % 7 === 6);
-            const future = d > today;
-            return (
-              <div key={i} className={'calcell' + (active ? ' act' : '')} style={{
-                aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 9, fontSize: 12.5,
-                fontWeight: active ? 800 : 600, fontVariantNumeric: 'tabular-nums',
-                background: active ? `linear-gradient(140deg,${accent2},${accent})` : (future ? 'transparent' : (isWeekend ? '#0d1016' : '#161b25')),
-                color: active ? '#0B0E14' : (future ? '#39414f' : (isWeekend ? '#3a4150' : '#9aa3b3')),
-                border: isToday ? `1.5px solid ${accent}` : '1px solid #1a2030',
-                boxShadow: active ? `0 3px 12px -3px ${accent}aa` : 'none',
-              }} title={active ? 'Traded' : (future ? '' : (isWeekend ? 'Weekend' : 'No trade'))}>{d}</div>
-            );
-          })}
+    <div style={{ ...S.panel, marginBottom: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ marginBottom: 12 }}>
+        <span style={S.eyebrow}>Trading calendar</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 3 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{monthName}</span>
+          <span style={{ fontSize: 11, color: '#9aa3b3' }}><b style={{ color: accent }}>{tradedCount}</b> traded · <b style={{ color: '#F2667A' }}>{missedCount}</b> missed</span>
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 18, fontSize: 10, color: '#5a6373', marginTop: 14 }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 11, height: 11, borderRadius: 3, background: `linear-gradient(140deg,${accent2},${accent})` }} />Traded</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 11, height: 11, borderRadius: 3, background: '#161b25', border: '1px solid #1a2030' }} />No trade</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 11, height: 11, borderRadius: 3, border: `1.5px solid ${accent}` }} />Today</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 9.5, color: '#5a6373', letterSpacing: '0.04em', fontWeight: 700, paddingBottom: 2 }}>{d}</div>)}
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} />;
+          const key = `${year}-${pad(month + 1)}-${pad(d)}`;
+          const traded = activeDays.has(key);
+          const isToday = d === today;
+          const future = d > today;
+          const dow = new Date(year, month, d).getDay();
+          const isWeekend = dow === 0 || dow === 6;
+
+          // glyph + colours per state: ✓ traded, ✗ missed weekday, · weekend/closed, ● today (untraded)
+          let glyph = '', gcol = '#5a6373', bg = 'transparent', bd = '1px solid #1a2030', numCol = '#5a6373';
+          if (future) { bd = '1px dashed #1a2030'; numCol = '#39414f'; }
+          else if (traded) { glyph = '✓'; gcol = '#0B0E14'; numCol = '#0B0E14'; bg = `linear-gradient(140deg,${accent2},${accent})`; bd = 'none'; }
+          else if (isWeekend) { glyph = '·'; gcol = '#4a5060'; numCol = '#4a5060'; bg = '#0d1016'; }
+          else { glyph = '✗'; gcol = '#F2667A'; numCol = '#8a93a3'; bg = 'rgba(242,102,122,0.07)'; bd = '1px solid rgba(242,102,122,0.22)'; }
+          if (isToday && !traded) { glyph = '●'; gcol = accent; }
+          if (isToday) bd = `1.5px solid ${accent}`;
+
+          const title = future ? '' : traded ? 'Traded ✓' : isToday ? 'Today — no trade yet' : isWeekend ? 'Market closed' : 'No trade ✗';
+          return (
+            <div key={i} className={'calcell' + (traded ? ' act' : '')} title={title} style={{
+              aspectRatio: '1', position: 'relative', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 7,
+              background: bg, border: bd, boxShadow: traded ? `0 2px 9px -3px ${accent}aa` : 'none',
+            }}>
+              <span style={{ fontSize: 8.5, lineHeight: 1, color: numCol, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{d}</span>
+              <span style={{ fontSize: 12, lineHeight: 1, color: gcol, fontWeight: 800 }}>{glyph}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '6px 14px', fontSize: 9.5, color: '#5a6373', marginTop: 14 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ color: accent, fontWeight: 800 }}>✓</span>Traded</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ color: '#F2667A', fontWeight: 800 }}>✗</span>Missed</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ color: '#4a5060', fontWeight: 800 }}>·</span>Closed</span>
       </div>
     </div>
   );
@@ -464,6 +489,8 @@ const KEYFRAMES = `
 .lscroll{scrollbar-width:thin;scrollbar-color:#2a3240 transparent}
 .calcell{transition:transform .12s ease, box-shadow .12s ease}
 .calcell.act:hover{transform:scale(1.08)}
+.loy-top{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start;margin-bottom:14px}
+@media (max-width:760px){ .loy-top{grid-template-columns:1fr} }
 `;
 
 const S: any = {

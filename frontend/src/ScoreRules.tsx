@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiGet, apiPost, apiPatch, apiDelete } from './api';
+import { CT } from './crmTable';
 
 /* Admin scoring rule-builder. Each rule ADDS points to a lead/client score when its field matches.
    Value fields are MULTI-SELECT (pick many, e.g. country ∈ {Iraq, Syria}). Rules can be
@@ -122,27 +123,29 @@ export default function ScoreRules() {
 
       {/* rules list */}
       {rules.length === 0 ? <div style={{ color: '#667', fontSize: 12.5, padding: '8px 2px' }}>No custom rules yet.</div> : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-          <thead><tr style={{ color: '#8a93a3', textAlign: 'left' }}>
-            {['Scope', 'Condition', 'Points', 'Expires', 'Active', ''].map(h => <th key={h} style={{ padding: '6px 6px', fontWeight: 600, fontSize: 10.5, textTransform: 'uppercase' }}>{h}</th>)}
+        <div style={CT.scroll}>
+        <table style={CT.table}>
+          <thead><tr style={CT.theadTr}>
+            {['Scope', 'Condition', 'Points', 'Expires', 'Active', ''].map(h => <th key={h} style={CT.th()}>{h}</th>)}
           </tr></thead>
           <tbody>
             {rules.map(r => (
-              <tr key={r.id} style={{ borderTop: '1px solid #373f4d', opacity: r.active ? 1 : .5 }}>
-                <td style={{ padding: '7px 6px' }}><span style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 99, background: r.scope === 'client' ? 'rgba(0,170,255,0.15)' : 'rgba(204,136,255,0.15)', color: r.scope === 'client' ? '#00aaff' : '#cc88ff' }}>{r.scope}</span></td>
-                <td style={{ padding: '7px 6px', color: '#cdd4de' }}>{ruleText(r)}</td>
-                <td style={{ padding: '7px 6px' }}><input defaultValue={r.points} onBlur={e => { const p = Number(e.target.value); if (p !== r.points) setRulePoints(r, p); }} style={{ ...cell, width: 56, padding: '4px 7px' }} /></td>
-                <td style={{ padding: '7px 6px', color: '#8a93a3' }}>{r.expires_at || 'never'}</td>
-                <td style={{ padding: '7px 6px' }}>
+              <tr key={r.id} style={{ ...CT.row(), opacity: r.active ? 1 : .5 }}>
+                <td style={CT.td}><span style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 99, background: r.scope === 'client' ? 'rgba(0,170,255,0.15)' : 'rgba(204,136,255,0.15)', color: r.scope === 'client' ? '#00aaff' : '#cc88ff' }}>{r.scope}</span></td>
+                <td style={{ ...CT.td, color: '#cdd4de', whiteSpace: 'normal' }}>{ruleText(r)}</td>
+                <td style={CT.td}><input defaultValue={r.points} onBlur={e => { const p = Number(e.target.value); if (p !== r.points) setRulePoints(r, p); }} style={{ ...cell, width: 56, padding: '4px 7px' }} /></td>
+                <td style={{ ...CT.td, color: '#8a93a3' }}>{r.expires_at || 'never'}</td>
+                <td style={CT.td}>
                   <button onClick={() => toggle(r)} style={{ width: 38, height: 20, borderRadius: 99, border: 'none', cursor: 'pointer', background: r.active ? '#00e5a0' : '#4f596b', position: 'relative' }}>
                     <span style={{ position: 'absolute', top: 2, left: r.active ? 20 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
                   </button>
                 </td>
-                <td style={{ padding: '7px 6px' }}><button onClick={() => del(r)} style={{ background: 'none', border: 'none', color: '#ff6a6a', cursor: 'pointer', fontSize: 14 }}>🗑</button></td>
+                <td style={CT.td}><button onClick={() => del(r)} style={{ background: 'none', border: 'none', color: '#ff6a6a', cursor: 'pointer', fontSize: 14 }}>🗑</button></td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   );

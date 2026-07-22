@@ -18,7 +18,7 @@ import mt_managers as M
 from fetch_mt4_balance import save, SERVERLOG_SIZE, OFFSET_TIME, OFFSET_MSG, RE_BAL
 
 # bind this process to the dedicated MT4-B login BEFORE connecting
-b.MT4_LOGIN, b.MT4_PASSWORD = M.MT4["B"]      # (1026, b"Malakies@008")
+b.MT4_LOGIN, b.MT4_PASSWORD = M.MT4["B"]      # dedicated MT4-B login 1026
 
 INTERVAL = 120
 INCR_WINDOW = 4 * 3600

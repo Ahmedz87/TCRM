@@ -2,7 +2,7 @@
 Power Dialer Router
 Manages dialer sessions, call queue, call logs and smart rescheduling
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, timedelta
@@ -215,6 +215,9 @@ def next_retry_time(attempt: int, first_called_at: datetime, call_time_hour: int
     return None  # give up after ~6 weekly attempts
 
 # ── CREATE SESSION ────────────────────────────────────────────────────────
+DIALER_MAINTENANCE = True   # Power Dialer disabled (user request Jul 20 2026); flip to re-enable
+
+
 @router.post("/session/start")
 def start_session(
     data: dict,
@@ -222,6 +225,8 @@ def start_session(
     current_user: models.User = Depends(get_current_user)
 ):
     """Start a new dialer session with a list of logins to call."""
+    if DIALER_MAINTENANCE:
+        raise HTTPException(503, "Power Dialer is under maintenance")
     logins   = data.get("logins", [])     # for clients
     lead_ids = data.get("lead_ids", [])   # for leads
     source   = data.get("source", "clients")  # 'clients' or 'leads'
@@ -245,9 +250,15 @@ def start_session(
     except Exception:
         db.rollback()
 
-    # Role-based safety net: an agent can only dial their own (team's) contacts, even if
-    # the client somehow sent more. Preserves the original order.
-    _scope = rbac.scope_agent_ids(db, current_user)
+    # Role-based safety net: the dialer lists ONLY the caller's OWN contacts. For a team leader
+    # this deliberately EXCLUDES their team (own -> self only) — a leader dials their own book,
+    # not their agents' clients/leads. Sales agents are unaffected (their book is already just
+    # themselves). Admins / ops (all-access) still dial ANYTHING — own must NOT narrow them
+    # (they have no personally-assigned book, so own=True would empty their queue).
+    if rbac._role(current_user) in rbac.ALL_ACCESS_ROLES:
+        _scope = None
+    else:
+        _scope = rbac.scope_agent_ids(db, current_user, own=True)
     if _scope is not None:
         col = "login" if source == "clients" else "id"
         tbl = "clients" if source == "clients" else "leads"
@@ -375,12 +386,29 @@ def _pick_next(db, session_id):
     }
 
 
+def _assert_own_session(db, current_user, session_id):
+    """A dialer session belongs to the agent who started it — reads/actions on /session/{id}/*
+    must verify ownership (session_id is a sequential int; without this any staff user could
+    enumerate other agents' sessions and read their queued contacts' PII or tamper with them).
+    All-access ops roles may touch any session."""
+    if session_id is None:
+        return
+    if rbac._role(current_user) in rbac.ALL_ACCESS_ROLES:
+        return
+    owner = db.execute(text("SELECT agent_id FROM dialer_sessions WHERE id=:s"), {"s": session_id}).scalar()
+    if owner is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if int(owner) != int(getattr(current_user, "id", 0)):
+        raise HTTPException(status_code=403, detail="Not your dialer session")
+
+
 @router.get("/session/{session_id}/next")
 def get_next(
     session_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    _assert_own_session(db, current_user, session_id)
     """Preview the next contact to call (does not dial)."""
     return _pick_next(db, session_id)
 
@@ -474,6 +502,7 @@ def log_call_result(
     """Log the result of a call attempt (agent action).
     outcome: 'answered' | 'no_answer' | 'rejected' | 'off' | 'call_later' | 'done'"""
     outcome = data.get("outcome")
+    _assert_own_session(db, current_user, data.get("session_id"))
     final_comment, attempt = apply_outcome(
         db, session_id=data.get("session_id"), queue_id=data.get("queue_id"),
         login=data.get("login"), lead_id=data.get("lead_id"),
@@ -525,6 +554,7 @@ def auto_next(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    _assert_own_session(db, current_user, session_id)
     """One step of the automatic dialer: pick the next contact, place an AUTO-ANSWER dial to
     them (agent's phone connects with no manual accept), and record it as this agent's active
     call. The WebSocket worker (dialer_events.py) then detects the outcome; the frontend polls
@@ -596,6 +626,7 @@ def get_queue(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    _assert_own_session(db, current_user, session_id)
     """Get full queue list for preview panel."""
     # Check session source
     sess = db.execute(text("SELECT source FROM dialer_sessions WHERE id=:sid"), {"sid": session_id}).fetchone()
@@ -634,6 +665,7 @@ def session_stats(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    _assert_own_session(db, current_user, session_id)
     row = db.execute(text("""
         SELECT
             COUNT(*) FILTER (WHERE status='pending') as pending,
@@ -654,6 +686,7 @@ def stop_session(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    _assert_own_session(db, current_user, session_id)
     db.execute(text("UPDATE dialer_sessions SET status='stopped' WHERE id=:sid"),
                {"sid": session_id})
     # Purge this session's queue rows. Without this, every stopped session left its whole

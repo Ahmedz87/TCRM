@@ -487,8 +487,12 @@ def get_stats(
     if _scope is not None:
         _sublogins = db.query(models.Client.login).filter(
             models.Client.assigned_agent_id.in_(_scope or [-1]))
+    # exclude ARCHIVED accounts from the KPIs (matches the default list) — otherwise the totals
+    # include the ~140k archived TradeSoft/ECN accounts whose balances are unverified/fake ($34B+),
+    # and the tradesoft_test accounts we just hid. KPIs must reflect only live, listed accounts.
+    _arch = db.query(models.Client.login).filter(models.Client.archived_at.isnot(None))
     def q():
-        qq = db.query(models.TradingAccount)
+        qq = db.query(models.TradingAccount).filter(~models.TradingAccount.login.in_(_arch))
         if _sublogins is not None:
             qq = qq.filter(models.TradingAccount.login.in_(_sublogins))
         return qq
@@ -512,6 +516,55 @@ def get_stats(
         "total_equity":  round(total_eq, 2),
         "total_credit":  round(total_cr, 2),
         "by_type":     by_type,
+    }
+
+
+@router.get("/margin-watch")
+def margin_watch(
+    threshold: float = Query(110.0, ge=0, le=100000),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """#210: accounts approaching a margin call — margin level below `threshold` (default 110%).
+    Powers the floating margin-watch widget. Returns the at-risk list (worst first) plus
+    `data_as_of` = the last time the equity/margin feed refreshed, so the desk can see how fresh
+    the numbers are (the MT bridge polls live equity/margin every 30s)."""
+    from sqlalchemy import text as sqlt
+    _scope = rbac.scope_agent_ids(db, current_user)
+    params = {"th": threshold}
+    scope_sql = ""
+    if _scope is not None:
+        # non-all-access: only this viewer's team's accounts
+        scope_sql = (" AND ta.login IN (SELECT login FROM clients WHERE assigned_agent_id = ANY(:aids))")
+        params["aids"] = _scope or [-1]
+    rows = db.execute(sqlt(f"""
+        SELECT ta.login, ta.name, ta.balance, ta.equity, ta.margin_level, ta.free_margin,
+               ta.credit, ta.country, ta.phone, ta.platform, ta.updated_at,
+               u.full_name AS agent_name
+        FROM trading_accounts ta
+        LEFT JOIN clients c ON c.login = ta.login
+        LEFT JOIN users u ON u.id = c.assigned_agent_id
+        WHERE ta.margin_level IS NOT NULL AND ta.margin_level > 0 AND ta.margin_level < :th
+          AND ta.equity > 0
+          AND ta.is_active IS NOT FALSE
+          {scope_sql}
+        ORDER BY ta.margin_level ASC
+        LIMIT 500
+    """), params).fetchall()
+    data_as_of = db.execute(sqlt(
+        "SELECT MAX(updated_at) FROM trading_accounts WHERE margin_level > 0 AND equity > 0")).scalar()
+    return {
+        "threshold": threshold,
+        "count": len(rows),
+        "data_as_of": data_as_of.isoformat() if data_as_of else None,
+        "accounts": [{
+            "login": r[0], "name": r[1] or "", "balance": float(r[2] or 0),
+            "equity": float(r[3] or 0), "margin_level": float(r[4] or 0),
+            "free_margin": float(r[5] or 0), "credit": float(r[6] or 0),
+            "country": r[7] or "", "phone": r[8] or "", "platform": r[9] or "",
+            "updated_at": r[10].isoformat() if r[10] else None,
+            "agent_name": r[11] or "",
+        } for r in rows],
     }
 
 

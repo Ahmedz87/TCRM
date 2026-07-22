@@ -249,3 +249,55 @@ def doc_decision(registration_id: int, doc_id: int, payload: dict,
         except Exception as e:
             print(f"[kyc-admin] doc-decision email failed: {e}", flush=True)
     return {"ok": True, "overall": _status_of(overall, None), "reason": reason}
+
+
+def _reg_contact(db, registration_id):
+    """(name, email) for a registration, or (None, None)."""
+    reg = db.execute(text("SELECT first_name, last_name, email FROM registrations WHERE id=:r"),
+                     {"r": registration_id}).fetchone()
+    if not reg:
+        return None, None
+    name = ((reg[0] or "") + " " + (reg[1] or "")).strip() or None
+    return name, reg[2]
+
+
+@router.post("/{registration_id}/send-doc-reminder")
+def send_doc_reminder(registration_id: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """KYC team action (ticket 186) — email the client a TNFX-branded reminder to upload their
+    outstanding verification documents, spelling out exactly what is still needed."""
+    name, email = _reg_contact(db, registration_id)
+    if not email:
+        return {"ok": False, "error": "No email on file for this registration."}
+    docs = db.execute(text("SELECT side, status FROM reg_kyc_documents WHERE registration_id=:r"),
+                      {"r": registration_id}).fetchall()
+    st = {d.side: (d.status or "") for d in docs}
+    missing = []
+    if not (st.get("front") == "approved" or st.get("main") == "approved"):
+        missing.append("Proof of identity (passport or national ID)")
+    if st.get("proof_of_address") != "approved":
+        missing.append("Proof of address (utility bill or bank statement, less than 3 months old)")
+    import email_send
+    if not email_send.configured():
+        return {"ok": False, "error": "Email is not configured on the server yet."}
+    ok = email_send.send(
+        email, "Complete your TNFX verification — documents needed",
+        "Please upload your outstanding verification documents at https://my1.tnfx.co",
+        body_html=email_send.doc_reminder_html(name, missing or None))
+    return {"ok": bool(ok), "sent_to": email, "missing": missing}
+
+
+@router.post("/{registration_id}/send-verification-email")
+def send_verification_email(registration_id: int, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """KYC team action (ticket 186) — email the client a TNFX-branded request to confirm their
+    email address (they confirm by logging into the portal)."""
+    name, email = _reg_contact(db, registration_id)
+    if not email:
+        return {"ok": False, "error": "No email on file for this registration."}
+    import email_send
+    if not email_send.configured():
+        return {"ok": False, "error": "Email is not configured on the server yet."}
+    ok = email_send.send(
+        email, "Confirm your TNFX email address",
+        "Please confirm your email address by logging in at https://my1.tnfx.co",
+        body_html=email_send.verify_email_html(name, verify_url="https://my1.tnfx.co/portal/"))
+    return {"ok": bool(ok), "sent_to": email}

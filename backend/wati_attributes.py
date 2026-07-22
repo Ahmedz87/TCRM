@@ -30,8 +30,14 @@ _STATE = {"running": False, "segment": None, "total": 0, "done": 0,
 _LOCK = threading.Lock()
 
 
+# Arabic-Indic + Persian digits -> ASCII (some client phones are stored in Arabic numerals;
+# str.isdigit() treats those as digits, which would push garbage numbers to Wati).
+_AR2EN = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
+
+
 def _norm_phone(p):
-    d = "".join(ch for ch in (p or "") if ch.isdigit())
+    d = (p or "").translate(_AR2EN)
+    d = "".join(ch for ch in d if ch.isascii() and ch.isdigit())
     if d.startswith("00"):
         d = d[2:]
     return d if len(d) >= 8 else None
@@ -64,7 +70,9 @@ _ATTR_SQL = """
     FROM clients c
     LEFT JOIN users u ON u.id = c.assigned_agent_id
     WHERE {where} AND COALESCE(c.phone,'') <> ''
-    ORDER BY regexp_replace(c.phone,'[^0-9]','','g'), c.total_deposits DESC NULLS LAST
+    ORDER BY regexp_replace(c.phone,'[^0-9]','','g'),
+             (c.assigned_agent_id IS NOT NULL) DESC,   -- prefer the login that HAS an owning agent (ACD)
+             c.total_deposits DESC NULLS LAST
 """
 
 

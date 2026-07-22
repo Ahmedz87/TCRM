@@ -6,21 +6,27 @@ from sqlalchemy import text
 from database import get_db
 from auth import get_current_user
 import models
+import rbac
 
 router = APIRouter(prefix="/assign", tags=["assign"])
 
 
 def _require_perm(user):
-    if not bool(getattr(user, "can_reassign_agent", False)):
+    # ONLY admins and Rahaf may change a sales agent (rbac.may_reassign_agent).
+    if not rbac.may_reassign_agent(user):
         raise HTTPException(status_code=403, detail="You are not allowed to change the sales agent")
 
 
 @router.get("/agents")
 def assignable_agents(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """Sales people a lead/client can be assigned to (sales + retention + managers + director)."""
+    """Sales people a lead/client can be assigned to (sales + retention + managers + director).
+    #276: retention staff carry role='sales_agent' but are tagged team_type='retention' (and a few
+    legacy rows use role='retention'/'retention_agent') — key off BOTH so they always appear."""
     rows = db.execute(text("""
         SELECT id, full_name, role, COALESCE(team_type,'') FROM users
-        WHERE role IN ('sales_agent','sales_manager','director') AND is_active
+        WHERE is_active AND (
+              role IN ('sales_agent','sales_manager','director','retention','retention_agent')
+              OR team_type = 'retention')
         ORDER BY full_name
     """)).fetchall()
     return {"agents": [{"id": r[0], "name": r[1], "role": r[2], "team_type": r[3]} for r in rows]}

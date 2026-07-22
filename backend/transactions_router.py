@@ -4,7 +4,8 @@ Auto payments: USDT, Ovadraft, Visa/Master (instant approved)
 Manual payments: Qi card, ZainCash, AsiaPay, Bank wire (require admin review)
 Withdrawals with network ≥6/10 auto-flagged as pending
 """
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
+import audit
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
@@ -67,6 +68,24 @@ INTERNAL_LABEL_RE = (
 # the client-profile totals so all three stay consistent.
 NOT_INTERNAL_SQL = "(t.method <> :mt5_adj_method AND t.method !~* :internal_re)"
 
+# PERF (Jul 2026): evaluating the regex above per-row costs ~0.4s on the 2M-row table
+# (method has 143k distinct values — transfers embed counterparties). Only ~44 method
+# values are internal, so the hot deposits view uses `method <> ALL(:list)` with the
+# list precomputed from the SAME regex and cached in-process for an hour (0.06s counts,
+# identical results). The regex stays the single source of truth.
+import time as _time
+_INTERNAL_METHODS = {"ts": 0.0, "vals": None}
+
+def _internal_methods(db) -> list:
+    if _INTERNAL_METHODS["vals"] is None or _time.time() - _INTERNAL_METHODS["ts"] > 3600:
+        rows = db.execute(text(
+            "SELECT DISTINCT method FROM transactions "
+            "WHERE tx_type='deposit' AND (method = :m OR method ~* :re)"),
+            {"m": MT5_ADJUST_METHOD, "re": INTERNAL_LABEL_RE}).fetchall()
+        _INTERNAL_METHODS["vals"] = [r[0] for r in rows] or ["MT5"]
+        _INTERNAL_METHODS["ts"] = _time.time()
+    return _INTERNAL_METHODS["vals"]
+
 
 def method_display(method: str) -> str:
     """Human-friendly payment-method label. The bare platform value 'MT5' is a
@@ -114,6 +133,7 @@ async def get_transactions(
     status:     str   = Query(""),
     agent:      str   = Query(""),
     ib:         str   = Query(""),
+    country:    str   = Query(""),
     client:     str   = Query(""),
     date_from:  str   = Query(""),
     date_to:    str   = Query(""),
@@ -136,7 +156,12 @@ async def get_transactions(
     }
     types = type_map.get(tx_type, ["deposit"])
     if tx_type_multi:
-        types = [t.strip() for t in tx_type_multi.split(',') if t.strip()]
+        # whitelist — this string is interpolated into SQL, so ONLY known tx types pass
+        _VALID_TYPES = {"deposit", "withdrawal", "internal_transfer", "bonus_deposit",
+                        "bonus_withdrawal", "balance_fix", "negative_cover",
+                        "withdrawal_revert", "abuse_clawback", "deposit_dup",
+                        "withdrawal_dup", "internal_transfer_dup"}
+        types = [t.strip() for t in tx_type_multi.split(',') if t.strip() in _VALID_TYPES] or ["deposit"]
 
     types_str = "','".join(types)
     where_parts = [f"t.tx_type IN ('{types_str}')"]
@@ -148,9 +173,9 @@ async def get_transactions(
     # so the money still reconciles elsewhere. A user explicitly filtering by the
     # MT5 method keeps seeing them.
     if "deposit" in types and not method:
-        where_parts.append(NOT_INTERNAL_SQL)
-        params["mt5_adj_method"] = MT5_ADJUST_METHOD
-        params["internal_re"] = INTERNAL_LABEL_RE
+        # fast list-based equivalent of NOT_INTERNAL_SQL (see _internal_methods)
+        where_parts.append("t.method <> ALL(:internal_methods)")
+        params["internal_methods"] = _internal_methods(db)
 
     if search:
         where_parts.append("(CAST(t.login AS TEXT) LIKE :s OR c.name ILIKE :s OR t.method ILIKE :s OR t.notes ILIKE :s OR c.phone ILIKE :s)")
@@ -167,6 +192,9 @@ async def get_transactions(
     if ib:
         where_parts.append("ib.name ILIKE :ib")
         params["ib"] = f"%{ib}%"
+    if country:
+        where_parts.append("c.country ILIKE :country")
+        params["country"] = f"%{country}%"
     if client:
         # dedicated client filter (name OR login) — set by the "Filter by client" box and by clicking
         # a client name in the table (click again on the filtered client opens the profile).
@@ -182,29 +210,34 @@ async def get_transactions(
             where_parts.append(f"t.login IN ({placeholders})")
             for i, ll in enumerate(login_list): params[f"ll{i}"] = ll
     # tx_date is TEXT ('YYYY-MM-DD HH24:MI:SS'), so compare as ISO STRINGS (never CAST the param to DATE —
-    # `text >= date` errors and broke the whole custom-range query). date_to is INCLUSIVE: use < next-day.
+    # `text >= date` errors and broke the whole custom-range query). date_to is INCLUSIVE.
+    # TIMEZONE: the picked dates are IRAQI calendar days but tx_date is UTC — crm_tz.day_lo/day_hi
+    # shift each boundary to 21:00 UTC so the selected day covers 00:00-24:00 Baghdad.
+    from crm_tz import day_lo as _day_lo, day_hi as _day_hi
     if date_from:
         where_parts.append("t.tx_date >= :date_from")
-        params["date_from"] = date_from
+        try:
+            params["date_from"] = _day_lo(date_from)
+        except Exception:
+            params["date_from"] = date_from
     if date_to:
-        from datetime import date as _dd, timedelta as _dtd
         try:
             where_parts.append("t.tx_date < :date_to_next")
-            params["date_to_next"] = (_dd.fromisoformat(date_to) + _dtd(days=1)).isoformat()
+            params["date_to_next"] = _day_hi(date_to)
         except Exception:
             where_parts.append("t.tx_date <= :date_to")
             params["date_to"] = date_to + " 23:59:59"
     # Period preset (today / this_week / this_month / …) — applied only when no explicit date range
     # is given, so the table shares ONE time window with the dashboard KPI cards above it. Uses
-    # index-friendly string comparison on the tx_date column (same approach as dashboard_router).
+    # index-friendly string comparison on the tx_date column (same approach as dashboard_router,
+    # same Iraqi-day boundaries).
     if period and period != "all_time" and not date_from and not date_to:
         try:
             from dashboard_router import get_period_dates
-            from datetime import date as _d, timedelta as _td
             _pf, _pt = get_period_dates(period)
             where_parts.append("t.tx_date >= :pf AND t.tx_date < :pt_next")
-            params["pf"] = _pf
-            params["pt_next"] = (_d.fromisoformat(_pt) + _td(days=1)).isoformat()
+            params["pf"] = _day_lo(_pf)
+            params["pt_next"] = _day_hi(_pt)
         except Exception:
             pass
 
@@ -262,17 +295,23 @@ async def get_transactions(
     _scope_tok = ("all" if _scope is None
                   else ("none" if not _scope else "a" + "_".join(map(str, sorted(_scope)))))
     _agg_key = "tx:agg:" + "|".join([
-        tx_type, tx_type_multi, search, method, status, agent, ib, client,
+        tx_type, tx_type_multi, search, method, status, agent, ib, country, client,
         str(login), logins, date_from, date_to, period, _scope_tok,
     ])
     _agg_params = dict(params)  # filter params only (limit/offset not added until the rows query)
 
+    # PERF: only join clients/users/ibs when a filter actually references them (search/agent/
+    # ib/client/scope). A LEFT JOIN on a non-unique key can't be eliminated by the planner for
+    # a COUNT, and it costs ~0.7s per aggregate on the 2M-row table.
+    _needs_join = any(tok in where for tok in ("c.", "u.", "ib."))
+    _agg_joins = ("""
+        LEFT JOIN clients c ON c.login = t.login
+        LEFT JOIN users u ON u.id = c.assigned_agent_id
+        LEFT JOIN ibs ib ON ib.agent_id = c.agent""" if _needs_join else "")
     count_sql = f"""
         SELECT COUNT(*)
         FROM transactions t
-        LEFT JOIN clients c ON c.login = t.login
-        LEFT JOIN users u ON u.id = c.assigned_agent_id
-        LEFT JOIN ibs ib ON ib.agent_id = c.agent
+        {_agg_joins}
         {where}
     """
     kpi_sql = f"""
@@ -288,9 +327,7 @@ async def get_transactions(
             COUNT(*) FILTER (WHERE t.tx_type IN ('bonus_deposit','bonus_withdrawal')) as bonus_count,
             COUNT(*) FILTER (WHERE t.tx_type IN ('balance_fix','negative_cover','withdrawal_revert','abuse_clawback')) as mt_adjustment_count
         FROM transactions t
-        LEFT JOIN clients c ON c.login = t.login
-        LEFT JOIN users u ON u.id = c.assigned_agent_id
-        LEFT JOIN ibs ib ON ib.agent_id = c.agent
+        {_agg_joins}
         {where}
     """
 
@@ -339,15 +376,29 @@ async def get_transactions(
             u.full_name  as agent_name,
             ib.name      as ib_name,
             ib.ib_code   as ib_code,
-            -- Network score
-            (SELECT COUNT(*) FROM network_edges ne
-             WHERE ne.login_a = t.login OR ne.login_b = t.login) as network_score,
+            -- Network score: the SINGLE canonical 0-10 value (build_network_scores.py), same as every page
+            (SELECT COALESCE(cx.network_score,0) FROM clients cx WHERE cx.login = t.login LIMIT 1) as network_score,
             -- Total tx count for this client
             (SELECT COUNT(*) FROM transactions t2
              WHERE t2.login = t.login AND t2.tx_type IN ('deposit','withdrawal')) as tx_count,
             t.currency, t.psp_reference, t.approved_at, t.deal_id as ref_id,
             tw.wallet_id AS ocr_wallet_id, tw.confidence AS wallet_conf, tw.sender_acct AS ocr_sender_acct,
-            tw.sender_block AS ocr_sender_block
+            tw.sender_block AS ocr_sender_block, tw.receiver_acct AS ocr_receiver_acct,
+            tw.card_name AS company_card_name, tw.sender_src AS sender_src,
+            -- back-office team member who HOLDS the receiving card (from the Card settings /
+            -- payment_cards). Match by the receiver account first, then the card name.
+            COALESCE(
+              (SELECT pc.holder_name FROM payment_cards pc
+                 WHERE pc.number = NULLIF(tw.receiver_acct,'') AND COALESCE(pc.holder_name,'')<>'' LIMIT 1),
+              (SELECT pc.holder_name FROM payment_cards pc
+                 WHERE pc.account_number::text = NULLIF(tw.receiver_acct,'') AND COALESCE(pc.holder_name,'')<>'' LIMIT 1),
+              (SELECT pc.holder_name FROM payment_cards pc
+                 WHERE lower(pc.card_name) = lower(NULLIF(tw.card_name,'')) AND COALESCE(pc.holder_name,'')<>'' LIMIT 1)
+            ) AS card_holder,
+            tw.receipt_filename AS receipt_filename,
+            -- appended LAST on purpose: the row dict below reads by POSITION (r[0]..r[34]),
+            -- so a new column must never be inserted mid-list.
+            c.country AS country
         FROM transactions t
         LEFT JOIN clients c ON c.login = t.login
         LEFT JOIN users u ON u.id = c.assigned_agent_id
@@ -402,7 +453,7 @@ async def get_transactions(
     transactions = []
     for r in rows:
         wallet_type, wallet_id = parse_wallet(r[5], r[8])
-        net_score = min(10, (r[19] or 0) // 10)
+        net_score = max(0, min(10, int(r[19] or 0)))   # already canonical 0-10
         abuse_flag = get_abuse_flag(r[2], r[3])
         from_acct, to_acct = parse_transfer(r[2], r[5], r[8]) if r[3] == "internal_transfer" else ("", "")
 
@@ -418,7 +469,8 @@ async def get_transactions(
             "tx_date":          str(r[7]) if r[7] else "",
             "notes":            r[8] or "",
             "client_name":      r[9] or f"#{r[2]}",
-            "is_flagged":       bool(r[10]) if len(r) > 10 else False,
+            # r[10] is c.agent (the IB link) — NOT a flag; real flag = open abuse case
+            "is_flagged":       r[2] in abuse_by_login,
             "total_deposits":   float(r[11] or 0),
             "total_withdrawals":float(r[12] or 0),
             "balance":          float(r[13] or 0),
@@ -446,6 +498,12 @@ async def get_transactions(
             "wallet_confidence": r[26] or "",
             "sender_acct":      r[27] or "",
             "sender_block":     r[28] or "",
+            "receiver_acct":    r[29] or "",
+            "card_name":        r[30] or "",
+            "sender_src":       r[31] or "",
+            "card_holder":      r[32] or "",
+            "has_receipt":      bool(r[33]),
+            "country":          r[34] or "",
         })
 
     return {
@@ -457,9 +515,63 @@ async def get_transactions(
     }
 
 
+# ── Receipt image for a transaction ─────────────────────────────────────────────
+# The receipt files live on the docs box (S3, 192.248.181.91) under
+# /var/lib/broker_docs/deposits/f1|f2. Serve them to back-office via SFTP with a
+# small local cache so the details popup can show the actual payment proof.
+RECEIPT_CACHE = r"C:\broker-crm\backend\receipt_cache"
+DOCS_BOX = ("192.248.181.91", "root", r"C:\Users\Administrator\.ssh\id_ed25519")
+_MIME = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "jfif": "image/jpeg", "png": "image/png",
+         "webp": "image/webp", "gif": "image/gif", "bmp": "image/bmp", "pdf": "application/pdf"}
+
+
+def _fetch_receipt(fn: str, folder: str) -> str:
+    """Return a local path for the receipt, pulling it from the docs box on first view."""
+    import os
+    os.makedirs(RECEIPT_CACHE, exist_ok=True)
+    local = os.path.join(RECEIPT_CACHE, os.path.basename(fn))
+    if os.path.exists(local) and os.path.getsize(local) > 0:
+        return local
+    import paramiko
+    host, user, keyfile = DOCS_BOX
+    key = paramiko.Ed25519Key.from_private_key_file(keyfile)
+    tr = paramiko.Transport((host, 22))
+    try:
+        tr.connect(username=user, pkey=key)
+        sftp = paramiko.SFTPClient.from_transport(tr)
+        for fo in [folder or "f1", ("f2" if (folder or "f1") == "f1" else "f1")]:
+            try:
+                sftp.get(f"/var/lib/broker_docs/deposits/{fo}/{os.path.basename(fn)}", local)
+                return local
+            except FileNotFoundError:
+                continue
+    finally:
+        tr.close()
+    raise HTTPException(status_code=404, detail="Receipt file not found on the docs box")
+
+
+@router.get("/{txn_id}/receipt")
+def transaction_receipt(txn_id: int, db: Session = Depends(get_db),
+                        current_user: models.User = Depends(get_current_user)):
+    row = db.execute(text("""
+        SELECT tw.receipt_filename, COALESCE(q.folder, z.folder, s.folder, 'f1')
+        FROM transaction_wallet tw
+        LEFT JOIN pay_qi_card   q ON q.receipt_filename = tw.receipt_filename
+        LEFT JOIN pay_zaincash  z ON z.receipt_filename = tw.receipt_filename
+        LEFT JOIN pay_sham_cash s ON s.receipt_filename = tw.receipt_filename
+        WHERE tw.transaction_id = :t"""), {"t": txn_id}).fetchone()
+    if not row or not row[0]:
+        raise HTTPException(status_code=404, detail="No receipt linked to this transaction")
+    local = _fetch_receipt(row[0], row[1])
+    from fastapi.responses import FileResponse
+    ext = row[0].rsplit(".", 1)[-1].lower() if "." in row[0] else ""
+    return FileResponse(local, media_type=_MIME.get(ext, "application/octet-stream"))
+
+
 @router.post("/action")
 async def transaction_action(
     data: ActionRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -471,6 +583,7 @@ async def transaction_action(
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
+    _old_status = tx.status
     if data.action == "approve":
         tx.status = "approved"
         # TODO: trigger MT5 credit via bridge
@@ -484,6 +597,10 @@ async def transaction_action(
         tx.notes = (tx.notes or "") + f" | Review note: {data.note}"
 
     db.commit()
+    # immutable audit trail for a money-state change (approve/reject a deposit/withdrawal)
+    audit.log(db, current_user, f"transaction_{data.action}", "transaction", data.deal_id,
+              old=_old_status, new=tx.status, amount=float(getattr(tx, "amount", 0) or 0),
+              request=request)
     return {"message": f"Transaction {data.action}d successfully"}
 
 
@@ -499,6 +616,10 @@ REJECT_REASONS = ["Duplicate receipt / transaction ID", "Altered / edited receip
 @router.get("/requests")
 def money_requests_admin(kind: str = "", db: Session = Depends(get_db),
                          current_user: models.User = Depends(get_current_user)):
+    # go-live hardening: the pending queue exposes card numbers/receipts — back-office only.
+    if (getattr(current_user, "role", "") or "").lower() not in BACKOFFICE_ROLES | {"director"}:
+        raise HTTPException(status_code=403, detail="Back-office only")
+
     """Pending portal deposit/withdraw requests awaiting back-office action."""
     db.execute(text("""CREATE TABLE IF NOT EXISTS portal_money_requests (
         id SERIAL PRIMARY KEY, client_id INT, login BIGINT, kind VARCHAR(12), amount NUMERIC,
@@ -517,7 +638,7 @@ def money_requests_admin(kind: str = "", db: Session = Depends(get_db),
                dp.id AS proof_id, COALESCE(dp.image_path,'')<>'' AS has_image, dp.verdict,
                u.full_name AS agent_name,
                ib.name AS ib_name,
-               (SELECT count(*) FROM network_edges ne WHERE ne.login_a = r.login OR ne.login_b = r.login) AS net_edges,
+               (SELECT COALESCE(cx.network_score,0) FROM clients cx WHERE cx.login = r.login LIMIT 1) AS net_edges,
                COALESCE(NULLIF(dp.entered_wallet_id,''), NULLIF(dp.ocr_wallet_id,''), '') AS wallet_id,
                COALESCE(NULLIF(pc.card_name,''), '') AS card_name
         FROM portal_money_requests r LEFT JOIN clients c ON c.login = r.login
@@ -542,7 +663,7 @@ def money_requests_admin(kind: str = "", db: Session = Depends(get_db),
         "method": r[5] or "", "status": r[6], "date": str(r[7])[:16] if r[7] else None,
         "name": r[8] or "", "email": r[9] or "", "phone": r[10] or "", "country": r[11] or "",
         "proof_id": r[12], "has_image": bool(r[13]), "ai_verdict": r[14],
-        "agent_name": r[15] or "", "ib_name": r[16] or "", "network_score": min(10, int(r[17] or 0) // 10),
+        "agent_name": r[15] or "", "ib_name": r[16] or "", "network_score": max(0, min(10, int(r[17] or 0))),
         "wallet_id": r[18] or "", "card_name": r[19] or "", "tx_count": txc.get(r[2], 0),
     } for r in rows], "reject_reasons": REJECT_REASONS}
 
@@ -550,6 +671,9 @@ def money_requests_admin(kind: str = "", db: Session = Depends(get_db),
 @router.get("/requests/{rid}/detail")
 def money_request_detail(rid: int, db: Session = Depends(get_db),
                          current_user: models.User = Depends(get_current_user)):
+    # go-live hardening: full case-file (receipt, OCR, card data) — back-office only.
+    if (getattr(current_user, "role", "") or "").lower() not in BACKOFFICE_ROLES | {"director"}:
+        raise HTTPException(status_code=403, detail="Back-office only")
     """Full case-file for a pending/rejected portal request: payment + (optional) receipt/OCR + client +
     the client's recent deposit/withdraw timeline comments. Powers the Transactions review popup."""
     r = db.execute(text("""
@@ -588,7 +712,7 @@ def money_request_detail(rid: int, db: Session = Depends(get_db),
 
 
 @router.post("/requests/{rid}/action")
-def money_request_action(rid: int, data: dict, db: Session = Depends(get_db),
+def money_request_action(rid: int, data: dict, request: Request, db: Session = Depends(get_db),
                          current_user: models.User = Depends(get_current_user)):
     """Approve (-> records a real ledger transaction) or reject a portal money request."""
     role = (getattr(current_user, "role", "") or "").lower()
@@ -620,6 +744,8 @@ def money_request_action(rid: int, data: dict, db: Session = Depends(get_db),
         _comment(f"{kind}_rejected",
                  f"{kind.title()} ${amount:,.2f} via {method} REJECTED by {who} — {reason or 'no reason given'}")
         db.commit()
+        audit.log(db, current_user, f"{kind}_request_reject", "money_request", rid,
+                  old=r[5], new=f"rejected: {reason or 'no reason'}", amount=amount, request=request)
         return {"ok": True, "status": "rejected"}
     if act == "approve":
         # record it in the ledger so it shows + counts (deal_id offset 9e9 avoids MT/legacy collision)
@@ -634,6 +760,8 @@ def money_request_action(rid: int, data: dict, db: Session = Depends(get_db),
         db.execute(text("UPDATE deposit_proofs SET verdict='approve' WHERE request_id=:i"), {"i": rid})
         _comment(f"{kind}_approved", f"{kind.title()} ${amount:,.2f} via {method} APPROVED by {who}")
         db.commit()
+        audit.log(db, current_user, f"{kind}_request_approve", "money_request", rid,
+                  old=r[5], new="approved", amount=amount, request=request)
         # TODO: push real MT credit/debit via the bridge once enabled
         return {"ok": True, "status": "approved", "note": "Recorded in ledger (simulation — no live MT move)"}
     return {"ok": False, "error": "unknown action"}

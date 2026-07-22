@@ -164,10 +164,10 @@ function CaseDetail({ case: c, onClose, onAction }: any) {
                   <div style={{ width:8, height:8, borderRadius:'50%', background: i===0?'#00e5a0':'#00aaff', flexShrink:0 }} />
                   <span style={{ fontFamily:'monospace', fontSize:11, color:'#00aaff' }}>#{a.login}</span>
                   <span style={{ flex:1, fontSize:12 }}>{a.name}</span>
-                  {a.credit > 0 && <span style={{ fontSize:9, padding:'1px 6px', borderRadius:4, background:'rgba(255,170,0,0.15)', color:'#ffaa00' }}>bonus ${(a.credit||0).toLocaleString()}</span>}
+                  {a.credit > 0 && <span style={{ fontSize:9, padding:'1px 6px', borderRadius:4, background:'rgba(255,170,0,0.15)', color:'#ffaa00' }}>bonus ${(a.credit||0).toLocaleString('en-GB')}</span>}
                   {a.is_islamic && <span style={{ fontSize:9, padding:'1px 6px', borderRadius:4, background:'rgba(0,170,255,0.15)', color:'#00aaff' }}>swap-free</span>}
                   <span style={{ fontSize:11, color:'#555' }}>{a.country}</span>
-                  <span style={{ fontSize:12, color:'#00e5a0', fontWeight:600 }}>${(a.balance||0).toLocaleString()}</span>
+                  <span style={{ fontSize:12, color:'#00e5a0', fontWeight:600 }}>${(a.balance||0).toLocaleString('en-GB')}</span>
                 </div>
               ))}
             </div>
@@ -217,7 +217,7 @@ function CaseDetail({ case: c, onClose, onAction }: any) {
           <div style={{ marginBottom:16 }}>
             <div style={{ fontSize:10, color:'#555', textTransform:'uppercase', letterSpacing:.5, marginBottom:6 }}>Financial impact</div>
             <div style={{ background:'#373f4d', borderRadius:8, padding:12 }}>
-              {[['Total deposits', `$${(c.total_deposits||0).toLocaleString()}`, '#00e5a0'], ['Exposure / extraction', `$${(c.exposure||0).toLocaleString()}`, '#ff4d4d']].map(([k,v,cl])=>(
+              {[['Total deposits', `$${(c.total_deposits||0).toLocaleString('en-GB')}`, '#00e5a0'], ['Exposure / extraction', `$${(c.exposure||0).toLocaleString('en-GB')}`, '#ff4d4d']].map(([k,v,cl])=>(
                 <div key={k as string} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', borderBottom:'1px solid #4f596b', fontSize:12 }}>
                   <span style={{ color:'#555' }}>{k}</span>
                   <span style={{ color:cl as string, fontWeight:600 }}>{v}</span>
@@ -350,7 +350,7 @@ export default function AbuseDetection() {
         ].map((k,i) => (
           <div key={i} style={{ background:'#2c333e', border:'1px solid #373f4d', borderRadius:8, padding:'8px 12px' }}>
             <div style={{ fontSize:9, color:'#555', textTransform:'uppercase', letterSpacing:.5, marginBottom:3 }}>{k.label}</div>
-            <div style={{ fontSize:20, fontWeight:700, color:k.color }}>{k.value.toLocaleString()}</div>
+            <div style={{ fontSize:20, fontWeight:700, color:k.color }}>{k.value.toLocaleString('en-GB')}</div>
           </div>
         ))}
       </div>
@@ -388,7 +388,7 @@ export default function AbuseDetection() {
           <option value="reviewing">Reviewing</option>
           <option value="resolved">Resolved</option>
         </select>
-        <span style={{ marginLeft:'auto', fontSize:11, color:'#555' }}>{total.toLocaleString()} cases</span>
+        <span style={{ marginLeft:'auto', fontSize:11, color:'#555' }}>{total.toLocaleString('en-GB')} cases</span>
       </div>
 
       {/* Table */}
@@ -443,10 +443,10 @@ export default function AbuseDetection() {
                   <td style={{ padding:'8px 10px' }}><NetworkRing score={c.network_score||0} /></td>
                   <td style={{ padding:'8px 10px', minWidth:80 }}><RiskBar value={c.risk_score||0} color={color} /></td>
                   <td style={{ padding:'8px 10px', color: c.confidence>=80?'#00e5a0':c.confidence>=60?'#ffaa00':'#555', fontWeight:600 }}>{c.confidence}%</td>
-                  <td style={{ padding:'8px 10px', color:'#00e5a0', fontWeight:600 }}>${(c.total_deposits||0).toLocaleString()}</td>
-                  <td style={{ padding:'8px 10px', color:color, fontWeight:600 }}>${(c.exposure||0).toLocaleString()}</td>
+                  <td style={{ padding:'8px 10px', color:'#00e5a0', fontWeight:600 }}>${(c.total_deposits||0).toLocaleString('en-GB')}</td>
+                  <td style={{ padding:'8px 10px', color:color, fontWeight:600 }}>${(c.exposure||0).toLocaleString('en-GB')}</td>
                   <td style={{ padding:'8px 10px', color:'#555', fontSize:11, whiteSpace:'nowrap' }}>
-                    {c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}
+                    {c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB') : '—'}
                   </td>
                   <td style={{ padding:'8px 10px' }}>
                     <span style={{ fontSize:10, padding:'2px 8px', borderRadius:99, background:'#373f4d', color:STATUS_COLOR[c.status]||'#555' }}>{c.status}</span>

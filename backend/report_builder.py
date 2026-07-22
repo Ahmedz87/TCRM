@@ -172,7 +172,8 @@ CONFIG = {
     "deposit": {
         "title": "Transactions — Deposits", "date_label": "by transaction date",
         "from": "transactions t LEFT JOIN clients c ON c.login = t.login", "date_col": "t.tx_date", "dim": TXN_DIM,
-        "base_where": ["t.tx_type='deposit'"],
+        "base_where": ["t.tx_type='deposit'", "t.amount < 1000000", "COALESCE(t.method,'') <> 'MT5'",
+                       r"COALESCE(t.method,'') !~* '(deposit\s*[/ ]?\s*fix|balance\s*fix|deposit\s*fee|negative\s*balance|stop\s*out\s*comp|reverting\s*cap|capital\s*refund|cash\s*back|credit\s*(in|out)|bonus\s*adjustment)'"],
         "group_by": [["month", "Month"], ["none", "Total"], ["method", "Method"], ["country", "Country"]],
         "metrics": [
             ("count(*)", "cnt", "Deposit count", T_INT),
@@ -184,14 +185,14 @@ CONFIG = {
         "filters": [
             {"key": "ib", "label": "IB", "opts": [["all", "All"], ["with_ib", "With IB"], ["without_ib", "Without IB"]],
              "pred": {"with_ib": "coalesce(c.agent,0)>0", "without_ib": "coalesce(c.agent,0)=0"}},
-            {"key": "method", "label": "Method", "opts": [["all", "All methods"], ["Qi card", "Qi card"], ["Zaincash", "Zaincash"], ["Tether | USDT", "USDT"], ["Perfect Money", "Perfect Money"], ["Wallet Cash", "Wallet Cash"], ["MT5", "MT5 (internal)"]],
-             "pred": {"Qi card": "t.method='Qi card'", "Zaincash": "t.method='Zaincash'", "Tether | USDT": "t.method='Tether | USDT'", "Perfect Money": "t.method='Perfect Money'", "Wallet Cash": "t.method='Wallet Cash'", "MT5": "t.method='MT5'"}},
+            {"key": "method", "label": "Method", "opts": [["all", "All methods"], ["Qi card", "Qi card"], ["Zaincash", "Zaincash"], ["Shamcash", "Shamcash"], ["Tether | USDT", "USDT"], ["Perfect Money", "Perfect Money"], ["Wallet Cash", "Wallet Cash"], ["MT5", "MT5 (internal)"]],
+             "pred": {"Qi card": "t.method='Qi card'", "Zaincash": "t.method='Zaincash'", "Shamcash": "t.method='Shamcash'", "Tether | USDT": "t.method='Tether | USDT'", "Perfect Money": "t.method='Perfect Money'", "Wallet Cash": "t.method='Wallet Cash'", "MT5": "t.method='MT5'"}},
         ],
     },
     "withdraw": {
         "title": "Transactions — Withdrawals", "date_label": "by transaction date",
         "from": "transactions t LEFT JOIN clients c ON c.login = t.login", "date_col": "t.tx_date", "dim": TXN_DIM,
-        "base_where": ["t.tx_type='withdrawal'"],
+        "base_where": ["t.tx_type='withdrawal'", "t.amount < 1000000", "COALESCE(t.status,'') <> 'rejected'"],
         "group_by": [["month", "Month"], ["none", "Total"], ["method", "Method"], ["country", "Country"]],
         "metrics": [
             ("count(*)", "cnt", "Withdrawal count", T_INT),
@@ -203,8 +204,8 @@ CONFIG = {
         "filters": [
             {"key": "ib", "label": "IB", "opts": [["all", "All"], ["with_ib", "With IB"], ["without_ib", "Without IB"]],
              "pred": {"with_ib": "coalesce(c.agent,0)>0", "without_ib": "coalesce(c.agent,0)=0"}},
-            {"key": "method", "label": "Method", "opts": [["all", "All methods"], ["Qi card", "Qi card"], ["Zaincash", "Zaincash"], ["USDT", "USDT"], ["TB", "Bank (TB)"]],
-             "pred": {"Qi card": "t.method='Qi card'", "Zaincash": "t.method='Zaincash'", "USDT": "t.method='USDT'", "TB": "t.method='TB'"}},
+            {"key": "method", "label": "Method", "opts": [["all", "All methods"], ["Qi card", "Qi card"], ["Zaincash", "Zaincash"], ["Shamcash", "Shamcash"], ["USDT", "USDT"], ["TB", "Bank (TB)"]],
+             "pred": {"Qi card": "t.method='Qi card'", "Zaincash": "t.method='Zaincash'", "Shamcash": "t.method='Shamcash'", "USDT": "t.method='USDT'", "TB": "t.method='TB'"}},
         ],
     },
 }
@@ -289,6 +290,20 @@ def _dim_label(cfg, key):
     return key.title()
 
 
+# Department/role scoping (Jul 2026): when params["scope_agent_ids"] is a list, every category
+# is restricted to clients/leads owned by those sales agents (rbac.scope_agent_ids semantics:
+# agent -> own book, manager -> team, admin/director -> None = everything).
+_SCOPE_SQL = {
+    "validation": "assigned_agent_id = ANY(:scope_ids)",
+    "clients":    "assigned_agent_id = ANY(:scope_ids)",
+    "leads":      "assigned_agent_id = ANY(:scope_ids)",
+    "deposit":    "c.assigned_agent_id = ANY(:scope_ids)",
+    "withdraw":   "c.assigned_agent_id = ANY(:scope_ids)",
+    # an IB belongs to the agent who owns the IB's OWN client account
+    "ib":         "agent_id IN (SELECT login FROM clients WHERE assigned_agent_id = ANY(:scope_ids))",
+}
+
+
 def run_report(db, category, params):
     if category == "sales":
         return _run_sales(db, params)
@@ -304,6 +319,9 @@ def run_report(db, category, params):
     if sd:
         col = cfg["date_col"]
         where.append(f"{col} >= :sd AND {col} < :ed"); sqlp.update(sd=sd, ed=ed)
+    scope_ids = params.get("scope_agent_ids")
+    if scope_ids is not None:
+        where.append(_SCOPE_SQL[category]); sqlp["scope_ids"] = list(scope_ids) or [-1]
     where += _build_filter_where(cfg, filters, sqlp)
     where_sql = " AND ".join(where) if where else "1=1"
 
@@ -356,6 +374,9 @@ def _run_sales(db, params):
     teams = [int(t) for t in _as_list(f.get("team")) if str(t).isdigit()]
     if teams:
         where += " AND (u.id IN :teams OR u.manager_id IN :teams)"; sp["teams"] = tuple(teams)
+    scope_ids = params.get("scope_agent_ids")
+    if scope_ids is not None:          # role scoping: agent sees himself, manager sees the team
+        where += " AND u.id = ANY(:scope_ids)"; sp["scope_ids"] = list(scope_ids) or [-1]
 
     # client-scope filters applied INSIDE every client-joined CTE (country + under-IB)
     cflt = ""
@@ -454,7 +475,7 @@ def _run_sales(db, params):
         {"key": "d2", "label": "D2 (≥2 dep)", "type": T_INT},
         {"key": "d3", "label": "D3 (≥3 dep)", "type": T_INT},
         {"key": "deposits", "label": "Total deposits $", "type": T_MONEY},
-        {"key": "own_nda", "label": "Own NDA", "type": T_INT},
+        {"key": "own_nda", "label": "Own New Clients", "type": T_INT},
         {"key": "new_ibs", "label": "New IB", "type": T_INT},
         {"key": "withdrawals", "label": "Total withdrawals $", "type": T_MONEY},
         {"key": "net", "label": "Net deposit $", "type": T_MONEY},

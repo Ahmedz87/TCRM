@@ -35,9 +35,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("bridge_mt4")
 
 # â”€â”€ CONFIG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-MT4_SERVER   = b"192.109.17.53:443"
-MT4_LOGIN    = 1025
-MT4_PASSWORD = b"Aqjf0pJ"
+from mt_secrets import MT4_SERVER, MT4 as _MT4
+MT4_LOGIN, MT4_PASSWORD = _MT4["A"]
 DLL_PATH     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mtmanapi64.dll")
 
 # â”€â”€ VTABLE SLOT INDICES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -872,42 +871,58 @@ def sync_trade_journal(days: int = 3):
     RE_CLOSE = re.compile(
         r"'(\d+)':\s*close order #(\d+)\s*\((buy|sell)\s+([\d.]+)\s+(\S+)\s+at\s+([\d.]+)\)\s+at\s+([\d.]+)"
     )
-    from_time = int(time.time()) - days * 86400
-    to_time   = int(time.time())
-    total = c_int(0)
-    ptr = vcall(man, 96, c_void_p,
-                [c_int, c_int, c_int, c_char_p, POINTER(c_int)],
-                2, from_time, to_time, b"", byref(total))
-    if not ptr or total.value <= 0:
-        return []
+    # The MT4 server caps ONE journal request at ~288k records. A 2-day window now EXCEEDS that
+    # (busy book), and the server returns the OLDEST records from `from_time` then truncates — so
+    # the NEWEST trades were dropped and MT4 trades silently froze (~Jul 15 2026). Fetch in small
+    # sub-windows so every request stays well under the cap and the recent trades are always
+    # included. Idempotent downstream (save_journal_deals dedups on order), so overlap is harmless.
+    end_time   = int(time.time())
+    start_time = end_time - int(days * 86400)   # days may be fractional -> keep it an int for ctypes
+    CHUNK = 30 * 60                        # 30-min sub-windows — this journal is pathologically
+    CAP_WARN = 280000                      # dense (~293k records/HOUR), so even 1h hits the ~288k
+                                           # server cap; 30min (~146k) stays safely under it
     cmd_map = {"buy": 0, "sell": 1}
     trades = []
-    for i in range(total.value):
-        off = ptr + i * SERVERLOG_SIZE + OFFSET_MSG
-        msg = string_at(off, 512).split(b"\x00")[0].decode("utf-8", errors="ignore")
-        m = RE_CLOSE.search(msg)
-        if not m:
+    rec_total = 0
+    cur = start_time
+    while cur < end_time:
+        nxt = min(cur + CHUNK, end_time)
+        total = c_int(0)
+        ptr = vcall(man, 96, c_void_p,
+                    [c_int, c_int, c_int, c_char_p, POINTER(c_int)],
+                    2, cur, nxt, b"", byref(total))
+        cur = nxt
+        if not ptr or total.value <= 0:
             continue
-        toff = ptr + i * SERVERLOG_SIZE + OFFSET_TIME
-        tstr = string_at(toff, 24).split(b"\x00")[0].decode("utf-8", errors="ignore").strip()
-        try:
-            dt = datetime.strptime(tstr[:19], "%Y.%m.%d %H:%M:%S")
-        except Exception:
-            dt = None
-        trades.append({
-            "order":       int(m.group(2)),
-            "login":       int(m.group(1)),
-            "symbol":      m.group(5),
-            "cmd":         cmd_map[m.group(3)],
-            "direction":   m.group(3),
-            "volume":      float(m.group(4)),
-            "open_price":  float(m.group(6)),
-            "close_price": float(m.group(7)),
-            "dt":          dt,
-        })
-    mem_free(ptr)
-    log.info("sync_trade_journal: %d records, %d closed trades in last %dd",
-             total.value, len(trades), days)
+        if total.value >= CAP_WARN:
+            log.warning("sync_trade_journal: chunk hit %d records (near cap) — shrink CHUNK", total.value)
+        rec_total += total.value
+        for i in range(total.value):
+            off = ptr + i * SERVERLOG_SIZE + OFFSET_MSG
+            msg = string_at(off, 512).split(b"\x00")[0].decode("utf-8", errors="ignore")
+            m = RE_CLOSE.search(msg)
+            if not m:
+                continue
+            toff = ptr + i * SERVERLOG_SIZE + OFFSET_TIME
+            tstr = string_at(toff, 24).split(b"\x00")[0].decode("utf-8", errors="ignore").strip()
+            try:
+                dt = datetime.strptime(tstr[:19], "%Y.%m.%d %H:%M:%S")
+            except Exception:
+                dt = None
+            trades.append({
+                "order":       int(m.group(2)),
+                "login":       int(m.group(1)),
+                "symbol":      m.group(5),
+                "cmd":         cmd_map[m.group(3)],
+                "direction":   m.group(3),
+                "volume":      float(m.group(4)),
+                "open_price":  float(m.group(6)),
+                "close_price": float(m.group(7)),
+                "dt":          dt,
+            })
+        mem_free(ptr)
+    log.info("sync_trade_journal: %d records, %d closed trades in last %.1fh (1h-chunked)",
+             rec_total, len(trades), days * 24)
     return trades
 
 

@@ -42,6 +42,7 @@ export default function RegisterWizard() {
       return {
         utm_source: q.get('utm_source') || '', utm_medium: q.get('utm_medium') || '',
         utm_campaign: q.get('utm_campaign') || '', gclid: q.get('gclid') || '', fbclid: q.get('fbclid') || '',
+        ref: q.get('ref') || '',   // IB referral code (belt-and-braces; the /r/ cookie is the robust path)
       };
     } catch { return {}; }
   })();

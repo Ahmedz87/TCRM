@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import get_db
+import login_guard
 from auth import (verify_password, create_access_token, get_password_hash,
                   get_current_user, oauth2_scheme, settings)
 from jose import jwt, JWTError
 from datetime import datetime as _dt
 import models
+import rbac
 from pydantic import BaseModel
 from typing import Optional
 
@@ -22,14 +24,23 @@ class UserCreate(BaseModel):
     language: Optional[str] = "en"
 
 @router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # ── Brute-force lockout (P0): this endpoint authenticates staff AND clients and is
+    # publicly reachable — throttle before verifying any password. Admin accounts move
+    # real money, so they must not be brute-forceable. ──
+    ident = (form_data.username or "").strip()
+    ip = login_guard.client_ip(request)
+    login_guard.check_and_raise(db, ident, ip)
+
     # ── STAFF first: the same email can ONLY be a staff user if it's in `users` ──
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if user:
         if not verify_password(form_data.password, user.hashed_password):
+            login_guard.record(db, ident, ip, ok=False)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
         if not user.is_active:
             raise HTTPException(status_code=400, detail="Account is disabled")
+        login_guard.record(db, ident, ip, ok=True)
         token = create_access_token(data={"sub": user.email, "role": user.role, "user_type": "staff"})
         return {
             "access_token": token, "token_type": "bearer",
@@ -38,7 +49,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
                 "role": user.role, "user_type": "staff", "language": user.language,
                 "extension": user.extension or "",
                 "must_change_password": bool(getattr(user, "must_change_password", False)),
-                "can_reassign_agent": bool(getattr(user, "can_reassign_agent", False)),
+                "can_reassign_agent": rbac.may_reassign_agent(user),
             }
         }
 
@@ -51,6 +62,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         LIMIT 1
     """), {"e": form_data.username}).fetchone()
     if crow and verify_password(form_data.password, crow[3]):
+        login_guard.record(db, ident, ip, ok=True)
         token = create_access_token(data={"sub": crow[2] or f"client{crow[0]}",
                                            "role": "client", "user_type": "client", "login": crow[0]})
         return {
@@ -61,6 +73,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
                 "must_change_password": False, "can_reassign_agent": False,
             }
         }
+    login_guard.record(db, ident, ip, ok=False)
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
 # Roles a caller may assign when creating a staff account. Only super_admin may mint
@@ -132,16 +145,29 @@ def get_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
         tva_cmp = tva.replace(tzinfo=None) if tva.tzinfo else tva
         if iat is None or _dt.utcfromtimestamp(iat) < tva_cmp:
             raise _401
+    # team-leader/manager scope context: powers the "My own data" toggle + section gating
+    try:
+        import rbac
+        _is_lead = rbac.is_team_lead(db, user)
+        _smode, _ssecs = rbac._overrides(db, user.id)
+    except Exception:
+        db.rollback(); _is_lead, _smode, _ssecs = False, "team", set()
     return {
         "id": user.id, "full_name": user.full_name, "email": user.email,
         "role": user.role, "user_type": "staff", "language": user.language,
         "is_active": user.is_active, "extension": user.extension or "",
         "department": getattr(user, "department", None),
+        "title": getattr(user, "title", "") or "",
+        # team-lead flag -> frontend shows the "My own data" toggle on list pages; scope_mode/sections
+        # let it hide pages a restricted leader can't see.
+        "is_team_lead": bool(_is_lead),
+        "scope_mode": _smode,
+        "scope_sections": sorted(_ssecs),
         # per-user nav override ("small admin" granted specific pages). Empty -> role-based nav.
         "nav_keys": (db.execute(text("SELECT nav_keys FROM users WHERE id=:id"), {"id": user.id}).scalar() or ""),
         # when impersonating, never force a password change — the admin just wants to SEE the CRM
         "must_change_password": bool(getattr(user, "must_change_password", False)) and not payload.get("imp"),
-        "can_reassign_agent": bool(getattr(user, "can_reassign_agent", False)),
+        "can_reassign_agent": rbac.may_reassign_agent(user),
         # impersonation context (admin viewing the CRM AS this user, read-only)
         "impersonating": bool(payload.get("imp")),
         "impersonator_name": payload.get("imp_by_name") or "",

@@ -19,9 +19,7 @@ log = logging.getLogger("bridge")
 app  = Flask(__name__)
 CORS(app)
 
-MT5_SERVER   = "192.109.15.62:443"
-MT5_LOGIN    = 1025
-MT5_PASSWORD = "ZjFb!vA0"
+from mt_secrets import MT5_SERVER, MT5_LOGIN, MT5_PASSWORD
 
 _manager = None
 
@@ -368,14 +366,19 @@ def save_clients_to_db(traders: list):
                 existing.leverage         = t.get("leverage",100)
                 existing.group_name       = t.get("group","")
                 existing.agent            = t.get("agent",0)
-                existing.total_deposits   = t.get("totalDeposits",0)
-                existing.total_withdrawals= t.get("totalWithdrawals",0)
-                existing.first_deposit_at = t.get("firstDepositAt","")
-                existing.first_deposit_amount = t.get("firstDepositAmount",0)
-                existing.last_deposit_at  = t.get("lastDepositAt","")
-                existing.last_withdraw_at = t.get("lastWithdrawAt","")
-                existing.last_trade_at    = t.get("lastTradeAt","")
-                existing.reg_date         = t.get("reg_date","")
+                # DEPOSIT TOTALS ARE OWNED BY update_client_totals (transactions truth). The live
+                # MT payload (user_to_dict) hardcodes totalDeposits:0 / firstDepositAt:"" etc as
+                # placeholders, so the old unconditional assignment ZEROED every synced client's
+                # totals each cycle (the Jul 2026 "$18.4M of depositors show $0" bug). Only accept
+                # a MEANINGFUL (truthy) value — the bridge must never blank these derived fields.
+                if t.get("totalDeposits"):      existing.total_deposits    = t["totalDeposits"]
+                if t.get("totalWithdrawals"):   existing.total_withdrawals = t["totalWithdrawals"]
+                if t.get("firstDepositAt"):     existing.first_deposit_at  = t["firstDepositAt"]
+                if t.get("firstDepositAmount"): existing.first_deposit_amount = t["firstDepositAmount"]
+                if t.get("lastDepositAt"):      existing.last_deposit_at   = t["lastDepositAt"]
+                if t.get("lastWithdrawAt"):     existing.last_withdraw_at  = t["lastWithdrawAt"]
+                if t.get("lastTradeAt"):        existing.last_trade_at     = t["lastTradeAt"]
+                if t.get("reg_date"):           existing.reg_date          = t["reg_date"]
                 # kyc_status is OWNED BY THE KYC ENGINE — never clobber a real verification here.
                 # (This line used to reset a freshly-approved account back to 'pending' because its
                 # balance was $0, which broke the portal KYC banner + the welcome-bonus state.) Only
@@ -872,12 +875,15 @@ def update_live_data(manager, db):
                     equity = balance
                 if not login:
                     continue
+                # #257: stamp updated_at too — the margin-watch page's freshness indicator
+                # (data_as_of = MAX(updated_at)) read as "8 days old" while the equity values
+                # were actually live, because these writes never touched the timestamp.
                 db.execute(
-                    text("UPDATE clients SET equity=:eq, margin_level=:ml, balance=:bal WHERE login=:l"),
+                    text("UPDATE clients SET equity=:eq, margin_level=:ml, balance=:bal, updated_at=NOW() WHERE login=:l"),
                     {"eq": equity, "ml": margin_level, "bal": balance, "l": login}
                 )
                 db.execute(
-                    text("UPDATE trading_accounts SET equity=:eq, margin_level=:ml, free_margin=:fm, balance=:bal WHERE login=:l"),
+                    text("UPDATE trading_accounts SET equity=:eq, margin_level=:ml, free_margin=:fm, balance=:bal, updated_at=NOW() WHERE login=:l"),
                     {"eq": equity, "ml": margin_level, "fm": free_margin, "bal": balance, "l": login}
                 )
                 updated += 1
@@ -978,6 +984,7 @@ def sync_loop():
         sleep_time = next_run - time.time()
         if sleep_time > 0:
             time.sleep(sleep_time)
+
 
 # ── NETWORK GRAPH ──────────────────────────────────────────────────────────
 def build_response(traders):
@@ -1494,8 +1501,12 @@ def provision_create():
 
         master = d.get("master") or genpw()
         investor = d.get("investor") or genpw()
-        res = mgr.UserAdd(u, master, investor)
-        login = int(getattr(u, "Login", 0) or 0)
+        # SECURITY/STABILITY (P0, Jul 16): the native manager DLL is NOT thread-safe. Hold the
+        # global lock across the native call so a UserAdd never races the sync loop's
+        # UserGetByGroup on the same socket (which hangs the whole bridge).
+        with _MGR_LOCK:
+            res = mgr.UserAdd(u, master, investor)
+            login = int(getattr(u, "Login", 0) or 0)
         if not login:
             try: err = str(mt5m.LastError())
             except Exception: err = f"UserAdd returned {res}"
@@ -1517,7 +1528,8 @@ def provision_credit(login):
             return jsonify({"ok": False, "error": "manager not connected"}), 503
         amount = float(d.get("amount") or 0); comment = d.get("comment") or "Deposit"
         ctype = int(d.get("type") or 2)
-        ok = mgr.DealerBalance(login, amount, ctype, comment)
+        with _MGR_LOCK:                               # serialize native access (see provision_create)
+            ok = mgr.DealerBalance(login, amount, ctype, comment)
         return jsonify({"ok": bool(ok), "login": login, "amount": amount, "type": ctype})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -1530,7 +1542,8 @@ def provision_delete(login):
         mgr = get_manager()
         if not mgr:
             return jsonify({"ok": False, "error": "manager not connected"}), 503
-        return jsonify({"ok": bool(mgr.UserDelete(login))})
+        with _MGR_LOCK:
+            return jsonify({"ok": bool(mgr.UserDelete(login))})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -1550,7 +1563,8 @@ def provision_password(login):
             return jsonify({"ok": False, "error": "no password"}), 400
         R = mt5m.MTUser.EnUsersPasswords
         ptype = getattr(R, "USER_PASS_INVESTOR") if kind == "investor" else getattr(R, "USER_PASS_MAIN")
-        ok = mgr.UserPasswordChange(ptype, int(login), pw)
+        with _MGR_LOCK:
+            ok = mgr.UserPasswordChange(ptype, int(login), pw)
         if not ok:
             try: err = str(mt5m.LastError())
             except Exception: err = "UserPasswordChange failed"
@@ -1571,19 +1585,20 @@ def provision_leverage(login):
         mgr = get_manager()
         if not mgr:
             return jsonify({"ok": False, "error": "manager not connected"}), 503
-        u = None
-        for meth in ("UserRequest", "UserGet"):
-            try:
-                if hasattr(mgr, meth):
-                    u = getattr(mgr, meth)(int(login))
-                    if u:
-                        break
-            except Exception:
-                u = None
-        if not u:
-            return jsonify({"ok": False, "error": "user not found"}), 404
-        u.Leverage = lev
-        ok = mgr.UserUpdate(u)
+        with _MGR_LOCK:                               # read-then-update must be atomic + serialized
+            u = None
+            for meth in ("UserRequest", "UserGet"):
+                try:
+                    if hasattr(mgr, meth):
+                        u = getattr(mgr, meth)(int(login))
+                        if u:
+                            break
+                except Exception:
+                    u = None
+            if not u:
+                return jsonify({"ok": False, "error": "user not found"}), 404
+            u.Leverage = lev
+            ok = mgr.UserUpdate(u)
         return jsonify({"ok": bool(ok), "login": login, "leverage": lev})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -1602,22 +1617,23 @@ def provision_group(login):
         mgr = get_manager()
         if not mgr:
             return jsonify({"ok": False, "error": "manager not connected"}), 503
-        u = None
-        for meth in ("UserRequest", "UserGet"):
-            try:
-                if hasattr(mgr, meth):
-                    u = getattr(mgr, meth)(int(login))
-                    if u:
-                        break
-            except Exception:
-                u = None
-        if not u:
-            return jsonify({"ok": False, "error": "user not found"}), 404
-        old = getattr(u, "Group", "")
-        if dry:
-            return jsonify({"ok": True, "dry": True, "login": login, "old_group": old, "new_group": grp})
-        u.Group = grp
-        ok = mgr.UserUpdate(u)
+        with _MGR_LOCK:                               # read-then-update must be atomic + serialized
+            u = None
+            for meth in ("UserRequest", "UserGet"):
+                try:
+                    if hasattr(mgr, meth):
+                        u = getattr(mgr, meth)(int(login))
+                        if u:
+                            break
+                except Exception:
+                    u = None
+            if not u:
+                return jsonify({"ok": False, "error": "user not found"}), 404
+            old = getattr(u, "Group", "")
+            if dry:
+                return jsonify({"ok": True, "dry": True, "login": login, "old_group": old, "new_group": grp})
+            u.Group = grp
+            ok = mgr.UserUpdate(u)
         return jsonify({"ok": bool(ok), "login": login, "old_group": old, "new_group": grp})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -1661,7 +1677,8 @@ def _dealer_trade(mgr, login, symbol, side, lots, position_ticket=None):
     if position_ticket:
         _set(req, Position=int(position_ticket))
     try:
-        confirm = mgr.DealerSend(req)
+        with _MGR_LOCK:                               # serialize native access (see provision_create)
+            confirm = mgr.DealerSend(req)
         if not confirm:
             try: err = str(mt5m.LastError())
             except Exception: err = "DealerSend returned falsy"

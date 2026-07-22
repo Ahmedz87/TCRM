@@ -11,6 +11,8 @@ week_start, so last week's progress/claims never carry over.
 
 Emails go out via email_send (degrades to a log line if SMTP isn't configured).
 """
+import json
+import re
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import text
 
@@ -39,6 +41,137 @@ WEEKLY = [
 ]
 WEEKLY_BY_KEY = {c["key"]: c for c in WEEKLY}
 
+# ── DB-editable definitions (partner-site admin) ─────────────────────────────
+# The CAREER/WEEKLY constants above are only the FIRST-RUN SEED; after that the
+# ibp_challenge_defs table is the source of truth (edited from the partner admin UI).
+_DEFS_READY = False
+
+
+def _num(v, default=0):
+    try:
+        f = float(v)
+        return int(f) if f.is_integer() else f
+    except (TypeError, ValueError):
+        return default
+
+
+def ensure_defs(db):
+    global _DEFS_READY
+    if _DEFS_READY:
+        return
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS ibp_challenge_defs (
+            kind    VARCHAR NOT NULL,           -- career | weekly
+            key     VARCHAR NOT NULL,
+            ord     INTEGER NOT NULL DEFAULT 0,
+            name    VARCHAR NOT NULL,
+            descr   VARCHAR DEFAULT '',
+            emoji   VARCHAR DEFAULT '',
+            reward  DOUBLE PRECISION DEFAULT 0,
+            days    INTEGER,
+            targets JSONB,
+            metric  VARCHAR,
+            target  DOUBLE PRECISION,
+            enabled BOOLEAN DEFAULT TRUE,
+            PRIMARY KEY (kind, key)
+        )
+    """))
+    if not (db.execute(text("SELECT COUNT(*) FROM ibp_challenge_defs")).scalar() or 0):
+        for c in CAREER:
+            db.execute(text("""
+                INSERT INTO ibp_challenge_defs (kind, key, ord, name, descr, reward, days, targets, enabled)
+                VALUES ('career', :k, :o, :n, :d, :r, :dy, CAST(:t AS jsonb), TRUE)
+                ON CONFLICT DO NOTHING"""),
+                {"k": c["key"], "o": c["stage"], "n": c["name"], "d": c["desc"],
+                 "r": c["reward"], "dy": c["days"], "t": json.dumps(c["target"])})
+        for i, w in enumerate(WEEKLY):
+            db.execute(text("""
+                INSERT INTO ibp_challenge_defs (kind, key, ord, name, descr, emoji, reward, metric, target, enabled)
+                VALUES ('weekly', :k, :o, :n, :d, :e, :r, :m, :t, TRUE)
+                ON CONFLICT DO NOTHING"""),
+                {"k": w["key"], "o": i + 1, "n": w["name"], "d": w["desc"], "e": w["emoji"],
+                 "r": w["reward"], "m": w["metric"], "t": w["target"]})
+    db.commit()
+    _DEFS_READY = True
+
+
+def get_career(db, include_disabled=False):
+    ensure_defs(db)
+    out = []
+    for r in db.execute(text("""
+            SELECT key, ord, name, descr, reward, days, targets, enabled
+            FROM ibp_challenge_defs WHERE kind = 'career' ORDER BY ord, key""")).fetchall():
+        if not include_disabled and not r[7]:
+            continue
+        t = r[6] or {}
+        if isinstance(t, str):
+            t = json.loads(t)
+        out.append({"key": r[0], "stage": int(r[1] or 0), "name": r[2], "desc": r[3] or "",
+                    "reward": _num(r[4]), "days": int(r[5] or 30),
+                    "target": {k: _num(v) for k, v in t.items() if _num(v)},
+                    "enabled": bool(r[7])})
+    return out
+
+
+def get_weekly(db, include_disabled=False):
+    ensure_defs(db)
+    out = []
+    for r in db.execute(text("""
+            SELECT key, ord, name, descr, emoji, reward, metric, target, enabled
+            FROM ibp_challenge_defs WHERE kind = 'weekly' ORDER BY ord, key""")).fetchall():
+        if not include_disabled and not r[8]:
+            continue
+        out.append({"key": r[0], "emoji": r[4] or "🏅", "name": r[2], "desc": r[3] or "",
+                    "metric": r[6] or "ftd", "target": _num(r[7], 1), "reward": _num(r[5]),
+                    "enabled": bool(r[8])})
+    return out
+
+
+def _slug(name, existing):
+    base = re.sub(r"[^a-z0-9]+", "_", (name or "challenge").lower()).strip("_") or "challenge"
+    key, i = base, 2
+    while key in existing:
+        key, i = f"{base}_{i}", i + 1
+    return key
+
+
+def admin_save(db, career, weekly):
+    """Full replace from the partner-admin editor. Keys are kept stable (they join to the
+    IBs' accepted/claimed rows); new items get a slug key derived from the name."""
+    ensure_defs(db)
+    db.execute(text("DELETE FROM ibp_challenge_defs"))
+    seen = set()
+    for i, c in enumerate(career or []):
+        key = (c.get("key") or "").strip() or _slug(c.get("name"), seen)
+        if key in seen:
+            continue
+        seen.add(key)
+        target = {k: _num(v) for k, v in (c.get("target") or {}).items()
+                  if k in ("clients", "ftd", "nda", "lots") and _num(v)}
+        db.execute(text("""
+            INSERT INTO ibp_challenge_defs (kind, key, ord, name, descr, reward, days, targets, enabled)
+            VALUES ('career', :k, :o, :n, :d, :r, :dy, CAST(:t AS jsonb), :en)"""),
+            {"k": key, "o": i + 1, "n": (c.get("name") or "").strip() or key,
+             "d": (c.get("desc") or "").strip(), "r": _num(c.get("reward")),
+             "dy": max(1, int(_num(c.get("days"), 30))), "t": json.dumps(target or {"clients": 1}),
+             "en": bool(c.get("enabled", True))})
+    wseen = set()
+    for i, w in enumerate(weekly or []):
+        key = (w.get("key") or "").strip() or _slug(w.get("name"), seen | wseen)
+        if key in wseen:
+            continue
+        wseen.add(key)
+        metric = w.get("metric") if w.get("metric") in ("ftd", "nda", "lots", "deposits", "regs", "clicks") else "ftd"
+        db.execute(text("""
+            INSERT INTO ibp_challenge_defs (kind, key, ord, name, descr, emoji, reward, metric, target, enabled)
+            VALUES ('weekly', :k, :o, :n, :d, :e, :r, :m, :t, :en)"""),
+            {"k": key, "o": i + 1, "n": (w.get("name") or "").strip() or key,
+             "d": (w.get("desc") or "").strip(), "e": (w.get("emoji") or "🏅").strip(),
+             "r": _num(w.get("reward")), "m": metric, "t": _num(w.get("target"), 1) or 1,
+             "en": bool(w.get("enabled", True))})
+    db.commit()
+    return {"career": len(seen), "weekly": len(wseen)}
+
 
 def ensure_tables(db):
     db.execute(text("""
@@ -58,6 +191,7 @@ def ensure_tables(db):
             end_email     BOOLEAN DEFAULT FALSE,
             UNIQUE (ib_id, challenge_key)
         );
+        ALTER TABLE ibp_career ADD COLUMN IF NOT EXISTS base_nda INTEGER DEFAULT 0;
         CREATE TABLE IF NOT EXISTS ibp_weekly_claims (
             ib_id         INTEGER NOT NULL,
             challenge_key VARCHAR NOT NULL,
@@ -78,30 +212,45 @@ def week_start_dt(now=None):
 
 
 # ── metric computation (real data) ────────────────────────────────────────────
+_FIRST_ACCT_CTE = """
+    WITH ib_cust AS (
+        SELECT DISTINCT c.customer_no FROM clients c
+        WHERE c.agent = :a AND c.customer_no IS NOT NULL
+    ),
+    fa AS (
+        SELECT DISTINCT ON (c.customer_no) c.customer_no, c.agent,
+               NULLIF(c.first_deposit_at,'') AS fd, c.is_nda
+        FROM clients c JOIN ib_cust ic ON ic.customer_no = c.customer_no
+        WHERE NULLIF(c.first_deposit_at,'') IS NOT NULL
+        ORDER BY c.customer_no, NULLIF(c.first_deposit_at,'') ASC
+    )
+"""
+
+
 def _totals(db, agent):
-    """Lifetime totals for an IB's book: clients, funded (FTD), lots."""
+    """Lifetime totals for an IB's book: clients, funded (FTD), NDA, lots.
+    FTD = customers whose FIRST-ever deposited account (any IB) is under THIS agent —
+    an existing customer adding an account here is NOT an FTD (desk rule Jul 2026)."""
     clients = db.execute(text("SELECT COUNT(*) FROM clients WHERE agent = :a"), {"a": agent}).scalar() or 0
-    ftd = db.execute(text("""
-        SELECT COUNT(DISTINCT t.login) FROM transactions t JOIN clients c ON c.login = t.login
-        WHERE c.agent = :a AND t.tx_type = 'deposit'
-    """), {"a": agent}).scalar() or 0
+    row = db.execute(text(_FIRST_ACCT_CTE + """
+        SELECT COUNT(*) FILTER (WHERE fa.agent = :a)               AS ftd,
+               COUNT(*) FILTER (WHERE fa.agent = :a AND fa.is_nda) AS nda
+        FROM fa"""), {"a": agent}).fetchone()
     lots = db.execute(text("""
         SELECT COALESCE(SUM(d.volume/10000.0),0) FROM deals d JOIN clients c ON c.login = d.login
         WHERE c.agent = :a AND d.action IN (0,1) AND d.volume > 0
     """), {"a": agent}).scalar() or 0
-    return {"clients": int(clients), "ftd": int(ftd), "lots": float(lots)}
+    return {"clients": int(clients), "ftd": int(row[0] or 0), "nda": int(row[1] or 0), "lots": float(lots)}
 
 
-def _weekly(db, agent, since):
+def _weekly(db, agent, since, ib_id=None):
     """This-week metrics (since = 'YYYY-MM-DD' week start)."""
     p = {"a": agent, "s": since}
-    ftd = db.execute(text("""
-        SELECT COUNT(*) FROM (
-            SELECT t.login, MIN(t.tx_date) AS first_dep
-            FROM transactions t JOIN clients c ON c.login = t.login
-            WHERE c.agent = :a AND t.tx_type = 'deposit'
-            GROUP BY t.login
-        ) x WHERE x.first_dep >= :s
+    ftd = db.execute(text(_FIRST_ACCT_CTE + """
+        SELECT COUNT(*) FROM fa WHERE fa.agent = :a AND fa.fd >= :s
+    """), p).scalar() or 0
+    nda = db.execute(text(_FIRST_ACCT_CTE + """
+        SELECT COUNT(*) FROM fa WHERE fa.agent = :a AND fa.fd >= :s AND fa.is_nda
     """), p).scalar() or 0
     lots = db.execute(text("""
         SELECT COALESCE(SUM(d.volume/10000.0),0) FROM deals d JOIN clients c ON c.login = d.login
@@ -113,9 +262,16 @@ def _weekly(db, agent, since):
     """), p).scalar() or 0
     regs = db.execute(text("""
         SELECT COUNT(*) FROM clients c
-        WHERE c.agent = :a AND COALESCE(NULLIF(c.reg_date,''), c.created_at::text) >= :s
+        WHERE c.agent = :a AND NULLIF(c.reg_date,'') >= :s
     """), p).scalar() or 0
-    return {"ftd": int(ftd), "lots": float(lots), "deposits": float(deposits), "regs": int(regs)}
+    # unique referral-link clicks this week (feeds the 'clicks' weekly challenge metric)
+    clicks = 0
+    if ib_id and db.execute(text("SELECT to_regclass('public.ib_ref_clicks')")).scalar():
+        clicks = db.execute(text("""SELECT COUNT(*) FROM ib_ref_clicks
+            WHERE ib_id=:i AND is_unique AND at >= CAST(:s AS timestamptz)"""),
+            {"i": ib_id, "s": since}).scalar() or 0
+    return {"ftd": int(ftd), "nda": int(nda), "lots": float(lots), "deposits": float(deposits),
+            "regs": int(regs), "clicks": int(clicks)}
 
 
 # ── email helpers ─────────────────────────────────────────────────────────────
@@ -131,21 +287,30 @@ def _email(db, ib_id, subject, heading, message, sub=None):
 
 # ── public API ────────────────────────────────────────────────────────────────
 def accept(db, ib_id, key):
-    cfg = CAREER_BY_KEY.get(key)
+    careers = get_career(db)
+    cfg = next((c for c in careers if c["key"] == key), None)
     if not cfg:
         raise ValueError("unknown challenge")
+    # SEQUENTIAL gate: you can only start a stage once the PREVIOUS stage is claimed.
+    idx = next((i for i, c in enumerate(careers) if c["key"] == key), 0)
+    if idx > 0:
+        prev_key = careers[idx - 1]["key"]
+        prev = db.execute(text("SELECT status FROM ibp_career WHERE ib_id=:ib AND challenge_key=:k"),
+                          {"ib": ib_id, "k": prev_key}).fetchone()
+        if not prev or prev[0] != "claimed":
+            raise ValueError("Finish and claim the previous stage first")
     ib = db.execute(text("SELECT agent_id FROM ibs WHERE id = :id"), {"id": ib_id}).fetchone()
     if not ib:
         raise ValueError("ib not found")
     base = _totals(db, ib[0])
     db.execute(text("""
-        INSERT INTO ibp_career (ib_id, challenge_key, accepted_at, deadline, base_clients, base_ftd, base_lots, status, start_email)
-        VALUES (:ib, :k, NOW(), NOW() + (:days || ' days')::interval, :bc, :bf, :bl, 'active', TRUE)
+        INSERT INTO ibp_career (ib_id, challenge_key, accepted_at, deadline, base_clients, base_ftd, base_nda, base_lots, status, start_email)
+        VALUES (:ib, :k, NOW(), NOW() + (:days || ' days')::interval, :bc, :bf, :bn, :bl, 'active', TRUE)
         ON CONFLICT (ib_id, challenge_key) DO UPDATE SET
             accepted_at = NOW(), deadline = NOW() + (:days || ' days')::interval,
-            base_clients = :bc, base_ftd = :bf, base_lots = :bl,
+            base_clients = :bc, base_ftd = :bf, base_nda = :bn, base_lots = :bl,
             status = 'active', completed_at = NULL, claimed_at = NULL, start_email = TRUE, end_email = FALSE
-    """), {"ib": ib_id, "k": key, "days": cfg["days"], "bc": base["clients"], "bf": base["ftd"], "bl": base["lots"]})
+    """), {"ib": ib_id, "k": key, "days": cfg["days"], "bc": base["clients"], "bf": base["ftd"], "bn": base["nda"], "bl": base["lots"]})
     db.commit()
     _email(db, ib_id, f"🚀 Challenge started: {cfg['name']}",
            f"Challenge started — {cfg['name']}",
@@ -164,7 +329,7 @@ def claim(db, ib_id, key):
     db.execute(text("UPDATE ibp_career SET status='claimed', claimed_at=NOW() WHERE ib_id=:ib AND challenge_key=:k"),
                {"ib": ib_id, "k": key})
     db.commit()
-    cfg = CAREER_BY_KEY.get(key, {})
+    cfg = next((c for c in get_career(db, include_disabled=True) if c["key"] == key), {})
     _email(db, ib_id, f"💰 Reward claimed: {cfg.get('name','')}",
            f"Reward claimed — ${cfg.get('reward',0)}",
            f"You claimed your ${cfg.get('reward',0)} reward for '{cfg.get('name','')}'. It will be credited to your IB account.")
@@ -180,7 +345,7 @@ def rechallenge(db, ib_id, key):
 
 
 def claim_weekly(db, ib_id, key):
-    cfg = WEEKLY_BY_KEY.get(key)
+    cfg = next((w for w in get_weekly(db) if w["key"] == key), None)
     if not cfg:
         raise ValueError("unknown weekly challenge")
     ib = db.execute(text("SELECT agent_id FROM ibs WHERE id=:id"), {"id": ib_id}).fetchone()
@@ -211,21 +376,27 @@ def list_all(db, ib_id):
 
     rows = {r[0]: r for r in db.execute(text("""
         SELECT challenge_key, accepted_at, deadline, base_clients, base_ftd, base_lots, status,
-               completed_at, claimed_at, end_email
+               completed_at, claimed_at, end_email, COALESCE(base_nda,0)
         FROM ibp_career WHERE ib_id = :ib
     """), {"ib": ib_id}).fetchall()}
 
     career = []
-    for cfg in CAREER:
+    prev_claimed = True   # SEQUENTIAL career path: the first stage is always open; every later stage
+                          # unlocks only once the PREVIOUS stage has been CLAIMED (not just completed).
+    for cfg in get_career(db):
         r = rows.get(cfg["key"])
         item = {**{k: cfg[k] for k in ("key", "stage", "name", "desc", "reward", "days", "target")}}
         if not r:
-            item.update(status="available", progress={}, pct=0, accepted_at=None, deadline=None, seconds_left=None)
-            career.append(item); continue
-        accepted_at, deadline, bc, bf, bl, status, completed_at, claimed_at, end_email = r[1:]
+            item.update(status=("available" if prev_claimed else "locked"),
+                        progress={}, pct=0, accepted_at=None, deadline=None, seconds_left=None)
+            career.append(item)
+            prev_claimed = False
+            continue
+        accepted_at, deadline, bc, bf, bl, status, completed_at, claimed_at, end_email, bn = r[1:]
         prog = {}
         if "clients" in cfg["target"]: prog["clients"] = max(0, totals["clients"] - (bc or 0))
         if "ftd" in cfg["target"]:     prog["ftd"]     = max(0, totals["ftd"] - (bf or 0))
+        if "nda" in cfg["target"]:     prog["nda"]     = max(0, totals["nda"] - (bn or 0))
         if "lots" in cfg["target"]:    prog["lots"]    = max(0, totals["lots"] - (bl or 0))
         met = all(prog.get(k, 0) >= v for k, v in cfg["target"].items())
         pct = int(min(100, 100 * min((prog.get(k, 0) / v if v else 1) for k, v in cfg["target"].items())))
@@ -251,16 +422,17 @@ def list_all(db, ib_id):
                     deadline=deadline.isoformat() if deadline else None,
                     seconds_left=max(0, seconds_left) if seconds_left is not None else None)
         career.append(item)
+        prev_claimed = (status == "claimed")
 
     # weekly
     ws = week_start_dt()
     since = ws.date().isoformat()
-    wm = _weekly(db, agent, since)
+    wm = _weekly(db, agent, since, ib_id)
     claimed = {c[0] for c in db.execute(text(
         "SELECT challenge_key FROM ibp_weekly_claims WHERE ib_id=:ib AND week_start=:ws"),
         {"ib": ib_id, "ws": ws.date()}).fetchall()}
     weekly = []
-    for cfg in WEEKLY:
+    for cfg in get_weekly(db):
         cur = wm.get(cfg["metric"], 0)
         pct = int(min(100, 100 * (cur / cfg["target"] if cfg["target"] else 1)))
         weekly.append({**{k: cfg[k] for k in ("key", "emoji", "name", "desc", "metric", "target", "reward")},
@@ -269,4 +441,6 @@ def list_all(db, ib_id):
     reset_at = ws + timedelta(days=7)
     seconds_to_reset = int((reset_at - datetime.now()).total_seconds())
     return {"career": career, "weekly": weekly,
+            "totals": {"clients": totals["clients"], "ftd": totals["ftd"],
+                       "nda": totals["nda"], "lots": round(totals["lots"], 1)},
             "week_start": ws.date().isoformat(), "seconds_to_reset": max(0, seconds_to_reset)}

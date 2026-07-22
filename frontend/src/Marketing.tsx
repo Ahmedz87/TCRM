@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost, apiDelete } from './api';
+import { CT } from './crmTable';
 import WhatsAppAI from './WhatsAppAI';
 import MarketingPerformance from './MarketingPerformance';
 import DripJourneys from './DripJourneys';
@@ -17,7 +18,7 @@ const card: React.CSSProperties = { background: 'var(--bg-card,#2c333e)', border
 const cap: React.CSSProperties = { fontSize: 11, color: '#8a93a5', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, fontWeight: 700 };
 const input: React.CSSProperties = { padding: '9px 11px', background: '#1c2231', border: '1px solid #3a4252', borderRadius: 8, color: '#e6e9ef', fontSize: 13 };
 const btn = (bg: string, fg = '#06251b'): React.CSSProperties => ({ padding: '9px 14px', background: bg, border: 'none', borderRadius: 8, color: fg, fontSize: 13, fontWeight: 700, cursor: 'pointer' });
-const fmt = (n: number) => (n || 0).toLocaleString();
+const fmt = (n: number) => (n || 0).toLocaleString('en-GB');
 
 const HUB_CARDS: { key: View; icon: string; title: string; desc: string }[] = [
   { key: 'overview',  icon: '📊', title: 'Overview',        desc: 'Reachability & funnel at a glance' },
@@ -186,13 +187,15 @@ function Audiences({ segments, countries, onUse }: { segments: any[]; countries:
               <span onClick={() => setSample(null)} style={{ cursor: 'pointer', color: '#8a93a5' }}>✕</span>
             </div>
             <div style={{ fontSize: 11, color: '#8a93a5', marginBottom: 8 }}>Contacts are masked. This is a preview — no message is sent.</div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead><tr style={{ color: '#8a93a5', textAlign: 'left' }}><th style={{ padding: 6 }}>Name</th><th style={{ padding: 6 }}>Email</th><th style={{ padding: 6 }}>Phone</th><th style={{ padding: 6 }}>Country</th></tr></thead>
-              <tbody>{sample.sample.map((x: any, i: number) => (
-                <tr key={i} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4' }}>
-                  <td style={{ padding: 6 }}>{x.name}</td><td style={{ padding: 6 }}>{x.email}</td><td style={{ padding: 6 }}>{x.phone}</td><td style={{ padding: 6 }}>{x.country}</td>
-                </tr>))}</tbody>
-            </table>
+            <div style={CT.scroll}>
+              <table style={CT.table}>
+                <thead><tr style={CT.theadTr}><th style={CT.th()}>Name</th><th style={CT.th()}>Email</th><th style={CT.th()}>Phone</th><th style={CT.th()}>Country</th></tr></thead>
+                <tbody>{sample.sample.map((x: any, i: number) => (
+                  <tr key={i} style={CT.row()}>
+                    <td style={CT.td}>{x.name}</td><td style={CT.td}>{x.email}</td><td style={CT.td}>{x.phone}</td><td style={CT.td}>{x.country}</td>
+                  </tr>))}</tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -346,20 +349,22 @@ function Drafts() {
   if (!rows.length) return <div style={{ ...card, color: '#8a93a5', fontSize: 13 }}>No saved drafts yet. Build one in Email or WhatsApp.</div>;
   return (
     <div style={card}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead><tr style={{ color: '#8a93a5', textAlign: 'left' }}>
-          {['Name', 'Channel', 'Audience', 'Recipients', 'Status', ''].map(h => <th key={h} style={{ padding: 8 }}>{h}</th>)}
-        </tr></thead>
-        <tbody>{rows.map(r => (
-          <tr key={r.id} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4' }}>
-            <td style={{ padding: 8 }}>{r.name}{r.subject ? <div style={{ fontSize: 11, color: '#8a93a5' }}>{r.subject}</div> : null}</td>
-            <td style={{ padding: 8 }}>{r.channel === 'whatsapp' ? '💬 WhatsApp' : '✉️ Email'}</td>
-            <td style={{ padding: 8 }}>{r.segment_key}</td>
-            <td style={{ padding: 8 }}>{fmt(r.recipient_count)}</td>
-            <td style={{ padding: 8 }}><span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: '#3a4252', color: '#cfd6e4' }}>{r.status}</span></td>
-            <td style={{ padding: 8 }}><span onClick={() => del(r.id)} style={{ cursor: 'pointer', color: '#ff5d6c' }}>Delete</span></td>
-          </tr>))}</tbody>
-      </table>
+      <div style={CT.scroll}>
+        <table style={CT.table}>
+          <thead><tr style={CT.theadTr}>
+            {['Name', 'Channel', 'Audience', 'Recipients', 'Status', ''].map(h => <th key={h} style={CT.th(false, h === 'Recipients' ? 'right' : 'left')}>{h}</th>)}
+          </tr></thead>
+          <tbody>{rows.map(r => (
+            <tr key={r.id} style={CT.row()}>
+              <td style={{ ...CT.td, whiteSpace: 'normal' }}>{r.name}{r.subject ? <div style={{ fontSize: 11, color: '#8a93a5' }}>{r.subject}</div> : null}</td>
+              <td style={CT.td}>{r.channel === 'whatsapp' ? '💬 WhatsApp' : '✉️ Email'}</td>
+              <td style={CT.td}>{r.segment_key}</td>
+              <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.recipient_count)}</td>
+              <td style={CT.td}><span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: '#3a4252', color: '#cfd6e4' }}>{r.status}</span></td>
+              <td style={CT.td}><span onClick={() => del(r.id)} style={{ cursor: 'pointer', color: '#ff5d6c' }}>Delete</span></td>
+            </tr>))}</tbody>
+        </table>
+      </div>
     </div>
   );
 }

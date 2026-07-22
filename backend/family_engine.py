@@ -1,162 +1,158 @@
 """
-family_engine.py — detect FAMILIES among clients + leads and give each family an internal code.
+family_engine.py — detect FAMILY members (level 1 = direct: brothers / father↔son / same mother) and
+feed them into the ONE relation engine via the `entity_family` table (relation_engine reads it and
+turns them into family_l1 / family_l2 signals → they count for NDA and block the welcome bonus).
 
-Desk rule: a person is put in a family when they match on >=3 of these FIVE attributes:
-    grandfather name · surname (tribe/family name) · city · IB (agent) · IP
-Severity:  >=4 of 5 match -> RED (very likely same household),  exactly 3 -> YELLOW (probable).
-Everyone in the same family gets the SAME internal family code (FAM-xxxxx) with the tag colour, so
-uncle/brother/wife/son etc. all carry one code. Names are Arabic 4-part: first · father · grandfather
-· surname — grandfather = 3rd token, surname = last token (when >=4 tokens).
+DATA REALITY (measured): 83% of customers have only a 3-part name (first · father · grandfather); a
+real surname exists for ~1%, and mother_name for 0.2%. So we anchor on the NAME CHAIN, not a surname:
 
-Blocking keeps it fast: candidates must share a NAME anchor (surname OR grandfather) — then the 5-way
-score decides. City/IB/IP are too low-cardinality to anchor on (whole-city "families" would be wrong).
+  BROTHERS   — same father AND same grandfather  (Ahmed·Ali·Hussein  &  Omar·Ali·Hussein)
+  FATHER↔SON — the chain shifts by one: son [S, F, G]  ⇔  father [F, G, GG]
+  (same mother, when present, is treated as a hard confirm.)
 
-Run DRY (no writes, just the report):   python family_engine.py
-Commit family codes to the DB:          python family_engine.py --commit
+GUARDS (learned from the email/IP work — do NOT repeat the "40-person Adnan family" mistake):
+  • junk names (ib account / test / 2-letter garbage) are skipped.
+  • a COMMON name chain (father+grandfather shared by many — e.g. "ali hussein" ×226) is NOT a family
+    on its own; such pairs are kept ONLY when corroborated by same city (not Baghdad) or same IB.
+  • rare chains (shared by <= RARE_CAP people) are accepted directly — a specific father+grandfather
+    match among 2-3 people is already strong.
+
+Run:  python family_engine.py            (DRY — report the groups, writes NOTHING)
+      python family_engine.py --commit   (write entity_family; then re-run relation_engine.py)
 """
 import sys, re
 from collections import defaultdict
 import db_config
 
-CAP = 600  # skip a name-anchor block bigger than this (too-generic surname → not a real family)
+RARE_CAP = 4          # a father+grandfather chain shared by <= this many people is specific enough
+JUNK = {"account", "test", "ib", "na", "none", "null", "customer", "client", "vc", "ccv", "cv"}
 
 
-def _tokens(name):
-    return re.sub("[^a-z؀-ۿ ]", " ", (name or "").lower()).split()
+def toks(name):
+    return [t for t in re.sub(r"[^a-z؀-ۿ ]", " ", (name or "").lower()).split() if t not in JUNK]
 
 
-def _parts(name):
-    """(grandfather, surname) from an Arabic 4-part name. grandfather=3rd token, surname=last token."""
-    t = _tokens(name)
-    gf = t[2] if len(t) >= 3 else ""
-    sn = t[3] if len(t) >= 4 else (t[-1] if len(t) >= 2 else "")
-    return gf, sn
+def load(cur):
+    """entity-key -> (tokens, city, ib, mother)."""
+    ent = {}
+    cur.execute("""SELECT DISTINCT ON (customer_no) customer_no, name, lower(COALESCE(city_canon,'')),
+                          COALESCE(agent,0), lower(COALESCE(mother_name,''))
+                   FROM clients WHERE customer_no IS NOT NULL AND name IS NOT NULL
+                   ORDER BY customer_no, length(name) DESC NULLS LAST""")
+    for cn, name, city, ib, mother in cur.fetchall():
+        t = toks(name)
+        if len(t) >= 3:
+            ent[f"C{cn}"] = (t, city, ib, (mother or "").strip())
+    cur.execute("""SELECT id, full_name, lower(COALESCE(city_canon,'')), lower(COALESCE(mother_name,''))
+                   FROM leads WHERE full_name IS NOT NULL""")
+    for lid, name, city, mother in cur.fetchall():
+        t = toks(name)
+        if len(t) >= 3:
+            ent[f"L{lid}"] = (t, city, 0, (mother or "").strip())
+    return ent
 
 
-def load_people(cur):
-    """Return dict pid -> attrs. pid = ('C',login) or ('L',id)."""
-    people = {}
-    # clients: name, city, agent(IB)
-    cur.execute("SELECT login, name, city, agent FROM clients WHERE name IS NOT NULL AND login IS NOT NULL")
-    for login, name, city, agent in cur.fetchall():
-        gf, sn = _parts(name)
-        people[("C", login)] = {"name": name, "gf": gf, "sn": sn,
-                                "city": (city or "").strip().lower(), "ib": str(agent or "") if agent else "",
-                                "ip": ""}
-    # one representative IP per client (most-seen)
-    cur.execute("""SELECT login, identifier_value FROM account_identifiers
-                   WHERE identifier_type='ip' AND identifier_value NOT IN ('0','')""")
-    ipmap = {}
-    for login, ip in cur.fetchall():
-        ipmap.setdefault(login, ip)
-    for (k, login), a in people.items():
-        if k == "C" and login in ipmap:
-            a["ip"] = ipmap[login]
-    # leads: full_name, city (no IB/IP)
-    cur.execute("SELECT id, full_name, city FROM leads WHERE full_name IS NOT NULL")
-    for lid, name, city in cur.fetchall():
-        gf, sn = _parts(name)
-        people[("L", lid)] = {"name": name, "gf": gf, "sn": sn,
-                              "city": (city or "").strip().lower(), "ib": "", "ip": ""}
-    return people
+def corroborated(a, b):
+    _, ca, ia, ma = a
+    _, cb, ib, mb = b
+    if ma and ma == mb:
+        return True                       # same mother = hard confirm
+    if ca and ca == cb and ca != "baghdad":
+        return True
+    if ia and ia == ib:
+        return True
+    return False
 
 
-def _score(a, b):
-    """How many of the 5 attributes match (non-empty on both sides)."""
-    n = 0
-    for k in ("gf", "sn", "city", "ib", "ip"):
-        if a[k] and b[k] and a[k] == b[k]:
-            n += 1
-    return n
+def build(ent):
+    edges = {}     # (a,b) -> reason
+    def emit(a, b, reason):
+        p = (a, b) if a < b else (b, a)
+        edges.setdefault(p, reason)
+
+    # block by (father, grandfather) — used both as the brothers key and the common-chain gauge
+    blocks = defaultdict(list)
+    for k, v in ent.items():
+        t = v[0]
+        blocks[(t[1], t[2])].append(k)
+
+    # ── BROTHERS ──
+    for (fa, gf), members in blocks.items():
+        if len(members) < 2 or len(fa) < 3 or len(gf) < 3:
+            continue
+        common = len(members) > RARE_CAP
+        for i in range(len(members)):
+            for j in range(i + 1, len(members)):
+                a, b = members[i], members[j]
+                if not common or corroborated(ent[a], ent[b]):
+                    emit(a, b, "brothers")
+
+    # ── FATHER ↔ SON: son [S,F,G] ⇔ father [F,G,GG] ──
+    by_first2 = defaultdict(list)     # (t0,t1) -> entities whose name STARTS with this
+    for k, v in ent.items():
+        t = v[0]
+        by_first2[(t[0], t[1])].append(k)
+    for k, v in ent.items():
+        t = v[0]
+        parent_key = (t[1], t[2])     # this person's father+grandfather = the father's first+father
+        if len(parent_key[0]) < 3 or len(parent_key[1]) < 3:
+            continue
+        for fa in by_first2.get(parent_key, []):
+            if fa == k:
+                continue
+            if len(blocks.get((t[1], t[2]), [])) > RARE_CAP and not corroborated(ent[k], ent[fa]):
+                continue
+            emit(k, fa, "father-son")
+    return edges
 
 
-def build_families(people):
+def families(edges):
     parent = {}
     def find(x):
         parent.setdefault(x, x)
         while parent[x] != x:
             parent[x] = parent[parent[x]]; x = parent[x]
         return x
-    def union(x, y):
-        rx, ry = find(x), find(y); parent[rx] = ry if rx != ry else parent[rx]
-
-    best = {}  # pair(frozenset) -> match count (for severity)
-    # anchor blocks: by surname, and by grandfather (high-cardinality name tokens)
-    for anchor in ("sn", "gf"):
-        blocks = defaultdict(list)
-        for pid, a in people.items():
-            if a[anchor] and len(a[anchor]) >= 3:
-                blocks[a[anchor]].append(pid)
-        for val, members in blocks.items():
-            if not (2 <= len(members) <= CAP):
-                continue
-            for i in range(len(members)):
-                for j in range(i + 1, len(members)):
-                    s = _score(people[members[i]], people[members[j]])
-                    if s >= 3:
-                        union(members[i], members[j])
-                        key = frozenset((members[i], members[j]))
-                        best[key] = max(best.get(key, 0), s)
-
-    fams = defaultdict(list)
-    for pid in list(parent):
-        fams[find(pid)].append(pid)
-    fams = {r: ms for r, ms in fams.items() if len(ms) >= 2}
-
-    # severity per family = best pairwise score among its members
-    out = []
-    for r, ms in fams.items():
-        mx = 0
-        for i in range(len(ms)):
-            for j in range(i + 1, len(ms)):
-                mx = max(mx, best.get(frozenset((ms[i], ms[j])), 0))
-        out.append({"members": sorted(ms), "match": mx,
-                    "severity": "red" if mx >= 4 else "yellow"})
-    out.sort(key=lambda f: (-f["match"], -len(f["members"])))
-    return out
+    for a, b in edges:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+    fam = defaultdict(set)
+    for a, b in edges:
+        r = find(a); fam[r].add(a); fam[r].add(b)
+    return list(fam.values())
 
 
 def main():
     commit = "--commit" in sys.argv
     c = db_config.connect(); cur = c.cursor()
-    people = load_people(cur)
-    fams = build_families(people)
-    red = sum(1 for f in fams if f["severity"] == "red")
-    members = sum(len(f["members"]) for f in fams)
-    print(f"people scanned: {len(people)} | families found: {len(fams)} "
-          f"(RED {red}, YELLOW {len(fams)-red}) | tagged members: {members}")
-    for f in fams[:8]:
-        names = ", ".join(people[m]["name"] for m in f["members"][:4])
-        print(f"  [{f['severity'].upper()} {f['match']}/5] {len(f['members'])} members: {names}")
+    ent = load(cur)
+    edges = build(ent)
+    fams = families(edges)
+    fams.sort(key=len, reverse=True)
+    print(f"entities scanned: {len(ent):,} | family edges: {len(edges):,} | families: {len(fams):,}")
+    sizes = defaultdict(int)
+    for f in fams:
+        sizes[min(len(f), 6)] += 1
+    print("family sizes:", {(f"{k}+" if k == 6 else str(k)): v for k, v in sorted(sizes.items())})
+    print("\nlargest families (sanity-check for over-merging):")
+    for f in fams[:12]:
+        names = ", ".join(" ".join(ent[m][0][:3]) for m in list(f)[:5])
+        print(f"  {len(f):>3} people: {names}")
 
     if not commit:
-        print("\nDRY-RUN — nothing written. Re-run with --commit to assign family codes.")
+        print("\nDRY-RUN — nothing written. Re-run with --commit to feed family into the relation engine.")
         c.close(); return
 
-    cur.execute("""CREATE TABLE IF NOT EXISTS families (
-        family_id SERIAL PRIMARY KEY, code TEXT UNIQUE, severity TEXT, match_level INT,
-        member_count INT, created_at TIMESTAMPTZ DEFAULT NOW())""")
-    for t in ("clients", "leads"):
-        cur.execute(f"ALTER TABLE {t} ADD COLUMN IF NOT EXISTS family_code TEXT")
-        cur.execute(f"ALTER TABLE {t} ADD COLUMN IF NOT EXISTS family_tag TEXT")
-    # rebuild fresh each run
-    cur.execute("UPDATE clients SET family_code=NULL, family_tag=NULL WHERE family_code IS NOT NULL")
-    cur.execute("UPDATE leads   SET family_code=NULL, family_tag=NULL WHERE family_code IS NOT NULL")
-    cur.execute("TRUNCATE families RESTART IDENTITY")
-    for n, f in enumerate(fams, 1):
-        code = f"FAM-{n:05d}"
-        cur.execute("INSERT INTO families (code, severity, match_level, member_count) VALUES (%s,%s,%s,%s)",
-                    (code, f["severity"], f["match"], len(f["members"])))
-        clogins = [m[1] for m in f["members"] if m[0] == "C"]
-        lids = [m[1] for m in f["members"] if m[0] == "L"]
-        if clogins:
-            cur.execute("UPDATE clients SET family_code=%s, family_tag=%s WHERE login = ANY(%s)",
-                        (code, f["severity"], clogins))
-        if lids:
-            cur.execute("UPDATE leads SET family_code=%s, family_tag=%s WHERE id = ANY(%s)",
-                        (code, f["severity"], lids))
-    c.commit(); c.close()
-    print(f"\nCOMMITTED {len(fams)} families.")
+    cur.execute("""CREATE TABLE IF NOT EXISTS entity_family(
+        ent_a TEXT, ent_b TEXT, level INT, value TEXT, PRIMARY KEY(ent_a, ent_b))""")
+    cur.execute("DELETE FROM entity_family")
+    from psycopg2.extras import execute_values
+    execute_values(cur, "INSERT INTO entity_family(ent_a,ent_b,level,value) VALUES %s",
+                   [(a, b, 1, r) for (a, b), r in edges.items()], page_size=2000)
+    c.commit()
+    print(f"\nCOMMITTED {len(edges):,} family edges (level 1). Now run: python relation_engine.py")
+    c.close()
 
 
 if __name__ == "__main__":

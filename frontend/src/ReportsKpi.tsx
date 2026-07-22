@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet } from './api';
+import { CT } from './crmTable';
 
 // ── Performance / KPI report (ticket #45) ─────────────────────────────────────
 // Company KPIs for the selected period vs the previous comparable period, with a
@@ -16,8 +17,8 @@ const PERIODS: [string, string][] = [
 ];
 
 const fmtUSD = (n: number) =>
-  (n < 0 ? '-$' : '$') + Math.abs(Math.round(n || 0)).toLocaleString();
-const fmtNum = (n: number) => (n || 0).toLocaleString();
+  (n < 0 ? '-$' : '$') + Math.abs(Math.round(n || 0)).toLocaleString('en-GB');
+const fmtNum = (n: number) => (n || 0).toLocaleString('en-GB');
 
 // KPI display config. `money`=format as $; `inverse`=a RISE is BAD (red), e.g. withdrawals.
 const KPI_DEFS: { key: string; label: string; money?: boolean; inverse?: boolean }[] = [
@@ -206,30 +207,34 @@ export default function ReportsKpi() {
             {/* Withdrawals by method */}
             <div style={card}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Withdrawals by method</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr style={{ color: '#8a93a3', textAlign: 'left' }}>
-                    {([['method', 'Method', 'left'], ['count', 'Count', 'right'], ['value', 'Value', 'right']] as const).map(([k, label, al]) => (
-                      <th key={k} onClick={() => setWSort(s => s.k === k ? { k, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { k, dir: 'desc' })}
-                        style={{ padding: '6px 4px', fontWeight: 600, textAlign: al as any, cursor: 'pointer', userSelect: 'none' }}>
-                        {label}{wSort.k === k ? (wSort.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅'}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(data.withdrawals_by_method || []).length === 0 && (
-                    <tr><td colSpan={3} style={{ padding: 8, color: '#8a93a3' }}>No withdrawals in period</td></tr>
-                  )}
-                  {sortRows(data.withdrawals_by_method || [], wSort.k, wSort.dir).map((r: any) => (
-                    <tr key={r.method} style={{ borderTop: '1px solid var(--border,#373f4d)' }}>
-                      <td style={{ padding: '6px 4px' }}>{r.method}</td>
-                      <td style={{ padding: '6px 4px', textAlign: 'right' }}>{fmtNum(r.count)}</td>
-                      <td style={{ padding: '6px 4px', textAlign: 'right', color: '#ff8a93' }}>{fmtUSD(r.value)}</td>
+              <div style={CT.scroll}>
+                <table style={CT.table}>
+                  <thead>
+                    <tr style={CT.theadTr}>
+                      {([['method', 'Method', 'left'], ['count', 'Count', 'right'], ['value', 'Value', 'right']] as const).map(([k, label, al]) => (
+                        <th key={k} onClick={() => setWSort(s => s.k === k ? { k, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { k, dir: 'desc' })}
+                          style={{ ...CT.th(wSort.k === k, al), cursor: 'pointer' }}>
+                          {label}{wSort.k === k ? (wSort.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅'}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {(data.withdrawals_by_method || []).length === 0 && (
+                      <tr><td colSpan={3} style={{ ...CT.td, color: '#8a93a3' }}>No withdrawals in period</td></tr>
+                    )}
+                    {sortRows(data.withdrawals_by_method || [], wSort.k, wSort.dir).map((r: any) => (
+                      <tr key={r.method} style={CT.row()}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card,#2c333e)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                        <td style={CT.td}>{r.method}</td>
+                        <td style={{ ...CT.td, textAlign: 'right' }}>{fmtNum(r.count)}</td>
+                        <td style={{ ...CT.td, textAlign: 'right', color: '#ff8a93' }}>{fmtUSD(r.value)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Deposits by type */}

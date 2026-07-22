@@ -233,7 +233,7 @@ function Field({ label, children }: any) {
   return <div style={{ marginBottom: 14 }}><label style={S.label}>{label}</label>{children}</div>;
 }
 
-const fmt = (n: any) => (n == null ? '0' : Number(n).toLocaleString());
+const fmt = (n: any) => (n == null ? '0' : Number(n).toLocaleString('en-GB'));
 
 const S: any = {
   wrap: { padding: 28, maxWidth: 900, margin: '0 auto', color: '#e8edf2' },

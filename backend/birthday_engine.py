@@ -190,10 +190,10 @@ def claim_birthday(db: Session, client_id: int) -> dict:
     dob = _parse_dob(dobrow[0]) if dobrow else None
     occ, _ = _birthday_this_cycle(dob, _today()) if dob else (_today(), 0)
 
-    db.execute(text("""
+    grant_id = db.execute(text("""
         INSERT INTO bonus_grants (client_id, login, kind, deposit_amount, amount, status)
-        VALUES (:c,:l,'birthday',0,:a,'credited')
-    """), {"c": client_id, "l": login, "a": amount})
+        VALUES (:c,:l,'birthday',0,:a,'credited') RETURNING id
+    """), {"c": client_id, "l": login, "a": amount}).scalar()
     db.execute(text("""
         INSERT INTO birthday_events (client_id, login, year, birthday_date, claimed, claimed_at)
         VALUES (:c,:l,:y,:bd,TRUE,NOW())
@@ -202,43 +202,33 @@ def claim_birthday(db: Session, client_id: int) -> dict:
     """), {"c": client_id, "l": login, "y": occ.year, "bd": occ})
     db.execute(text("UPDATE clients SET credit = COALESCE(credit,0) + :a WHERE id=:id"),
                {"a": amount, "id": client_id})
+    # DURABLE MT credit via the transactional outbox (see bonus_engine.claim_welcome).
+    try:
+        import job_queue
+        job_queue.enqueue_tx(db, "bonus_mt_credit", {"grant_id": grant_id}, key=f"bonus_grant_{grant_id}")
+    except Exception as e:
+        print(f"[birthday] enqueue credit failed (grant {grant_id}): {e}", flush=True)
     db.commit()
     return {"ok": True, "state": "claimed", "amount": amount, "login": login,
             "message": f"🎂 ${amount:,.0f} birthday bonus credited to your trading account!"}
 
 
 def push_birthday_credit(client_id: int):
-    """Background: push the $100 to the REAL MT account as CREDIT (type 3) + email the client.
-    Mirrors bonus_engine.push_welcome_credit. Opens its own session; never raises."""
+    """Enqueue a DURABLE MT-credit job for the client's latest birthday grant. Actual credit + email
+    run in job_worker.py (handler bonus_mt_credit), idempotently. claim_birthday already enqueues this
+    in-transaction; this wrapper (background path) collapses to the same job by key. Never raises."""
     db = SessionLocal()
     try:
-        row = db.execute(text("""
-            SELECT g.login, g.amount, c.name, c.email FROM bonus_grants g JOIN clients c ON c.id=g.client_id
-            WHERE g.client_id=:id AND g.kind='birthday' AND g.status<>'cancelled'
-            ORDER BY g.id DESC LIMIT 1
-        """), {"id": client_id}).fetchone()
-        if not row:
+        gid = db.execute(text("""
+            SELECT g.id FROM bonus_grants g
+            WHERE g.client_id=:id AND g.kind='birthday' AND g.status<>'cancelled' ORDER BY g.id DESC LIMIT 1
+        """), {"id": client_id}).scalar()
+        if not gid:
             return
-        login, amount = row[0], float(row[1] or 0)
-        if login and int(login) > 0:
-            try:
-                import mt_provision
-                res = mt_provision.credit_account(int(login), amount, "TNFX Birthday Bonus", credit_type=3)
-                if not res.get("ok"):
-                    print(f"[birthday] MT credit failed for login {login}: {res.get('error')}", flush=True)
-            except Exception as e:
-                print(f"[birthday] MT credit exception for login {login}: {e}", flush=True)
-        try:
-            import email_send
-            if row[3] and email_send.configured():
-                nm = (row[2] or "").split(" ")[0]
-                body = (f"Dear {nm},\n\nOn behalf of TNFX, we wish you a happy birthday. Your ${amount:,.0f} birthday "
-                        f"bonus has been credited to your trading account{(' #' + str(login)) if login else ''}. It "
-                        "appears as Credit on your terminal and increases your available trading margin.\n\n"
-                        "Kind regards,\nTNFX")
-                email_send.send(row[3], f"Happy Birthday — your ${amount:,.0f} TNFX bonus has been credited", body)
-        except Exception as e:
-            print(f"[birthday] email failed for client {client_id}: {e}", flush=True)
+        import job_queue
+        job_queue.enqueue(db, "bonus_mt_credit", {"grant_id": gid}, key=f"bonus_grant_{gid}")
+    except Exception as e:
+        print(f"[birthday] enqueue credit failed for client {client_id}: {e}", flush=True)
     finally:
         db.close()
 

@@ -15,7 +15,7 @@ from sqlalchemy import text
 
 LIVE = False  # <-- keep False until tested. True = real money moves.
 
-MT5_SERVER, MT5_LOGIN, MT5_PASSWORD = "192.109.15.62:443", 1025, "ZjFb!vA0"
+from mt_secrets import MT5_SERVER, MT5_LOGIN, MT5_PASSWORD
 
 def get_mgr():
     mgr = MT5Manager.ManagerAPI()

@@ -85,10 +85,62 @@ def populate_network(db):
     db.commit()
 
 
+def link_recaptures(db):
+    """Every RECAPTURE lead must point at the OLD record so the desk can SEE it.
+
+    The archive re-capture path (fetch_meta_leads / reactivation) sets match_badge='recapture_archive'
+    but never fills matched_login, so those leads showed a ♻ badge with nothing to click. Here we
+    resolve each orphaned recapture lead to its ORIGINAL client (earliest reg_date wins when a phone
+    was reused) and:
+      • set leads.matched_login  -> the old client login (makes the old record visible/clickable)
+      • stamp the client lead_badge='recapture' + matched_lead_id (the OLD record is 'updated')
+    The client keeps its ORIGINAL reg_date (we never touch it) — that's the registration date the
+    desk should see, not the new Meta-form date.
+    """
+    linked = db.execute(text("""
+        WITH cand AS (
+            SELECT DISTINCT ON (l.id) l.id AS lead_id, c.login
+            FROM leads l
+            JOIN clients c ON (
+                    (COALESCE(l.email,'')  <> '' AND LOWER(TRIM(l.email)) = LOWER(TRIM(c.email)))
+                 OR (LENGTH(REGEXP_REPLACE(COALESCE(l.phone,''),'[^0-9]','','g')) >= 9
+                     AND RIGHT(REGEXP_REPLACE(l.phone,'[^0-9]','','g'),9)
+                       = RIGHT(REGEXP_REPLACE(c.phone,'[^0-9]','','g'),9)))
+            WHERE l.match_badge IN ('recapture','recapture_archive')
+              AND l.matched_login IS NULL
+              AND c.login IS NOT NULL
+            ORDER BY l.id, c.reg_date ASC NULLS LAST, c.login ASC   -- oldest client = the original record
+        )
+        UPDATE leads l SET matched_login = cand.login
+        FROM cand WHERE l.id = cand.lead_id
+        RETURNING l.id, cand.login
+    """)).fetchall()
+    # mark the OLD client record as recaptured (so it also shows the link back to the lead)
+    if linked:
+        db.execute(text("""
+            UPDATE clients c SET lead_badge='recapture', matched_lead_id=v.lead_id
+            FROM (VALUES {}) AS v(lead_id, login)
+            WHERE c.login = v.login AND COALESCE(c.lead_badge,'') NOT IN ('from_lead')
+        """.format(",".join(f"({int(lid)},{int(lg)})" for lid, lg in linked))))
+    db.commit()
+    return len(linked)
+
+
 def compute_score(db):
-    """Blended priority score (0-100) for EVERY lead."""
+    """Blended priority score (0-100) for EVERY lead. Write-guarded (only rows whose value
+    actually changed) so it's cheap enough to run every enrich_loop cycle — it used to run only
+    inside run_meta_sync_service, which isn't scheduled, leaving most scores NULL/stale (#246)."""
     db.execute(text("""
         UPDATE leads SET score = LEAST(100,
+              (CASE WHEN match_badge IN ('recapture','registered_no_deposit') THEN 50 ELSE 0 END)
+            + (CASE WHEN phone_verified THEN 15 ELSE 0 END)
+            + (CASE WHEN email_verified THEN 15 ELSE 0 END)
+            + (CASE WHEN COALESCE(phone,'')<>'' AND COALESCE(email,'')<>'' THEN 10 ELSE 0 END)
+            + (CASE WHEN COALESCE(meta_created, created_at) >= NOW() - INTERVAL '48 hours' THEN 30
+                    WHEN COALESCE(meta_created, created_at) >= NOW() - INTERVAL '7 days'  THEN 10
+                    WHEN COALESCE(meta_created, created_at) >= NOW() - INTERVAL '30 days' THEN 5 ELSE 0 END)
+        )
+        WHERE score IS DISTINCT FROM LEAST(100,
               (CASE WHEN match_badge IN ('recapture','registered_no_deposit') THEN 50 ELSE 0 END)
             + (CASE WHEN phone_verified THEN 15 ELSE 0 END)
             + (CASE WHEN email_verified THEN 15 ELSE 0 END)
@@ -189,6 +241,8 @@ def run_match_and_notify(verbose=True):
         db.execute(text("UPDATE leads SET match_checked_at=NOW() WHERE match_checked_at IS NULL"))
         db.commit()
 
+        # link orphaned recaptures (archive path never set matched_login) so the OLD record shows
+        relinked = link_recaptures(db)
         # network + score refreshed every pass (idempotent, covers all leads)
         populate_network(db)
         compute_score(db)

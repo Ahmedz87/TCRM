@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useT } from './adminI18n';
 
 const API = '/api';
 
@@ -86,7 +87,57 @@ function toLocalIso(d: Date) {
 }
 
 // ── BIG ANSWERED POPUP ──────────────────────────────────────────────────────
+// #256 — the CURRENT contact's previous comments, auto-switching as the dialer advances,
+// so the agent sees who they're about to talk to (and past context) without leaving the widget.
+function ContactComments({ contact }: any) {
+  const t = useT();
+  const [items, setItems] = useState<any[]|null>(null);
+  useEffect(() => {
+    let dead = false;
+    setItems(null);
+    if (!contact) return;
+    (async () => {
+      try {
+        if (contact.lead_id && (contact.source === 'leads' || !contact.login)) {
+          const d: any = await apiGet(`/leads?lead_id=${contact.lead_id}`);
+          const l = (d.leads || [])[0];
+          const lines = String(l?.notes || '').split('\n').map((s: string) => s.trim()).filter(Boolean).slice(-3).reverse();
+          if (!dead) setItems(lines.map((x: string) => ({ text: x })));
+        } else if (contact.login) {
+          const d: any = await apiGet(`/clients/${contact.login}`);
+          const cs = (d.actions_history || []).filter((a: any) => a.note).slice(0, 3);
+          if (!dead) setItems(cs.map((a: any) => ({
+            text: a.note, who: a.agent_name || '',
+            when: a.created_at ? new Date(a.created_at).toLocaleDateString('en-GB') : '',
+          })));
+        } else if (!dead) setItems([]);
+      } catch { if (!dead) setItems([]); }
+    })();
+    return () => { dead = true; };
+  }, [contact?.lead_id, contact?.login]);
+  if (!contact) return null;
+  return (
+    <div style={{ padding:'8px 12px', borderTop:'1px solid #1e2230', maxHeight:150, overflowY:'auto' }}>
+      <div style={{ fontSize:9.5, color:'#667', textTransform:'uppercase', letterSpacing:.6, fontWeight:700, marginBottom:5 }}>
+        💬 {t('Previous comments')}
+      </div>
+      {items === null ? (
+        <div style={{ fontSize:11, color:'#556' }}>{t('Loading…')}</div>
+      ) : items.length === 0 ? (
+        <div style={{ fontSize:11, color:'#556' }}>{t('No previous comments')}</div>
+      ) : items.map((c, i) => (
+        <div key={i} style={{ fontSize:11, color:'#aab3c0', lineHeight:1.45, padding:'4px 0', borderBottom: i < items.length-1 ? '1px solid #2a313d' : 'none', wordBreak:'break-word' }}>
+          {(c.who || c.when) && <span style={{ color:'#667', fontSize:9.5 }}>{c.who}{c.when ? ` · ${c.when}` : ''} — </span>}
+          {c.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 function AnsweredPopup({ client, sessionId, onDone, onCallLater }: any) {
+  const t = useT();
   const [comment, setComment]           = useState('');
   const [showCallLater, setShowCallLater] = useState(false);
   const [offDays, setOffDays]   = useState('');
@@ -135,9 +186,9 @@ function AnsweredPopup({ client, sessionId, onDone, onCallLater }: any) {
           </div>
           <div style={{ marginLeft:'auto', textAlign:'right' }}>
             <div style={{ fontSize:24, fontWeight:700, color:'#00e5a0', fontFamily:'monospace' }}>{fmtTime(duration)}</div>
-            <div style={{ fontSize:11, color:'#555' }}>On call</div>
+            <div style={{ fontSize:11, color:'#555' }}>{t('On call')}</div>
           </div>
-          <button onClick={() => submitOutcome('done')} title="Close & finish call"
+          <button onClick={() => submitOutcome('done')} title={t('Close & finish call')}
             style={{ marginLeft:14, alignSelf:'flex-start', background:'none', border:'none',
               color:'#667', cursor:'pointer', fontSize:24, lineHeight:1, padding:0 }}>✕</button>
         </div>
@@ -154,7 +205,7 @@ function AnsweredPopup({ client, sessionId, onDone, onCallLater }: any) {
           ].map(s => (
             <div key={s.label} style={{ background:'#2c333e', borderRadius:10, padding:'10px 12px', textAlign:'center' }}>
               <div style={{ fontSize:15, fontWeight:600, color:s.color }}>{s.value}</div>
-              <div style={{ fontSize:10, color:'#555', marginTop:2 }}>{s.label}</div>
+              <div style={{ fontSize:10, color:'#555', marginTop:2 }}>{t(s.label)}</div>
             </div>
           ))}
         </div>
@@ -163,7 +214,7 @@ function AnsweredPopup({ client, sessionId, onDone, onCallLater }: any) {
         <div style={{ background:'#2c333e', borderRadius:12, padding:'12px 14px', marginBottom:16,
           display:'flex', flexDirection:'column', gap:10 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:11, color:'#667', width:78, flexShrink:0 }}>📣 Campaign</span>
+            <span style={{ fontSize:11, color:'#667', width:78, flexShrink:0 }}>📣 {t('Campaign')}</span>
             <span style={{ fontSize:13, color:'#e0e0e0', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
               {client.campaign || '—'}
             </span>
@@ -177,28 +228,28 @@ function AnsweredPopup({ client, sessionId, onDone, onCallLater }: any) {
             )}
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:11, color:'#667', width:78, flexShrink:0 }}>🗓 Registered</span>
+            <span style={{ fontSize:11, color:'#667', width:78, flexShrink:0 }}>🗓 {t('Registered')}</span>
             <span style={{ fontSize:13, color:'#e0e0e0' }}>{fmtDateTime(client.reg_date) || '—'}</span>
           </div>
           {client.last_comment ? (
             <div style={{ display:'flex', gap:8 }}>
-              <span style={{ fontSize:11, color:'#667', width:78, flexShrink:0, paddingTop:2 }}>💬 Last note</span>
+              <span style={{ fontSize:11, color:'#667', width:78, flexShrink:0, paddingTop:2 }}>💬 {t('Last note')}</span>
               <span style={{ fontSize:12, color:'#c0c4cc', lineHeight:1.5, whiteSpace:'pre-wrap',
                 maxHeight:60, overflowY:'auto' }}>{client.last_comment}</span>
             </div>
           ) : (
             <div style={{ display:'flex', gap:8 }}>
-              <span style={{ fontSize:11, color:'#667', width:78, flexShrink:0 }}>💬 Last note</span>
-              <span style={{ fontSize:12, color:'#555', fontStyle:'italic' }}>No previous notes</span>
+              <span style={{ fontSize:11, color:'#667', width:78, flexShrink:0 }}>💬 {t('Last note')}</span>
+              <span style={{ fontSize:12, color:'#555', fontStyle:'italic' }}>{t('No previous notes')}</span>
             </div>
           )}
         </div>
 
         {/* Notes */}
         <div style={{ marginBottom:16 }}>
-          <div style={{ fontSize:11, color:'#555', marginBottom:6 }}>Call notes</div>
+          <div style={{ fontSize:11, color:'#555', marginBottom:6 }}>{t('Call notes')}</div>
           <textarea value={comment} onChange={e => setComment(e.target.value)}
-            placeholder="What did you discuss? Any follow-up needed?"
+            placeholder={t('What did you discuss? Any follow-up needed?')}
             style={{ width:'100%', background:'#2c333e', border:'1px solid #1e2230', borderRadius:10,
               color:'#e0e0e0', fontSize:13, padding:'12px', resize:'none', outline:'none',
               height:80, fontFamily:'inherit', boxSizing:'border-box' }} />
@@ -209,16 +260,16 @@ function AnsweredPopup({ client, sessionId, onDone, onCallLater }: any) {
           <button onClick={() => submitOutcome('done')}
             style={{ padding:'13px', background:'linear-gradient(135deg,#00c87a,#00e5a0)',
               border:'none', borderRadius:12, color:'#262c36', fontSize:14, fontWeight:700, cursor:'pointer' }}>
-            ✓ Connected &amp; Done
+            ✓ {t('Connected & Done')}
           </button>
           <button onClick={() => setShowCallLater(!showCallLater)}
             style={{ padding:'11px', background:'rgba(255,170,0,0.1)', border:'1px solid rgba(255,170,0,0.3)',
               borderRadius:12, color:'#ffaa00', cursor:'pointer', fontSize:13, fontWeight:500 }}>
-            🕐 Schedule Callback
+            🕐 {t('Schedule Callback')}
           </button>
           {showCallLater && (
             <div style={{ background:'#2c333e', border:'1px solid #1e2230', borderRadius:12, padding:14, marginTop:2 }}>
-              <div style={{ fontSize:11, color:'#667', marginBottom:10 }}>Call back in…</div>
+              <div style={{ fontSize:11, color:'#667', marginBottom:10 }}>{t('Call back in…')}</div>
               {/* Day / Hours / Minutes digit boxes */}
               <div style={{ display:'flex', gap:10, marginBottom:12 }}>
                 {[
@@ -232,7 +283,7 @@ function AnsweredPopup({ client, sessionId, onDone, onCallLater }: any) {
                       style={{ width:'100%', background:'#373f4d', border:'1px solid #626d80', borderRadius:10,
                         color:'#fff', fontSize:24, fontWeight:700, padding:'10px 0', textAlign:'center',
                         outline:'none', boxSizing:'border-box', MozAppearance:'textfield' as any }} />
-                    <div style={{ fontSize:10, color:'#667', marginTop:4, textTransform:'uppercase', letterSpacing:.5 }}>{f.lbl}</div>
+                    <div style={{ fontSize:10, color:'#667', marginTop:4, textTransform:'uppercase', letterSpacing:.5 }}>{t(f.lbl)}</div>
                   </div>
                 ))}
               </div>
@@ -249,20 +300,20 @@ function AnsweredPopup({ client, sessionId, onDone, onCallLater }: any) {
                   <button key={q.lbl} onClick={() => setQuick(q.d, q.h, q.m)}
                     style={{ padding:'6px 12px', background:'#373f4d', border:'1px solid #2a3142',
                       borderRadius:99, color:'#9fb0c0', fontSize:11, fontWeight:500, cursor:'pointer' }}>
-                    {q.lbl}
+                    {t(q.lbl)}
                   </button>
                 ))}
               </div>
               {/* Preview + Set */}
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <div style={{ flex:1, fontSize:12, color: callbackDate ? '#ffaa00' : '#555' }}>
-                  {callbackDate ? `📞 ${fmtDateTime(callbackDate.toISOString())}` : 'Enter a time or pick a shortcut'}
+                  {callbackDate ? `📞 ${fmtDateTime(callbackDate.toISOString())}` : t('Enter a time or pick a shortcut')}
                 </div>
                 <button onClick={() => submitOutcome('call_later')} disabled={!callbackDate}
                   style={{ padding:'10px 20px', background: callbackDate ? '#ffaa00' : '#2a2a2a',
                     border:'none', borderRadius:8, color: callbackDate ? '#262c36' : '#666',
                     fontWeight:700, cursor: callbackDate ? 'pointer' : 'default', fontSize:13 }}>
-                  Set callback
+                  {t('Set callback')}
                 </button>
               </div>
             </div>
@@ -276,6 +327,7 @@ function AnsweredPopup({ client, sessionId, onDone, onCallLater }: any) {
 
 // ── QUEUE PREVIEW PANEL ─────────────────────────────────────────────────────
 function QueuePanel({ sessionId, onStart, onClose }: { sessionId: number, onStart: () => void, onClose: () => void }) {
+  const t = useT();
   const [queue, setQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -301,8 +353,8 @@ function QueuePanel({ sessionId, onStart, onClose }: { sessionId: number, onStar
       <div style={{ padding: "16px 20px", borderBottom: "1px solid #1e2230",
         display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#e0e0e0" }}>📞 Power Dialer Queue</div>
-          <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{queue.length} contacts to call</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#e0e0e0" }}>📞 {t('Power Dialer Queue')}</div>
+          <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{queue.length} {t('contacts to call')}</div>
         </div>
         <button onClick={onClose}
           style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20 }}>✕</button>
@@ -311,7 +363,7 @@ function QueuePanel({ sessionId, onStart, onClose }: { sessionId: number, onStar
       {/* Queue list */}
       <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
         {loading ? (
-          <div style={{ padding: 20, textAlign: "center", color: "#555" }}>Loading queue...</div>
+          <div style={{ padding: 20, textAlign: "center", color: "#555" }}>{t('Loading queue...')}</div>
         ) : queue.map((item: any, i: number) => (
           <div key={item.queue_id || i} style={{
             display: "flex", alignItems: "center", gap: 10, padding: "10px 20px",
@@ -329,7 +381,7 @@ function QueuePanel({ sessionId, onStart, onClose }: { sessionId: number, onStar
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#e0e0e0",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name || "Unknown"}</div>
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name || t("Unknown")}</div>
               <div style={{ fontSize: 11, color: "#555", fontFamily: "monospace" }}>{item.phone || "—"}</div>
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -346,10 +398,10 @@ function QueuePanel({ sessionId, onStart, onClose }: { sessionId: number, onStar
           style={{ width: "100%", padding: "14px", background: "linear-gradient(135deg,#00c87a,#00e5a0)",
             border: "none", borderRadius: 12, color: "#262c36", fontSize: 15, fontWeight: 700,
             cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          ▶ Start Power Dialer
+          ▶ {t('Start Power Dialer')}
         </button>
         <div style={{ textAlign: "center", fontSize: 11, color: "#555", marginTop: 8 }}>
-          Will auto-call each contact in order
+          {t('Will auto-call each contact in order')}
         </div>
       </div>
     </div>
@@ -358,6 +410,7 @@ function QueuePanel({ sessionId, onStart, onClose }: { sessionId: number, onStar
 
 // ── MAIN DIALER WIDGET ──────────────────────────────────────────────────────
 export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, onClose: () => void }) {
+  const t = useT();
   const [current, setCurrent]     = useState<Client | null>(null);
   const [stats, setStats]         = useState({ pending:0, done:0, exhausted:0, total:0 });
   const [phase, setPhase]         = useState<'calling'|'answered'|'paused'|'done'>('calling');
@@ -382,7 +435,7 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
     await new Promise(r => setTimeout(r, 300));   // let reschedule writes settle
     const data = await apiPost(`/dialer/session/${sessionId}/auto-next`, {});
     if (data?.error === 'no_extension') {
-      setDialResult({ ok: false, errmsg: data.errmsg || 'Set your PBX extension in Settings.' });
+      setDialResult({ ok: false, errmsg: data.errmsg || t('Set your PBX extension in Settings.') });
       runningRef.current = false; setPhase('paused'); return;
     }
     if (data?.done) { setPhase('done'); return; }
@@ -455,7 +508,7 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
         // customer was never dialed. Don't advance (that would burn the queue); pause and tell
         // the agent to fix their phone, then Resume retries.
         runningRef.current = false;
-        setDialResult({ ok: false, errmsg: "Your phone didn't pick up the call. Turn on auto-answer in Linkus (or accept the call on your phone), then press Resume." });
+        setDialResult({ ok: false, errmsg: t("Your phone didn't pick up the call. Turn on auto-answer in Linkus (or accept the call on your phone), then press Resume.") });
         setPhase('paused');
       }
     }, 1500);
@@ -490,9 +543,9 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
         background: phase==='calling'?'#ffaa00':phase==='answered'?'#00e5a0':'#555',
         animation: phase==='calling'||phase==='answered' ? 'pulse 1s infinite' : '' }} />
       <span style={{ fontSize:12, color:'#e0e0e0' }}>
-        {phase==='calling'   ? `📞 Calling ${callingName}...` :
-         phase==='answered'  ? `🟢 On call with ${callingName}` :
-         phase==='paused'    ? '⏸ Dialer paused' : '✓ Done'}
+        {phase==='calling'   ? `📞 ${t('Calling')} ${callingName}...` :
+         phase==='answered'  ? `🟢 ${t('On call with')} ${callingName}` :
+         phase==='paused'    ? '⏸ ' + t('Dialer paused') : '✓ ' + t('Done')}
       </span>
       <span style={{ fontSize:10, color:'#555' }}>{stats.done}/{stats.total}</span>
     </div>
@@ -522,7 +575,7 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
             <div style={{ width:8, height:8, borderRadius:99,
               background: phase==='calling'?'#ffaa00':phase==='answered'?'#00e5a0':'#555',
               boxShadow: phase==='calling'?'0 0 6px #ffaa00':phase==='answered'?'0 0 6px #00e5a0':'' }} />
-            <span style={{ fontSize:13, fontWeight:600, color:'#e0e0e0' }}>Power Dialer</span>
+            <span style={{ fontSize:13, fontWeight:600, color:'#e0e0e0' }}>{t('Power Dialer')}</span>
           </div>
           <div style={{ display:'flex', gap:4 }}>
             {phase === 'calling' && (
@@ -548,7 +601,7 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
             .map(([l,v,c],i)=>(
             <div key={i} style={{ flex:1, textAlign:'center', borderRight: i<3 ? '1px solid #16181e' : 'none' }}>
               <div style={{ fontSize:16, fontWeight:700, color:c }}>{v}</div>
-              <div style={{ fontSize:9, color:'#667', textTransform:'uppercase', letterSpacing:.4, marginTop:2 }}>{l}</div>
+              <div style={{ fontSize:9, color:'#667', textTransform:'uppercase', letterSpacing:.4, marginTop:2 }}>{t(l)}</div>
             </div>
           ))}
         </div>
@@ -568,7 +621,7 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
               </div>
               {(current.attempt||0) > 0 && (
                 <span style={{ fontSize:10, padding:'2px 6px', borderRadius:99, background:'rgba(255,170,0,0.1)', color:'#ffaa00' }}>
-                  Att.{(current.attempt||0)+1}
+                  {t('Att.')}{(current.attempt||0)+1}
                 </span>
               )}
             </div>
@@ -580,39 +633,41 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
           <div style={{ padding:'12px 14px 14px' }}>
             <div style={{ textAlign:'center', color:'#ffaa00', fontSize:12, marginBottom:8,
               animation:'pulse 1.5s infinite' }}>
-              🔔 Ringing {current?.name?.split(' ')[0]}…
+              🔔 {t('Ringing')} {current?.name?.split(' ')[0]}…
             </div>
             {/* PBX result so the agent knows the call really went out */}
             {dialResult && (dialResult.ok
               ? <div style={{ textAlign:'center', fontSize:11, color:'#00e5a0', marginBottom:12 }}>
-                  📞 Auto-dialing — your headset connects automatically. Waiting for answer…
+                  📞 {t('Auto-dialing — your headset connects automatically. Waiting for answer…')}
                 </div>
               : <div style={{ textAlign:'center', fontSize:11, color:'#ff5d6c', marginBottom:12,
                   background:'rgba(255,93,108,0.1)', border:'1px solid rgba(255,93,108,0.3)', borderRadius:8, padding:'6px 8px' }}>
-                  ⚠ Call not placed: {dialResult.errmsg || 'PBX rejected'}
+                  ⚠ {t('Call not placed:')} {dialResult.errmsg || t('PBX rejected')}
                 </div>
             )}
             <div style={{ textAlign:'center', fontSize:10, color:'#667', marginBottom:8 }}>
-              Advances automatically on the outcome. Use the buttons only if it doesn't.
+              {t("Advances automatically on the outcome. Use the buttons only if it doesn't.")}
             </div>
             <button onClick={handleAnswered}
               style={{ width:'100%', padding:'13px', background:'linear-gradient(135deg,#00c87a,#00e5a0)',
                 border:'none', borderRadius:12, color:'#262c36', fontSize:14, fontWeight:700,
                 cursor:'pointer', marginBottom:8, fontFamily:'inherit' }}>
-              ✓ Answered
+              ✓ {t('Answered')}
             </button>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6 }}>
-              <button onClick={() => manualOutcome('no_answer')} style={secBtn('#9aa3b2')}>✗ No answer</button>
-              <button onClick={() => manualOutcome('rejected')} style={secBtn('#ff5d6c')}>🚫 Rejected</button>
-              <button onClick={() => manualOutcome('off')} style={secBtn('#888')}>📵 Off</button>
+              <button onClick={() => manualOutcome('no_answer')} style={secBtn('#9aa3b2')}>✗ {t('No answer')}</button>
+              <button onClick={() => manualOutcome('rejected')} style={secBtn('#ff5d6c')}>🚫 {t('Rejected')}</button>
+              <button onClick={() => manualOutcome('off')} style={secBtn('#888')}>📵 {t('Off')}</button>
             </div>
+            {/* #256 — previous comments for the CURRENT contact, switching automatically */}
+            <ContactComments contact={current} />
           </div>
         )}
 
         {/* PAUSED phase */}
         {phase === 'paused' && (
           <div style={{ padding:'14px', textAlign:'center' }}>
-            <div style={{ color:'#9aa3b2', fontSize:12, marginBottom:12 }}>⏸ Dialer paused</div>
+            <div style={{ color:'#9aa3b2', fontSize:12, marginBottom:12 }}>⏸ {t('Dialer paused')}</div>
             {dialResult && !dialResult.ok && dialResult.errmsg && (
               <div style={{ fontSize:11, color:'#ff5d6c', marginBottom:12, lineHeight:1.5,
                 background:'rgba(255,93,108,0.1)', border:'1px solid rgba(255,93,108,0.3)', borderRadius:8, padding:'8px 10px' }}>
@@ -622,7 +677,7 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
             <button onClick={() => { runningRef.current = true; callNext(); }}
               style={{ width:'100%', padding:'13px', background:'linear-gradient(135deg,#00c87a,#00e5a0)',
                 border:'none', borderRadius:12, color:'#262c36', cursor:'pointer', fontSize:14, fontWeight:700, fontFamily:'inherit' }}>
-              ▶ Resume dialing
+              ▶ {t('Resume dialing')}
             </button>
           </div>
         )}
@@ -631,17 +686,17 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
         {phase === 'done' && (
           <div style={{ padding:'20px 14px 16px', textAlign:'center' }}>
             <div style={{ fontSize:28, marginBottom:6 }}>🎉</div>
-            <div style={{ fontSize:15, fontWeight:700, color:'#00e5a0', marginBottom:4 }}>Batch complete</div>
+            <div style={{ fontSize:15, fontWeight:700, color:'#00e5a0', marginBottom:4 }}>{t('Batch complete')}</div>
             <div style={{ fontSize:11, color:'#667', marginBottom:8 }}>
-              {stats.done} connected · {stats.exhausted} unreachable
+              {stats.done} {t('connected')} · {stats.exhausted} {t('unreachable')}
             </div>
             <div style={{ fontSize:11, color:'#9aa3b2', marginBottom:14 }}>
-              Close and press <b>Power Dial</b> again for the next 20.
+              {t('Close and press')} <b>{t('Power Dial')}</b> {t('again for the next 20.')}
             </div>
             <button onClick={onClose}
               style={{ width:'100%', padding:'11px', background:'#373f4d', border:'1px solid #2a2f3a',
                 borderRadius:10, color:'#9aa3b2', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'inherit' }}>
-              Close
+              {t('Close')}
             </button>
           </div>
         )}
@@ -653,15 +708,23 @@ export function PowerDialerWidget({ sessionId, onClose }: { sessionId: number, o
 }
 
 // ── LAUNCHER ────────────────────────────────────────────────────────────────
+// ── MAINTENANCE GATE ─────────────────────────────────────────────────────────
+// Power Dialer is temporarily disabled everywhere (user request, Jul 20 2026).
+// Flip to false to re-enable — the button then works exactly as before.
+const DIALER_MAINTENANCE = true;
+
 export function DialerLauncher({ fetchAllLogins, source = 'clients' }:
   { fetchAllLogins: () => Promise<number[]>, source?: string }) {
+  const t = useT();
   const [sessionId, setSessionId]       = useState<number | null>(null);
   const [showQueue, setShowQueue]       = useState(false);
   const [dialerActive, setDialerActive] = useState(false);
   const [loading, setLoading]           = useState(false);
   const [count, setCount]               = useState<number|null>(null);
+  const [showMaint, setShowMaint]       = useState(false);
 
   const openQueue = async () => {
+    if (DIALER_MAINTENANCE) { setShowMaint(true); return; }
     setLoading(true);
     try {
       const ids = await fetchAllLogins();
@@ -701,7 +764,7 @@ export function DialerLauncher({ fetchAllLogins, source = 'clients' }:
           color: '#262c36',
           cursor: loading ? 'not-allowed' : 'pointer',
           fontSize:12, fontWeight:700, transition:'all .2s' }}>
-        {loading ? '⟳' : '📞'} {loading ? 'Loading all...' : count ? `Power Dial (${count})` : 'Power Dial'}
+        {loading ? '⟳' : '📞'} {loading ? t('Loading all...') : count ? `${t('Power Dial')} (${count})` : t('Power Dial')}
       </button>
 
       {/* Queue preview panel */}
@@ -716,6 +779,34 @@ export function DialerLauncher({ fetchAllLogins, source = 'clients' }:
       {/* Active dialer widget */}
       {dialerActive && sessionId && (
         <PowerDialerWidget sessionId={sessionId} onClose={closeAll} />
+      )}
+
+      {/* Maintenance popup */}
+      {showMaint && (
+        <div onClick={() => setShowMaint(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(2,6,23,.6)', zIndex: 2000,
+                   display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--bg-card,#2c333e)', color: 'var(--text,#e6e9ef)',
+                     border: '1px solid var(--border,#4f596b)', borderRadius: 16,
+                     padding: '28px 34px', maxWidth: 380, textAlign: 'center',
+                     boxShadow: '0 20px 60px rgba(0,0,0,.5)' }}>
+            <div style={{ fontSize: 42, marginBottom: 10 }}>🛠️</div>
+            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 6 }}>{t('Power Dialer — Under Maintenance')}</div>
+            <div style={{ fontSize: 13, color: 'var(--text2,#8a93a3)', lineHeight: 1.7, marginBottom: 4 }}>
+              {t('This feature is temporarily unavailable while we work on it.')}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text2,#8a93a3)', lineHeight: 1.7, direction: 'rtl' }}>
+              هذه الميزة قيد الصيانة مؤقتاً — ستعود قريباً.
+            </div>
+            <button onClick={() => setShowMaint(false)}
+              style={{ marginTop: 16, border: 'none', background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
+                       color: '#fff', borderRadius: 10, padding: '9px 26px', cursor: 'pointer',
+                       fontSize: 13.5, fontWeight: 700 }}>
+              {t('OK')}
+            </button>
+          </div>
+        </div>
       )}
     </>
   );

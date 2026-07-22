@@ -312,7 +312,7 @@ function RuleEditor({ rule, opts, onClose, onSaved }: { rule: Rule; opts: Option
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
           <span style={{ color: '#8a93a5', fontSize: 13 }}>
-            {preview != null ? <>Matches <b style={{ color: '#00e5a0' }}>{preview.toLocaleString()}</b> existing leads</> : '…'}
+            {preview != null ? <>Matches <b style={{ color: '#00e5a0' }}>{preview.toLocaleString('en-GB')}</b> existing leads</> : '…'}
           </span>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {err && <span style={{ color: '#ff5d6c', fontSize: 12 }}>{err}</span>}

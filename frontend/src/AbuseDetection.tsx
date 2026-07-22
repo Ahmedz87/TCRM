@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost } from './api';
 import HedgeTraders from './HedgeTraders';
+import { CT } from './crmTable';
 
 // ── theme / maps ────────────────────────────────────────────────────────────────
 const SEV = {
@@ -62,7 +63,7 @@ const EXPLAIN: Record<string, { what: string; why: string; action: string }> = {
     action: 'Review the strategy and bonus eligibility; hold withdrawals if the account is bonus-funded.' },
 };
 
-const money = (n: number) => '$' + Math.round(n || 0).toLocaleString();
+const money = (n: number) => '$' + Math.round(n || 0).toLocaleString('en-GB');
 const fmtDT = (s: string) => {
   if (!s) return '—';
   const d = new Date(s.replace(' ', 'T'));
@@ -367,8 +368,62 @@ function CaseDrawer({ row, onClose, onAction }: any) {
             </Section>
           )}
 
+          {d?.relations && (() => {
+            const rel = d.relations;
+            const scoreCol = (s: number) => s >= 8 ? '#ff4d4d' : s >= 5 ? '#ff8c00' : s >= 3 ? '#ffd166' : s >= 1 ? '#8a93a3' : '#556';
+            return (
+            <Section title="Are these accounts connected?">
+              {/* the verdict — first, before the per-account detail */}
+              <div style={{ padding: '10px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13, fontWeight: 700,
+                background: rel.connected ? 'rgba(255,77,77,0.1)' : 'rgba(0,229,160,0.08)',
+                border: `1px solid ${rel.connected ? '#ff4d4d55' : '#00e5a055'}`, color: rel.connected ? '#ff6b6b' : '#00e5a0' }}>
+                {rel.connected
+                  ? '⚠ These accounts ARE connected — operated by the same or linked parties'
+                  : '○ These accounts are NOT directly connected to each other (each may still have its own network below)'}
+              </div>
+              {rel.same_person?.length > 0 && rel.same_person.map((g: number[], i: number) => (
+                <div key={'sp' + i} style={{ fontSize: 12, color: '#ffd166', marginBottom: 6 }}>
+                  👤 Same person: {g.map(l => '#' + l).join(', ')}
+                </div>
+              ))}
+              {rel.inter?.map((e: any, i: number) => (
+                <div key={'in' + i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#2c333e', borderRadius: 8, marginBottom: 5, fontSize: 11, border: '1px solid #4f596b', flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'monospace', color: '#00aaff' }}>#{e.login_a}</span>
+                  <span style={{ color: '#556' }}>↔</span>
+                  <span style={{ fontFamily: 'monospace', color: '#00aaff' }}>#{e.login_b}</span>
+                  {(e.reasons || []).map((r: any, j: number) => (
+                    <span key={j} style={{ fontSize: 9, padding: '2px 8px', borderRadius: 4, fontWeight: 700, background: '#0a1a3a', color: '#7fb0ff' }}>{r.label}</span>
+                  ))}
+                </div>
+              ))}
+              {/* then each account's OWN wider network */}
+              <div style={{ fontSize: 10, color: '#667', textTransform: 'uppercase', letterSpacing: 1, margin: '14px 0 8px' }}>Each account's connections</div>
+              {rel.accounts?.map((a: any, i: number) => (
+                <div key={'ac' + i} style={{ background: '#262c36', border: '1px solid #373f4d', borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: a.connections?.length ? 8 : 0 }}>
+                    <span style={{ minWidth: 30, textAlign: 'center', fontWeight: 800, fontFamily: 'monospace', color: scoreCol(a.network_score) }}>{a.network_score}/10</span>
+                    <span style={{ fontFamily: 'monospace', color: '#00aaff' }}>#{a.login}</span>
+                    <span style={{ fontSize: 12, color: '#e0e0e0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8a93a3' }}>{a.n_connections} linked{a.top_reason ? ' · ' + a.top_reason : ''}</span>
+                  </div>
+                  {a.connections?.slice(0, 6).map((cn: any, j: number) => (
+                    <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 6px', fontSize: 11, borderTop: '1px solid #2c333e' }}>
+                      <span style={{ color: cn.in_this_case ? '#ff6b6b' : '#c4ccd8' }}>{cn.in_this_case ? '★ ' : ''}{(cn.name || '—').slice(0, 22)}</span>
+                      <span style={{ marginLeft: 'auto', display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {(cn.reasons || []).slice(0, 2).map((r: any, k: number) => (
+                          <span key={k} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: '#0a1a3a', color: '#7fb0ff' }}>{r.label}</span>
+                        ))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </Section>
+            );
+          })()}
+
           {(net == null || net?.nodes?.length > 1 || links.length > 0) && (
-            <Section title="Network connections">
+            <Section title="Network graph">
               {net == null
                 ? <div style={{ fontSize: 12, color: '#667', padding: 10 }}>Loading connections…</div>
                 : <NetworkGraph net={net} caseLogins={row.all_logins || [row.login_a]} />}
@@ -406,36 +461,35 @@ function CaseDrawer({ row, onClose, onAction }: any) {
 }
 
 // ── table row (one finding) ──────────────────────────────────────────────────────
-const td: React.CSSProperties = { padding: '9px 12px', fontSize: 12.5, color: '#cfd6e0', verticalAlign: 'middle', whiteSpace: 'nowrap' };
 function CaseRow({ c, onClick }: any) {
   const sev = SEV[c.severity] || SEV.medium;
   const tm = typeMeta(c.abuse_type);
   const al = c.all_logins || [c.login_a];
   return (
-    <tr onClick={onClick} style={{ cursor: 'pointer', borderBottom: '1px solid #2a2f3a', borderLeft: `3px solid ${sev.c}` }}
-      onMouseEnter={e => (e.currentTarget.style.background = '#2c333e')}
+    <tr onClick={onClick} style={{ ...CT.row(), cursor: 'pointer', borderLeft: `3px solid ${sev.c}` }}
+      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-card,#2c333e)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-      <td style={{ ...td, color: '#667', fontFamily: 'monospace', borderLeft: `3px solid ${sev.c}` }}>#{c.id}</td>
-      <td style={{ ...td, color: '#8a93a3' }}>{fmtDT(c.created_at)}</td>
-      <td style={td}>
+      <td style={{ ...CT.td, color: '#667', fontFamily: 'monospace', borderLeft: `3px solid ${sev.c}` }}>#{c.id}</td>
+      <td style={{ ...CT.td, color: '#8a93a3' }}>{fmtDT(c.created_at)}</td>
+      <td style={CT.td}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 15 }}>{tm.icon}</span>
           <span style={{ fontWeight: 600, color: '#e6e9ef' }}>{tm.label}</span>
           {c.hot && <HotBadge />}
         </span>
       </td>
-      <td style={td}>
+      <td style={CT.td}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
           {al.slice(0, 2).map((l: any, i: number) => <span key={i} style={{ fontFamily: 'monospace', color: '#00aaff' }}>#{l}</span>)}
           {al.length > 2 && <span style={{ color: '#667', fontSize: 11 }}>+{al.length - 2}</span>}
         </span>
       </td>
-      <td style={{ ...td, color: '#9aa3b2' }}>{c.symbol || '—'}</td>
-      <td style={td}>
+      <td style={{ ...CT.td, color: '#9aa3b2' }}>{c.symbol || '—'}</td>
+      <td style={CT.td}>
         <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 99, background: sev.bg, color: sev.c }}>{sev.dot} {String(c.severity).toUpperCase()}</span>
       </td>
-      <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: c.exposure > 0 ? '#ff7a7a' : '#667' }}>{c.exposure > 0 ? money(c.exposure) : '—'}</td>
-      <td style={{ ...td, width: 90 }}><ScoreBar v={c.risk_score || 0} c={sev.c} /></td>
+      <td style={{ ...CT.td, textAlign: 'right', fontWeight: 700, color: c.exposure > 0 ? '#ff7a7a' : '#667' }}>{c.exposure > 0 ? money(c.exposure) : '—'}</td>
+      <td style={{ ...CT.td, width: 90 }}><ScoreBar v={c.risk_score || 0} c={sev.c} /></td>
     </tr>
   );
 }
@@ -519,15 +573,14 @@ export default function AbuseDetection() {
         </div>
 
         {/* clean table — one row per case */}
-        <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+        <div style={CT.scroll}>
           {loading ? <div style={{ padding: 40, textAlign: 'center', color: '#556' }}>Loading…</div>
             : cases.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: '#556' }}>No cases. Click “Run Detection”.</div>
-            : <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+            : <table style={CT.table}>
                 <thead>
-                  <tr style={{ position: 'sticky', top: 0, zIndex: 1, background: '#262c36' }}>
+                  <tr style={CT.theadTr}>
                     {COLS.map((h, i) => (
-                      <th key={h} style={{ padding: '9px 12px', fontSize: 10, fontWeight: 700, color: '#7a8294', textTransform: 'uppercase', letterSpacing: .5,
-                        textAlign: i === 6 ? 'right' : 'left', borderBottom: '1px solid #373f4d', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={CT.th(false, i === 6 ? 'right' : 'left')}>{h}</th>
                     ))}
                   </tr>
                 </thead>

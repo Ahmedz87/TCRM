@@ -95,24 +95,14 @@ def reject_reverted_withdrawals(cur):
     Flag the matching original withdrawal (same login+amount, most recent one before the revert) as
     'rejected' so it stops counting as a real withdrawal. Idempotent; scans recent reverts each run.
     NOTE: matching is by login+amount+time because the revert comment has no original deal id — if
-    that's added later this can key on it directly to avoid any mis-match."""
-    cur.execute("""
-        WITH pick AS (
-          SELECT DISTINCT ON (rv.id) wd.id AS wid
-          FROM transactions rv
-          JOIN transactions wd
-            ON wd.login = rv.login
-           AND round(wd.amount::numeric,2) = round(rv.amount::numeric,2)
-           AND wd.tx_type = 'withdrawal' AND COALESCE(wd.status,'') <> 'rejected'
-           AND wd.tx_date < rv.tx_date
-          WHERE rv.tx_type = 'withdrawal_revert'
-            AND rv.tx_date > to_char(NOW() - INTERVAL '45 days', 'YYYY-MM-DD')
-          ORDER BY rv.id, wd.tx_date DESC
-        )
-        UPDATE transactions t SET status='rejected', updated_at=NOW()
-        FROM pick WHERE t.id = pick.wid
-    """)
-    return cur.rowcount
+    that's added later this can key on it directly to avoid any mis-match.
+    Fixed Jul 2026: the old DISTINCT ON (rv.id) let many reverts collapse onto the SAME original
+    when a client repeats the same amount (twenty $1,500 withdrawals each reverted -> only 1 got
+    rejected; July was inflated ~$126k). Delegates to revert_reject_engine (greedy-all 1:1,
+    idempotent — see its docstring for why this pairing)."""
+    cur.connection.commit()
+    import revert_reject_engine
+    return revert_reject_engine.run(conn=cur.connection)
 
 
 def main():

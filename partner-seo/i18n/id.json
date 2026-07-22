@@ -1,0 +1,329 @@
+{
+ "ui": {
+  "partners": "Partner",
+  "nav_commission": "Komisi",
+  "nav_challenges": "Tantangan",
+  "nav_payments": "Pembayaran",
+  "nav_about": "Tentang TNFX",
+  "login": "Masuk",
+  "become_partner": "Jadi partner",
+  "cta_primary": "Jadi partner",
+  "cta_secondary": "Lihat cara kerjanya",
+  "per_lot": "/ lot",
+  "up_to": "hingga",
+  "lang_pick": "Bahasa",
+  "suggest_prefix": "Lihat halaman ini dalam",
+  "suggest_yes": "Ganti",
+  "suggest_no": "Tidak, terima kasih",
+  "start_earning": "Mulai hasilkan hari ini",
+  "ib_partner": "Partner IB / Afiliasi",
+  "ib_sub": "Hasilkan hingga $10 per lot",
+  "client_area": "Buka Akun Trading",
+  "client_sub": "Trading di MT4 & MT5",
+  "sign_up": "Daftar",
+  "open_account": "Buka akun",
+  "on_this_page": "Di halaman ini",
+  "key_facts": "Fakta utama",
+  "other_pages": "Halaman partner lainnya",
+  "read_time": "menit baca",
+  "earnings": "Penghasilan partner",
+  "this_mo": "Bulan ini",
+  "last30": "30 hari terakhir",
+  "clients": "Klien",
+  "funded": "Klien funded",
+  "lots": "Lot ditradingkan",
+  "active_mission": "Misi aktif",
+  "claim": "Klaim",
+  "live": "LIVE"
+ },
+ "s": {
+  "commission_kicker": "Angka yang menentukan",
+  "commission_h2": "Hingga $10 untuk setiap lot yang ditradingkan klien Anda",
+  "commission_lead": "Komisi Anda dibayar atas setiap lot yang ditradingkan klien referral Anda — pada emas dan pasangan mata uang mayor — dilacak secara live sampai ke dolar dan bisa ditarik kapan saja. Setiap partner memulai dari $5 per lot dan naik hingga $10 seiring bertumbuhnya jaringan Anda. Tanpa negosiasi, tanpa pilih kasih: capai ambang batas yang telah dipublikasikan dan rate Anda naik otomatis.",
+  "commission_tiers_note": "Enam tingkatan. Satu angka yang hanya akan naik.",
+  "commission_rate_word": "per lot",
+  "challenges_kicker": "Arena Tantangan",
+  "challenges_h2": "Dibayar untuk bertumbuh — cash nyata di atas komisi Anda",
+  "challenges_lead": "Partner TNFX tidak hanya menghasilkan per lot. Terima misi, capai target, klaim cash nyata — langsung masuk ke partner wallet Anda, di atas setiap dolar komisi.",
+  "career_h3": "Misi karier — hingga $4,000",
+  "career_lead": "Enam misi karier, satu perjalanan luar biasa. Setiap misi yang Anda taklukkan memberi reward cash dan menaikkan tingkatan Anda menuju $10 per lot.",
+  "weekly_h3": "Quest mingguan — reset setiap Minggu",
+  "weekly_lead": "Target cash baru setiap minggu. Bawa klien yang sudah funding, dorong volume, dan klaim — lalu papan reset pada hari Minggu dan Anda mulai lagi. Peluang baru untuk menghasilkan, setiap minggu.",
+  "weekly_reward_line": "Hingga $400 reward cash setiap minggu — di atas komisi $10-per-lot Anda.",
+  "payments_kicker": "Cara klien Anda melakukan funding",
+  "payments_h2": "13 cara bagi klien Anda untuk deposit dan withdraw",
+  "payments_lead": "Alasan utama trader referral benar-benar aktif adalah kemudahan funding. TNFX mendukung metode lokal dan global yang sudah biasa digunakan audiens Anda — deposit lokal instan, kartu, dan crypto — sehingga klien yang Anda kirim benar-benar convert, bukan berhenti di halaman kasir.",
+  "about_kicker": "Tentang TNFX",
+  "about_h2": "Broker yang layak Anda dukung dengan nama Anda",
+  "about_para1": "TNFX adalah broker forex dan CFD berlisensi FSA yang dibangun untuk trader di Timur Tengah dan sekitarnya. Klien Anda men-trading 1,000+ instrumen — emas, mayor FX, indeks, dan lainnya — di platform MetaTrader 4 dan MetaTrader 5 yang sudah mereka kenal, dengan spread ketat dan eksekusi cepat.",
+  "about_para2": "Komisi baru berlipat ketika klien Anda terus men-trading — dan TNFX dibangun untuk mempertahankan mereka: dukungan berbahasa lokal, deposit lokal instan, dan pengalaman trading yang dirancang untuk kawasan ini. Itulah mengapa jaringan partner di sini bertahan lama.",
+  "how_kicker": "Memulai",
+  "how_h2": "Dari pendaftaran hingga komisi pertama",
+  "dash_kicker": "Dashboard partner Anda",
+  "dash_h2": "Seluruh jaringan Anda, live dan sampai ke dolar",
+  "dash_lead": "Setiap klien, setiap lot, setiap dolar komisi — diperbarui begitu sebuah trade terjadi. Tanpa laporan bulanan, tanpa menebak-nebak. Lacak funnel Anda, progres tantangan, dan saldo yang bisa ditarik dalam satu portal partner real-time.",
+  "dash_caption": "Dashboard partner TNFX — komisi live, funnel, dan progres tantangan. (Ilustrasi.)",
+  "dash_caption_ch": "Arena Tantangan — terima misi, capai target, klaim cash nyata. (Ilustrasi.)",
+  "finalcta_h2": "Klien pertama Anda bisa mulai men-trading minggu ini",
+  "finalcta_lead": "Gratis untuk bergabung. Rate Bronze $5 per lot sejak hari pertama, naik hingga $10. Tantangan cash setiap minggu. Daftar dalam 60 detik.",
+  "finalcta_btn": "Jadi partner TNFX",
+  "finalcta_assurance": "Gratis bergabung · Withdraw kapan saja · Pelaporan real-time",
+  "footer_disclaimer": "TNFX berlisensi dari Financial Services Authority (FSA). Trading forex dan CFD memiliki tingkat risiko tinggi dan mungkin tidak cocok untuk semua investor. Komisi partner dibayar berdasarkan aktivitas trading klien; penghasilan di masa lalu tidak menjamin hasil di masa depan.",
+  "footer_rights": "© 2026 TNFX. Seluruh hak cipta dilindungi.",
+  "footer_login": "Login partner",
+  "footer_home": "Program partner"
+ },
+ "about_trust": [
+  {
+   "k": "FSA",
+   "v": "Broker berlisensi & teregulasi"
+  },
+  {
+   "k": "MT4 & MT5",
+   "v": "Kedua platform, satu login"
+  },
+  {
+   "k": "1000+",
+   "v": "Instrumen — emas, FX, indeks"
+  },
+  {
+   "k": "Instant",
+   "v": "Deposit lokal & withdrawal cepat"
+  }
+ ],
+ "how_steps": [
+  {
+   "t": "Daftar dalam 60 detik",
+   "d": "Nama, kontak, dan cara Anda memperkenalkan klien. Itu seluruh formulirnya."
+  },
+  {
+   "t": "Persetujuan desk",
+   "d": "Partner desk kami meninjau setiap pendaftaran dan mengaktifkan akun Anda — biasanya di hari yang sama."
+  },
+  {
+   "t": "Bagikan link Anda",
+   "d": "Dapatkan link referral Anda plus banner iklan siap pakai yang sudah membawanya. Posting di mana pun audiens Anda berada."
+  },
+  {
+   "t": "Hasilkan per lot",
+   "d": "Komisi masuk di setiap trade yang dilakukan klien Anda — live di dashboard Anda. Withdraw kapan saja."
+  }
+ ],
+ "weekly": [
+  {
+   "name": "First Blood",
+   "desc": "Bawa 1 klien funding minggu ini"
+  },
+  {
+   "name": "Hat Trick",
+   "desc": "Bawa 3 klien funding minggu ini"
+  },
+  {
+   "name": "Volume Hunter",
+   "desc": "Klien Anda men-trading 50 lot"
+  },
+  {
+   "name": "Whale Hunter",
+   "desc": "Klien Anda deposit $50,000"
+  }
+ ],
+ "faq": [
+  {
+   "q": "Berapa penghasilan saya sebagai partner TNFX?",
+   "a": "Hingga $10 untuk setiap lot yang ditradingkan klien referral Anda pada emas dan pasangan mayor. Anda memulai dari $5 per lot dan rate Anda naik hingga $10 seiring bertumbuhnya jaringan Anda — plus reward cash dari tantangan mingguan dan misi karier."
+  },
+  {
+   "q": "Apakah saya perlu trading atau berinvestasi untuk menghasilkan?",
+   "a": "Tidak. Anda menghasilkan dengan memperkenalkan klien, bukan dengan trading sendiri. Tidak ada biaya untuk bergabung dan tidak perlu modal — Anda dibayar berdasarkan aktivitas trading klien Anda."
+  },
+  {
+   "q": "Kapan dan bagaimana saya dibayar?",
+   "a": "Komisi terakumulasi secara live di setiap trade dan bisa ditarik kapan saja — tanpa penguncian, tanpa siklus minimum. Withdraw melalui salah satu dari 13 metode yang didukung TNFX, termasuk opsi lokal instan."
+  },
+  {
+   "q": "Apakah TNFX teregulasi?",
+   "a": "Ya. TNFX berlisensi dan diregulasi oleh Financial Services Authority (FSA), beroperasi di MetaTrader 4 dan MetaTrader 5 dengan 1,000+ instrumen."
+  },
+  {
+   "q": "Bagaimana cara menjadi partner?",
+   "a": "Daftar dalam sekitar 60 detik dengan nama dan kontak Anda. Partner desk kami meninjau dan mengaktifkan akun Anda — biasanya di hari yang sama — dan Anda langsung mendapatkan link referral Anda."
+  },
+  {
+   "q": "Apa bedanya IB, affiliate, dan referral partner?",
+   "a": "Ketiganya sama-sama memberi Anda komisi karena memperkenalkan klien ke TNFX. Affiliate mendatangkan traffic lewat link dan banner; introducing broker (IB) aktif mengelola dan mendukung sekumpulan klien, sering kali dengan tim; referral partner cukup membagikan link ke teman. Di TNFX Anda bisa mulai sebagai salah satunya dari akun yang sama, lalu berkembang menjadi desk IB penuh — komisi hingga $10 per lot tetap sama."
+  },
+  {
+   "q": "Bagaimana cara mendapatkan referral link dan banner marketing saya?",
+   "a": "Begitu akun Anda disetujui, Anda langsung mendapat referral link pribadi di dashboard partner, plus koleksi banner iklan siap pakai yang sudah membawa link Anda. Bagikan di channel apa pun yang dipakai audiens Anda."
+  },
+  {
+   "q": "Apakah klien saya bayar lebih mahal atau dapat spread lebih buruk karena pakai link saya?",
+   "a": "Tidak. Klien Anda trading dengan spread ketat dan kondisi yang persis sama seperti semua orang — komisi Anda datang dari TNFX, bukan dari klien Anda. Mereferensikan lewat Anda sama sekali tidak menambah biaya bagi mereka."
+  },
+  {
+   "q": "Bagaimana komisi per lot saya dihitung?",
+   "a": "Anda mendapat jumlah tetap untuk setiap standard lot yang ditradingkan klien referral Anda di gold dan pair-pair mayor — mulai dari $5 per lot di level Bronze sampai $10 per lot di Prime. Kalikan rate Anda dengan total lot bulanan klien untuk memperkirakan penghasilan; komisi terkumpul secara live di setiap transaksi."
+  },
+  {
+   "q": "Bagaimana cara kerja weekly challenge dan career mission?",
+   "a": "Di atas komisi per lot, Anda bisa mengambil misi dan mengklaim cash sungguhan. Weekly quest reset setiap Minggu dan membayar hingga $400; career mission berjalan sekali melewati enam tahap dan membayar hingga $4,000. Reward masuk ke wallet partner Anda begitu target tercapai."
+  },
+  {
+   "q": "Metode apa saja yang bisa saya pakai untuk menarik komisi?",
+   "a": "Anda bisa withdraw lewat metode apa pun yang didukung TNFX, termasuk opsi lokal instan dan crypto — seperti Ovadot, Qi Card, ZainCash, USDT, dan Perfect Money. Tidak ada masa penguncian dan tidak ada siklus pembayaran minimum."
+  },
+  {
+   "q": "Bisakah saya mempromosikan TNFX di media sosial, Telegram, atau YouTube?",
+   "a": "Bisa. Bagikan link dan banner Anda di mana pun audiens Anda berada — media sosial, grup chat, website, atau video — selama Anda mengikuti ketentuan partner dan aturan periklanan setempat. Materi kreatif siap pakai membuatnya cepat."
+  },
+  {
+   "q": "Apakah ada biaya pendaftaran atau jumlah klien minimum?",
+   "a": "Tidak. Bergabung sepenuhnya gratis, tidak ada jumlah klien minimum, dan tidak butuh modal. Anda mulai menghasilkan sejak lot pertama dari klien pertama Anda."
+  },
+  {
+   "q": "Apa yang terjadi pada komisi saya jika seorang klien berhenti trading?",
+   "a": "Komisi Anda dibayar atas aktivitas trading nyata, jadi berhenti sementara saat klien tidak trading dan berlanjut lagi ketika mereka kembali. Karena ini adalah revenue share seumur hidup, Anda tetap menghasilkan dari klien itu setiap kali mereka trading lagi."
+  },
+  {
+   "q": "Bisakah saya membangun tim atau membawa sub-partner di bawah saya?",
+   "a": "Bisa. TNFX mendukung introducing broker yang membangun jaringan dan mengelola tim sub-partner, sehingga Anda bisa berkembang jauh melampaui referral langsung Anda sendiri. Bicarakan dengan partner desk kami soal struktur yang paling cocok untuk operasi Anda."
+  },
+  {
+   "q": "Bagaimana caranya naik dari $5 ke $10 per lot?",
+   "a": "Rate Anda naik otomatis seiring pertumbuhan book Anda dan saat Anda mencapai ambang batas yang dipublikasikan — semakin banyak klien funded dan semakin besar volume bulanan, semakin naik Anda di tangga grade dari Bronze ke Prime. Tanpa negosiasi, tanpa pilih kasih: capai angkanya dan rate Anda naik."
+  },
+  {
+   "q": "Bagaimana cara memantau klien, lot, dan penghasilan saya?",
+   "a": "Semuanya ada di dashboard partner real-time Anda — setiap registrasi, deposit, lot yang ditradingkan, dan setiap dolar komisi, diperbarui begitu terjadi, plus progress challenge dan saldo yang bisa ditarik. Tanpa laporan bulanan, tanpa menebak-nebak."
+  }
+ ],
+ "topics": {
+  "introducing-broker": {
+   "title": "Jadi Introducing Broker (IB) Forex — Hasilkan hingga $10 per Lot | TNFX Partners",
+   "meta": "Jadi introducing broker forex TNFX dan hasilkan hingga $10 per lot atas setiap trade klien Anda. Gratis bergabung, tantangan cash mingguan, 13 metode pembayaran, teregulasi FSA.",
+   "h1": "Jadi Introducing Broker Forex",
+   "subhead": "Perkenalkan trader ke broker berlisensi FSA dan hasilkan hingga $10 untuk setiap lot yang mereka trading — plus tantangan cash mingguan dan dashboard live yang melacak setiap dolar.",
+   "lead_h2": "Apa itu introducing broker — dan berapa yang bisa Anda hasilkan?",
+   "lead_p": "Introducing broker (IB) merujuk trader ke broker dan menghasilkan komisi atas trading mereka — tanpa trading sendiri, tanpa perlu modal. Sebagai IB TNFX Anda menghasilkan hingga $10 per lot, dibayar live di setiap trade klien Anda, bisa ditarik kapan saja. Ini salah satu cara paling jelas untuk membangun penghasilan nyata dari forex tanpa harus membuka satu posisi pun."
+  },
+  "affiliate-program": {
+   "title": "Program Afiliasi Forex — Hingga $10 per Lot | TNFX Partners",
+   "meta": "Gabung program afiliasi forex TNFX dan hasilkan hingga $10 per lot plus tantangan cash mingguan. Program afiliasi CFD dengan bayaran terbaik untuk kawasan MENA — gratis, teregulasi FSA.",
+   "h1": "Program Afiliasi Forex",
+   "subhead": "Promosikan broker berlisensi FSA yang bisa dipercaya audiens Anda dan hasilkan hingga $10 per lot — plus reward cash mingguan, banner siap pakai, dan pelacakan setiap referral secara real-time.",
+   "lead_h2": "Program afiliasi forex yang benar-benar membayar",
+   "lead_p": "Afiliasi marketing untuk forex berhasil ketika bayarannya nyata dan brokernya convert. TNFX membayar hingga $10 per lot atas setiap trade yang dilakukan klien referral Anda — bukan bounty sekali bayar — plus tantangan cash setiap minggu. Dapatkan link dan materi kreatif siap pakai dalam hitungan menit dan mulai menghasilkan."
+  },
+  "partnership": {
+   "title": "Program Partner Forex — Jadi Partner TNFX | Hasilkan hingga $10 per Lot",
+   "meta": "Jadi partner TNFX, broker forex berlisensi FSA, dan hasilkan hingga $10 per lot. Kemitraan introducing broker, afiliasi, dan referral — tantangan cash mingguan, 13 metode pembayaran, dashboard live.",
+   "h1": "Jadi Partner TNFX",
+   "subhead": "Satu kemitraan, hingga $10 per lot. Baik Anda memperkenalkan klien, menjalankan kampanye afiliasi, atau mereferralkan teman — TNFX membayar Anda atas setiap lot yang mereka trading, dengan tantangan cash setiap minggu.",
+   "lead_h2": "Jadi partner broker yang membayar dan bertahan",
+   "lead_p": "Sebuah kemitraan hanya sebaik broker di belakangnya. TNFX berlisensi FSA, berjalan di MT4 dan MT5 dengan 1,000+ instrumen, dan dibangun untuk mempertahankan klien yang Anda kirim — sehingga komisi Anda terus berlipat. Hingga $10 per lot, tantangan cash mingguan, dan dashboard partner live."
+  },
+  "cpa": {
+   "title": "Bayaran CPA & Kemitraan Forex — hingga $10 per Lot atau CPA | TNFX",
+   "meta": "Bayaran partner forex TNFX: hasilkan hingga $10 per lot revenue share, plus opsi CPA. Transparan, rate dipublikasikan, teregulasi FSA, tantangan cash mingguan. Pilih model bayaran yang cocok untuk Anda.",
+   "h1": "Bayaran CPA & Partner Forex",
+   "subhead": "Pilih model bayaran yang cocok dengan traffic Anda. Hasilkan hingga $10 per lot dalam revenue share seumur hidup, atau bicarakan CPA dengan desk kami — dengan rate transparan yang dipublikasikan dan tantangan cash mingguan.",
+   "lead_h2": "CPA, revenue share, atau hybrid — pilihan Anda",
+   "lead_p": "Afiliasi serius memilih model bayaran mereka. Model inti TNFX membayar hingga $10 per lot sebagai revenue share seumur hidup — Anda menghasilkan selama klien Anda trading, bukan hanya sekali. Lebih suka cost-per-acquisition? Partner desk kami bekerja sama dengan Anda untuk deal CPA dan hybrid dengan ketentuan jelas yang dipublikasikan — tanpa jebakan kualifikasi tersembunyi."
+  },
+  "cashback-rebate": {
+   "title": "Cashback & Rebate Forex — Uang Kembali di Setiap Lot | TNFX",
+   "meta": "Dapatkan cashback dan rebate forex di setiap lot dengan TNFX. Uang kembali per lot pada emas dan mayor, dibayar live, bisa ditarik kapan saja lewat 13 metode. Teregulasi FSA. Rebate terbesar untuk trader MENA.",
+   "h1": "Cashback & Rebate Forex",
+   "subhead": "Hasilkan uang kembali di setiap lot yang ditradingkan — milik Anda atau klien Anda — dibayar live dan bisa ditarik kapan saja lewat 13 metode funding. Deal cashback paling jelas di kawasan ini.",
+   "lead_h2": "Cashback dan rebate di setiap lot",
+   "lead_p": "Rebate (atau cashback) berarti uang nyata kembali untuk setiap lot volume trading — hingga $10 per lot pada emas dan mayor. Sebagai partner TNFX Anda menghasilkannya dari volume yang dibuat klien referral Anda; dibayar live ke wallet Anda dan bisa ditarik kapan saja. Tanpa permainan batasan, tanpa kualifikasi yang samar."
+  },
+  "commission-per-lot": {
+   "title": "Komisi Forex Per Lot — Hingga $10 | Penghasilan Partner TNFX",
+   "meta": "Berapa penghasilan IB forex? Hingga $10 komisi per lot dengan TNFX, dibayar live di setiap trade. Lihat tangga rate per-lot dari $5 hingga $10 dan tantangan cash mingguan. Teregulasi FSA.",
+   "h1": "Komisi Forex — Hingga $10 per Lot",
+   "subhead": "Persis berapa yang Anda hasilkan, per lot, tanpa yang tersembunyi. Dari $5 di Bronze hingga $10 di Prime — dibayar live di setiap trade klien Anda, plus tantangan cash setiap minggu.",
+   "lead_h2": "Berapa sebenarnya penghasilan IB dan afiliasi forex?",
+   "lead_p": "Jawaban jujurnya: tergantung rate Anda dan volume klien Anda. TNFX mempublikasikan keduanya. Komisi Anda mulai dari $5 per lot di Bronze hingga $10 per lot di Prime, pada emas dan pasangan mayor, dibayar atas setiap lot yang ditradingkan klien Anda. Kalikan rate Anda dengan lot bulanan mereka dan Anda dapat penghasilan Anda — lalu tambahkan hingga $400 seminggu dalam cash tantangan di atasnya."
+  },
+  "referral": {
+   "title": "Referralkan Teman ke Forex — Program Referral | TNFX Partners",
+   "meta": "Referralkan teman ke TNFX dan hasilkan atas setiap lot yang mereka trading. Dapatkan link referral Anda seketika, hasilkan hingga $10 per lot, dan withdraw kapan saja. Gratis bergabung, teregulasi FSA, 13 metode pembayaran.",
+   "h1": "Referralkan Teman — Program Referral Forex",
+   "subhead": "Bagikan link Anda, dan hasilkan atas setiap lot yang ditradingkan teman Anda — hingga $10 per lot, dibayar live. Cara termudah untuk memulai: dapatkan link referral Anda dalam 60 detik dan bagikan di mana saja.",
+   "lead_h2": "Referral, bagikan, dan hasilkan — tanpa perlu desk",
+   "lead_p": "Belum siap untuk operasi IB penuh? Cukup referral saja. Dapatkan link referral pribadi Anda begitu mendaftar, bagikan ke teman dan audiens Anda, dan hasilkan hingga $10 atas setiap lot yang mereka trading — live, dan bisa ditarik kapan saja. Saat Anda siap untuk scaling, akun yang sama menjadi desk IB dan afiliasi penuh Anda."
+  },
+  "earn-without-trading": {
+   "title": "Cara Menghasilkan Uang di Forex Tanpa Trading | TNFX Partners",
+   "meta": "Hasilkan uang dari forex tanpa trading dan tanpa modal — jadi partner TNFX dan hasilkan hingga $10 per lot dengan mereferralkan klien. Apakah legit? Ya — teregulasi FSA. Pelajari cara kerjanya.",
+   "h1": "Cara Menghasilkan Uang di Forex Tanpa Trading",
+   "subhead": "Anda tidak perlu mempertaruhkan satu trade pun. Hasilkan hingga $10 per lot dengan memperkenalkan klien ke broker berlisensi FSA — tanpa modal, tanpa posisi, cukup jaringan dan link Anda.",
+   "lead_h2": "Hasilkan dari forex — tanpa trading dan tanpa modal",
+   "lead_p": "Kebanyakan orang rugi saat trading forex. Partner tidak trading — mereka menghasilkan dari volume yang ditradingkan orang lain. Sebagai partner TNFX Anda mereferralkan klien dan mengumpulkan hingga $10 per lot atas segala yang mereka trading, dengan nol modal berisiko. Ini legit, transparan, dan lisensi FSA TNFX berarti broker di balik penghasilan Anda teregulasi. Berikut persisnya cara kerjanya."
+  },
+  "compare": {
+   "title": "Program Partner IB & Affiliate Forex Terbaik 2026 — Hingga $10 per Lot | TNFX",
+   "meta": "Membandingkan program partner forex? Lihat yang benar-benar penting — payout per lot, seberapa cepat dibayar, dan apakah broker mampu konversi. TNFX: hingga $10 per lot, cash challenge mingguan, withdrawal lokal cepat, teregulasi FSA.",
+   "h1": "Program Partner Forex Terbaik untuk 2026",
+   "subhead": "Tidak semua program layak untuk traffic Anda. Inilah yang membedakan program IB dan affiliate forex terbaik — dan bagaimana TNFX bersaing: hingga $10 per lot, cash challenge mingguan, withdrawal lokal cepat, dan partner desk MENA khusus.",
+   "lead_h2": "Apa yang perlu dicari dalam program IB / affiliate forex",
+   "lead_p": "Setiap program partner yang serius membayar per lot atau per akuisisi — perbedaan sebenarnya ada pada seberapa besar, seberapa cepat Anda benar-benar dibayar, dan apakah broker mampu mengonversi traffic yang Anda kirim. Nilai sebuah program dari empat hal: rate per lot (dan seberapa tinggi bisa naik), kecepatan serta metode payout, seberapa baik broker mempertahankan klien Anda, dan apakah ada dukungan lokal nyata di baliknya. TNFX membayar hingga $10 per lot, menambah hingga $400 per minggu dalam bentuk cash challenge, mendanai serta mencairkan lewat 13 metode lokal dan global, dan didukung lisensi FSA serta partner desk MENA sungguhan — itulah alasan para partner memindahkan book mereka ke TNFX."
+  },
+  "what-is-introducing-broker": {
+   "title": "Apa Itu Introducing Broker (IB) Forex? Arti, Komisi & Cara Menjadi IB | TNFX",
+   "meta": "Apa itu introducing broker (IB) forex? Panduan jelas soal cara kerja IB, cara dibayar per lot, IB vs affiliate, dan cara menjadi IB dengan TNFX — hingga $10 per lot, tanpa trading, tanpa modal.",
+   "h1": "Apa Itu Introducing Broker Forex?",
+   "subhead": "Introducing broker merujuk trader ke broker dan mendapatkan komisi dari aktivitas trading mereka — tanpa Anda perlu trading sendiri, tanpa modal. Inilah cara kerjanya, dan cara menjadi IB dengan TNFX untuk hingga $10 per lot.",
+   "lead_h2": "Introducing broker, dijelaskan secara sederhana",
+   "lead_p": "Introducing broker (IB) forex adalah partner yang menghubungkan trader dengan broker dan mendapatkan komisi dari volume yang ditradingkan para trader tersebut — dibayar oleh broker, bukan oleh klien. Anda tidak trading sendiri dan tidak butuh modal; Anda menghasilkan dari aktivitas trading orang lain. Sebagai IB TNFX, Anda dibayar hingga $10 untuk setiap standard lot yang ditradingkan klien rujukan Anda, secara live di setiap trade dan bisa di-withdraw kapan saja. Ini cara paling jelas dan paling minim risiko untuk membangun penghasilan nyata dari forex."
+  },
+  "how-much-do-ibs-make": {
+   "title": "Berapa Penghasilan IB Forex? Penjelasan Nyata Komisi per Lot | TNFX",
+   "meta": "Berapa penghasilan introducing broker forex? Tergantung rate Anda dan volume klien Anda — keduanya dipublikasikan. Dengan TNFX Anda dapat $5 hingga $10 per lot live di setiap trade, plus hingga $400/minggu dari challenge.",
+   "h1": "Berapa Penghasilan Introducing Broker Forex?",
+   "subhead": "Jawaban jujurnya: tergantung rate per lot Anda dan volume bulanan klien Anda — dan TNFX mempublikasikan keduanya. Dapatkan $5 hingga $10 per lot, live di setiap trade, plus hingga $400 per minggu dalam bentuk cash challenge.",
+   "lead_h2": "Penghasilan Anda = rate Anda × volume klien Anda",
+   "lead_p": "Tidak ada satu angka pasti, tapi hitungannya sederhana dan terbuka. Rate Anda mulai dari $5 per lot di Bronze hingga $10 per lot di Prime; kalikan dengan jumlah lot yang ditradingkan klien Anda tiap bulan, dan itulah komisi Anda. Rujuk klien aktif yang men-trading beberapa ratus lot per bulan, dan Anda sudah menghasilkan penghasilan bulanan yang serius — sebelum Anda tambahkan hingga $400 per minggu dari challenge mingguan dan hingga $4,000 dari career mission. Komisi terkumpul live di setiap trade dan bisa di-withdraw kapan saja."
+  },
+  "islamic-halal-ib": {
+   "title": "Program Partner Forex Islami (Halal) — Komisi IB Swap-Free | TNFX",
+   "meta": "Program partner forex Islami: rujuk trader swap-free (halal) dan dapatkan hingga $10 per lot. Komisi dari aktivitas trading, tanpa bunga — dibuat untuk Timur Tengah. Gratis bergabung, teregulasi FSA.",
+   "h1": "Program Partner Forex Islami (Halal)",
+   "subhead": "Rujuk trader akun swap-free (Islami) dan dapatkan hingga $10 per lot — komisi dari aktivitas trading nyata, tanpa unsur bunga sama sekali. Dibuat untuk pasar Timur Tengah.",
+   "lead_h2": "Program partner yang dibuat untuk trader swap-free",
+   "lead_p": "Banyak trader di kawasan ini membutuhkan akun swap-free (Islami), dan TNFX menyediakannya. Sebagai partner, Anda merujuk trader tersebut dan mendapatkan hingga $10 per lot dari volume yang mereka tradingkan — komisi Anda berasal dari spread broker atas aktivitas trading, bukan dari bunga atau pinjaman apa pun. Ini cara yang bersih dan berbasis aktivitas untuk Anda menghasilkan sambil memperkenalkan trader pada akun yang sesuai dengan mereka."
+  },
+  "gold-xau-ib": {
+   "title": "Program Partner Forex Gold (XAU/USD) — Dapatkan hingga $10 per Lot | TNFX",
+   "meta": "Gold adalah pasar paling banyak ditradingkan di kawasan ini. Rujuk trader gold (XAU/USD) dan dapatkan hingga $10 per lot dengan TNFX — dibayar live, bisa di-withdraw kapan saja. Gratis bergabung, teregulasi FSA, cash challenge mingguan.",
+   "h1": "Program Partner Trading Gold",
+   "subhead": "Gold adalah instrumen nomor satu bagi trader di kawasan ini. Rujuk trader gold (XAU/USD) dan dapatkan hingga $10 per lot dari volume mereka — tier tertinggi dari tangga komisi TNFX.",
+   "lead_h2": "Hasilkan dari pasar favorit kawasan ini — gold",
+   "lead_p": "Gold (XAU/USD) adalah tempat sebagian besar volume trading di Timur Tengah terjadi, dan ia berada di puncak tangga komisi TNFX — hingga $10 per lot. Jika audiens Anda men-trading gold, berarti Anda merujuk mereka ke pasar yang memang sudah mereka sukai, dan menghasilkan dari setiap lot yang mereka tradingkan, secara live dan bisa di-withdraw kapan saja. Tambahkan cash challenge mingguan di atasnya, dan angkanya bertambah dengan cepat."
+  },
+  "mt4-mt5-ib": {
+   "title": "Program Introducing Broker MT4 & MT5 — Dapatkan hingga $10 per Lot | TNFX",
+   "meta": "Jadilah introducing broker MT4 & MT5 bersama TNFX. Rujuk trader di MetaTrader 4 dan MetaTrader 5 dan dapatkan hingga $10 per lot, dilacak live. Gratis bergabung, teregulasi FSA, cash challenge mingguan.",
+   "h1": "Program Introducing Broker MT4 & MT5",
+   "subhead": "Rujuk trader di platform MetaTrader 4 dan MetaTrader 5 yang sudah mereka gunakan, dan dapatkan hingga $10 per lot dari volume mereka — dilacak live di dashboard partner Anda.",
+   "lead_h2": "Hasilkan dari kedua platform MetaTrader",
+   "lead_p": "Hampir setiap trader forex mengenal MetaTrader — dan TNFX berjalan di MT4 maupun MT5 dari satu akun partner. Baik audiens Anda lebih suka MT4 klasik atau MT5 yang lebih baru, Anda merujuk mereka ke platform yang sudah mereka percaya dan menghasilkan hingga $10 per lot dari semua yang mereka tradingkan. Tidak ada tool baru yang perlu dipelajari, spread ketat dan eksekusi cepat, serta setiap lot dilacak live hingga ke dolarnya."
+  },
+  "sub-ib-master-ib": {
+   "title": "Sub-IB & Master IB — Bangun Tim Partner Forex | TNFX",
+   "meta": "Berkembang melampaui rujukan sendiri: jadilah master IB, ajak sub-partner di bawah Anda, dan hasilkan dari volume seluruh network Anda — hingga $10 per lot. Program partner forex multi-tier dari TNFX.",
+   "h1": "Bangun Tim: Program Master IB & Sub-IB",
+   "subhead": "Jangan batasi diri hanya pada rujukan Anda sendiri. Ajak sub-partner di bawah Anda dan hasilkan dari volume trading seluruh network Anda — hingga $10 per lot, dengan pantauan live setiap partner dan klien.",
+   "lead_h2": "Bangun network, bukan sekadar daftar rujukan",
+   "lead_p": "Partner terbesar tidak hanya merujuk klien — mereka membangun tim. TNFX mendukung master IB yang mengajak sub-partner di bawah mereka, sehingga Anda menghasilkan dari volume yang dihasilkan seluruh network Anda, bukan hanya rujukan langsung Anda sendiri. Inilah cara seorang affiliate solo menjadi bisnis IB sungguhan: rekrut, dukung sub-partner Anda, dan skalakan penghasilan Anda hingga $10 per lot di seluruh tim. Bicarakan dengan partner desk kami soal struktur multi-tier yang cocok untuk operasi Anda."
+  }
+ },
+ "review_flags": [
+  "'jaringan' is used to render 'your book' (of clients); confirm it reads naturally in the ID trading/IB context vs. alternatives like 'basis klien' or 'portofolio klien'.",
+  "Regulatory phrasing (FSA / Financial Services Authority) kept in English per convention; verify this matches how ID-facing forex sites present regulator names.",
+  "Kept English challenge/tier names (First Blood, Hat Trick, Bronze, Prime, Volume Hunter, Whale Hunter) untranslated as product names — confirm desired.",
+  "'convert' and 'funding' kept as anglicisms common in ID marketing; double-check tone consistency.",
+  "Disclaimer paragraph is legal/financial copy — have a native reviewer confirm the risk-warning wording is standard for ID."
+ ]
+}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
 
 /* Settings -> Archive. Two tabs: archived Clients / archived Leads, with their owning sales agent
    and details. Read-only browse view. An archived record returns to the active list automatically
@@ -62,38 +63,38 @@ export default function ArchiveSettings() {
 
       {msg && <div style={{ fontSize: 12.5, color: '#FF6A1A', marginBottom: 10 }}>{msg}</div>}
       <div style={{ fontSize: 12, color: 'var(--text2,#8A93A3)', marginBottom: 8 }}>
-        {loading ? 'Loading…' : `${total.toLocaleString()} archived ${tab}${rows.length < total ? ` · showing first ${rows.length}` : ''}`}
+        {loading ? 'Loading…' : `${total.toLocaleString('en-GB')} archived ${tab}${rows.length < total ? ` · showing first ${rows.length}` : ''}`}
       </div>
 
       <div style={S.panel}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, whiteSpace: 'nowrap' }}>
+        <div style={CT.scroll}>
+          <table style={CT.table}>
             {tab === 'clients' ? (
               <>
-                <thead><tr style={S.htr}>
-                  <th style={S.th}>Login</th><th style={S.th}>Name</th><th style={S.th}>Phone</th>
-                  <th style={S.th}>Country</th><th style={S.th}>Platform</th>
-                  <th style={{ ...S.th, textAlign: 'right' }}>Balance</th>
-                  <th style={{ ...S.th, textAlign: 'right' }}>Deposited</th>
-                  <th style={S.th}>First deposit</th><th style={S.th}>Last activity</th>
-                  <th style={S.th}>Sales agent</th><th style={S.th}>Archived</th>
+                <thead><tr style={CT.theadTr}>
+                  <th style={CT.th()}>Login</th><th style={CT.th()}>Name</th><th style={CT.th()}>Phone</th>
+                  <th style={CT.th()}>Country</th><th style={CT.th()}>Platform</th>
+                  <th style={CT.th(false, 'right')}>Balance</th>
+                  <th style={CT.th(false, 'right')}>Deposited</th>
+                  <th style={CT.th()}>First deposit</th><th style={CT.th()}>Last activity</th>
+                  <th style={CT.th()}>Sales agent</th><th style={CT.th()}>Archived</th>
                 </tr></thead>
                 <tbody>
                   {rows.map((c, i) => (
-                    <tr key={i} style={S.tr}>
-                      <td style={S.td}>{c.login}</td>
-                      <td style={{ ...S.td, color: '#fff', fontWeight: 600 }}>{c.name || '—'}</td>
-                      <td style={S.td}>{c.phone || '—'}</td>
-                      <td style={S.td}>{c.country || '—'}</td>
-                      <td style={S.td}>{c.platform}{c.n_accounts > 1 && <span style={{ color: 'var(--text2,#8A93A3)', fontSize: 11 }}> · {c.n_accounts} accts</span>}</td>
-                      <td style={{ ...S.td, textAlign: 'right' }}>{money(c.balance)}</td>
-                      <td style={{ ...S.td, textAlign: 'right', color: '#00e5a0' }}>{money(c.total_deposits)}</td>
-                      <td style={{ ...S.td, color: 'var(--text2,#8A93A3)' }}>{c.first_deposit_date || '—'}</td>
-                      <td style={S.td}>{c.last_activity_date
+                    <tr key={i} style={CT.row()}>
+                      <td style={CT.td}>{c.login}</td>
+                      <td style={{ ...CT.td, color: '#fff', fontWeight: 600 }}>{c.name || '—'}</td>
+                      <td style={CT.td}>{c.phone || '—'}</td>
+                      <td style={CT.td}>{c.country || '—'}</td>
+                      <td style={CT.td}>{c.platform}{c.n_accounts > 1 && <span style={{ color: 'var(--text2,#8A93A3)', fontSize: 11 }}> · {c.n_accounts} accts</span>}</td>
+                      <td style={{ ...CT.td, textAlign: 'right' }}>{money(c.balance)}</td>
+                      <td style={{ ...CT.td, textAlign: 'right', color: '#00e5a0' }}>{money(c.total_deposits)}</td>
+                      <td style={{ ...CT.td, color: 'var(--text2,#8A93A3)' }}>{c.first_deposit_date || '—'}</td>
+                      <td style={CT.td}>{c.last_activity_date
                         ? <span>{c.last_activity_date}{c.last_activity_type && <span style={{ color: 'var(--text2,#8A93A3)', fontSize: 11 }}> · {c.last_activity_type}</span>}</span>
                         : <span style={{ color: 'var(--text2,#8A93A3)' }}>—</span>}</td>
-                      <td style={S.td}>{c.agent}</td>
-                      <td style={{ ...S.td, color: 'var(--text2,#8A93A3)' }}>{(c.archived_at || '').slice(0, 10)}</td>
+                      <td style={CT.td}>{c.agent}</td>
+                      <td style={{ ...CT.td, color: 'var(--text2,#8A93A3)' }}>{(c.archived_at || '').slice(0, 10)}</td>
                     </tr>
                   ))}
                   {!loading && !rows.length && <tr><td colSpan={11} style={S.empty}>No archived clients.</td></tr>}
@@ -101,23 +102,23 @@ export default function ArchiveSettings() {
               </>
             ) : (
               <>
-                <thead><tr style={S.htr}>
-                  <th style={S.th}>Name</th><th style={S.th}>Phone</th><th style={S.th}>Email</th>
-                  <th style={S.th}>Country</th><th style={S.th}>Source</th>
-                  <th style={{ ...S.th, textAlign: 'right' }}>Score</th>
-                  <th style={S.th}>Sales agent</th><th style={S.th}>Archived</th>
+                <thead><tr style={CT.theadTr}>
+                  <th style={CT.th()}>Name</th><th style={CT.th()}>Phone</th><th style={CT.th()}>Email</th>
+                  <th style={CT.th()}>Country</th><th style={CT.th()}>Source</th>
+                  <th style={CT.th(false, 'right')}>Score</th>
+                  <th style={CT.th()}>Sales agent</th><th style={CT.th()}>Archived</th>
                 </tr></thead>
                 <tbody>
                   {rows.map((l, i) => (
-                    <tr key={i} style={S.tr}>
-                      <td style={{ ...S.td, color: '#fff', fontWeight: 600 }}>{l.name || '—'}</td>
-                      <td style={S.td}>{l.phone || '—'}</td>
-                      <td style={S.td}>{l.email || '—'}</td>
-                      <td style={S.td}>{l.country || '—'}</td>
-                      <td style={S.td}>{l.source || '—'}{l.campaign ? ` · ${l.campaign}` : ''}</td>
-                      <td style={{ ...S.td, textAlign: 'right' }}>{l.score ?? '—'}</td>
-                      <td style={S.td}>{l.agent}</td>
-                      <td style={{ ...S.td, color: 'var(--text2,#8A93A3)' }}>{(l.updated_at || '').slice(0, 10)}</td>
+                    <tr key={i} style={CT.row()}>
+                      <td style={{ ...CT.td, color: '#fff', fontWeight: 600 }}>{l.name || '—'}</td>
+                      <td style={CT.td}>{l.phone || '—'}</td>
+                      <td style={CT.td}>{l.email || '—'}</td>
+                      <td style={CT.td}>{l.country || '—'}</td>
+                      <td style={CT.td}>{l.source || '—'}{l.campaign ? ` · ${l.campaign}` : ''}</td>
+                      <td style={{ ...CT.td, textAlign: 'right' }}>{l.score ?? '—'}</td>
+                      <td style={CT.td}>{l.agent}</td>
+                      <td style={{ ...CT.td, color: 'var(--text2,#8A93A3)' }}>{(l.updated_at || '').slice(0, 10)}</td>
                     </tr>
                   ))}
                   {!loading && !rows.length && <tr><td colSpan={8} style={S.empty}>No archived leads.</td></tr>}
@@ -137,9 +138,5 @@ const S: any = {
   search: { padding: '9px 13px', borderRadius: 9, background: 'var(--bg-input,#373f4d)', border: '1px solid var(--border2,#626d80)', color: 'var(--text,#fff)', fontSize: 13, minWidth: 240, outline: 'none' },
   sweepBtn: { padding: '8px 16px', borderRadius: 9, background: '#F8500A', color: '#fff', border: 'none', fontSize: 12.5, fontWeight: 800, cursor: 'pointer' },
   panel: { background: 'var(--bg-card,#2c333e)', border: '1px solid var(--border,#4f596b)', borderRadius: 14, padding: 6 },
-  htr: { color: 'var(--text2,#888)', textAlign: 'left' as const },
-  th: { padding: '10px 12px', fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase' as const, fontWeight: 700, borderBottom: '1px solid var(--border,#4f596b)' },
-  tr: { borderBottom: '1px solid rgba(255,255,255,0.05)' },
-  td: { padding: '9px 12px', color: 'var(--text,#cdd4de)' },
   empty: { padding: 28, textAlign: 'center' as const, color: 'var(--text2,#8A93A3)' },
 };

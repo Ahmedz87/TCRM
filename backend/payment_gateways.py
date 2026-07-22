@@ -241,6 +241,7 @@ def parse_webhook(gw, body: dict) -> dict:
         return {"order_id": str(d.get("order_id") or d.get("orderId") or b.get("order_id") or ""),
                 "status": _status(d.get("status") or b.get("status") or b.get("event")),
                 "amount": float(d.get("amount") or 0) / 100.0,  # Ovadot amounts are cents
+                "currency": str(d.get("currency") or d.get("ccy") or b.get("currency") or "").upper(),
                 "gateway_ref": str(d.get("payment_id") or d.get("paymentId") or d.get("id") or "")}
     if gw == "ptop":
         return {"order_id": str(b.get("order_id") or ""), "status": _status(b.get("status")),

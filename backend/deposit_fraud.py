@@ -136,7 +136,7 @@ def run_fraud_checks(db, *, method: str, entered_txid: str, entered_amount: floa
             is_company = any(_match(ocr_recv, cnum) for cnum in company_nums)
             if is_company:
                 shown = ", ".join(sorted(accepted)) if accepted else "the card we showed you"
-                reasons.append(f"⚠ You transferred to a DIFFERENT company card ({ocr_recv}) than the one we asked "
+                reasons.append(f"You transferred to a DIFFERENT company card ({ocr_recv}) than the one we asked "
                                f"you to use ({shown}). Your deposit will still be reviewed, but paying the wrong "
                                "card can DELAY approval or cause it to be REJECTED and the funds lost — please "
                                "always use the exact card we show you for each deposit.")  # soft warning, no hard_reject
@@ -183,19 +183,19 @@ def run_fraud_checks(db, *, method: str, entered_txid: str, entered_amount: floa
             if same_user:
                 # the SAME client re-sent their OWN receipt — reassure, never accuse of fraud.
                 if is_approved:
-                    reasons.append(f"✅ You've already deposited to your account with this receipt (+${float(pamt):,.0f}). "
-                                   "One receipt funds one deposit — please upload a NEW receipt for your next top-up. 🎁")
+                    reasons.append(f"This receipt has already been used to fund your account (+${float(pamt):,.0f}). "
+                                   "Each receipt can be used for one deposit only — please upload a new receipt for your next deposit.")
                     return {"verdict": "reject", "reasons": reasons, "case": "duplicate", "dup": "approved"}
                 elif is_pending:
-                    reasons.append(f"⏳ You're in a hurry 🙂 — you already uploaded this same receipt {ago}. "
-                                   "No need to resend it; we've asked our team to review your pending deposit faster. 🚀")
+                    reasons.append(f"You have already submitted this receipt {ago} and it is currently under review. "
+                                   "There is no need to resend it — we have notified our team to prioritise your pending deposit.")
                     return {"verdict": "reject", "reasons": reasons, "case": "duplicate", "dup": "pending"}
                 else:
-                    reasons.append("♻️ You already used this receipt — please upload a new one for a new deposit.")
+                    reasons.append("This receipt has already been used. Please upload a new receipt for a new deposit.")
                     return {"verdict": "reject", "reasons": reasons, "case": "duplicate", "dup": "used"}
             else:
                 # a DIFFERENT account already used this exact receipt -> reuse / forgery.
-                reasons.append("🚫 This receipt has already been used by another account, so it can't be used again. "
+                reasons.append("This receipt has already been used by another account and cannot be reused. "
                                "Please upload your own, unused transfer receipt.")
                 return {"verdict": "reject", "reasons": reasons, "case": "fake"}
 
@@ -266,7 +266,7 @@ def run_fraud_checks(db, *, method: str, entered_txid: str, entered_amount: floa
                         # reference is a CLEAN approved deposit -> confident hard reject
                         reasons.append(f"Counter {d[25:]} is LOWER than this sender's last APPROVED deposit ({mx_app}) — reused/old receipt."); hard_reject = True
                     elif mx_ref is not None and cur < int(mx_ref):
-                        reasons.append(f"⚠ Counter {d[25:]} is lower than this sender's last seen ({mx_ref}) — possible old/reused receipt, verify carefully.")
+                        reasons.append(f"Counter {d[25:]} is lower than this sender's last seen ({mx_ref}) — possible old/reused receipt, verify carefully.")
                 except Exception:
                     pass
 
@@ -303,7 +303,7 @@ def run_fraud_checks(db, *, method: str, entered_txid: str, entered_amount: floa
                                        f"(Qi system was at ~{int(expected):,} that day) — forged/reused receipt.")
                         hard_reject = True
                     elif dev > 400_000 + slack:
-                        reasons.append(f"⚠ Transaction-ID sequence {seq:,} is unusual for {tdt} "
+                        reasons.append(f"Transaction-ID sequence {seq:,} is unusual for {tdt} "
                                        f"(expected ~{int(expected):,}) — possible old/edited receipt, verify.")
             except Exception:
                 pass
@@ -323,7 +323,7 @@ def run_fraud_checks(db, *, method: str, entered_txid: str, entered_amount: floa
                         "WHERE sender_acct=:w AND length(txid)=37 AND COALESCE(source,'seed')<>'rejected'"),
                         {"w": wallet}).fetchall() if r[0]]
                     if blocks and d[25:29] not in blocks:
-                        reasons.append(f"⚠ Transaction-ID sender-block {d[25:29]} doesn't match this "
+                        reasons.append(f"Transaction-ID sender-block {d[25:29]} doesn't match this "
                                        f"sender's known block ({'/'.join(blocks[:3])}) — txid likely not "
                                        f"from this wallet, verify the receipt.")
                 except Exception:
@@ -351,7 +351,7 @@ def run_fraud_checks(db, *, method: str, entered_txid: str, entered_amount: floa
                     def _one_off(a, b):
                         return len(a) == len(b) == 4 and sum(x != y for x, y in zip(a, b)) <= 1
                     if b4 not in blocks4 and not any(_one_off(b4, k) for k in blocks4):
-                        reasons.append(f"⚠ Sender-block {b4} is NEW for this client (they've only ever "
+                        reasons.append(f"Sender-block {b4} is NEW for this client (they've only ever "
                                        f"used {'/'.join(sorted(blocks4)[:3])}) — verify it's really their "
                                        f"wallet and not a receipt copied from another person.")
                     # 4f) the 8-digit sequence only ever INCREASES over time. This deposit is newer than
@@ -365,7 +365,7 @@ def run_fraud_checks(db, *, method: str, entered_txid: str, entered_amount: floa
                         if ms is not None and (bk == b4 or _one_off(bk, b4)):
                             ref = ms if ref is None else max(ref, ms)
                     if ref is not None and seq < ref - 50_000:
-                        reasons.append(f"⚠ Transfer sequence {seq:,} is LOWER than this client's most "
+                        reasons.append(f"Transfer sequence {seq:,} is LOWER than this client's most "
                                        f"recent transfer from the same wallet ({ref:,}) — an older/"
                                        f"already-used receipt (Qi sequence numbers only go up). Verify.")
             except Exception:

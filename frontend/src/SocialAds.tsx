@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
 
 // Social Ads console — connect TikTok / Snap / Meta, build hashed Custom Audiences from the
 // CRM's smart segments, and draft campaigns. Everything is GATED server-side: audience sync only
@@ -9,7 +10,7 @@ const card: React.CSSProperties = { background: 'var(--bg-card,#2c333e)', border
 const cap: React.CSSProperties = { fontSize: 11, color: '#8a93a5', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, fontWeight: 700 };
 const input: React.CSSProperties = { padding: '9px 11px', background: '#1c2231', border: '1px solid #3a4252', borderRadius: 8, color: '#e6e9ef', fontSize: 13 };
 const btn = (bg: string, fg = '#06251b'): React.CSSProperties => ({ padding: '9px 14px', background: bg, border: 'none', borderRadius: 8, color: fg, fontSize: 13, fontWeight: 700, cursor: 'pointer' });
-const fmt = (n: number) => (n || 0).toLocaleString();
+const fmt = (n: number) => (n || 0).toLocaleString('en-GB');
 
 const PLAT: Record<string, { icon: string; name: string; accent: string }> = {
   tiktok: { icon: '🎵', name: 'TikTok', accent: '#ff0050' },
@@ -148,6 +149,19 @@ function AudienceBuilder({ platform, segments, ready, live, onSynced }: { platfo
     const r = await apiPost('/social/audiences/sync', { platform, segment_key: seg, name: name || undefined }).catch(() => null);
     setResult(r); setBusy(false); onSynced();
   };
+  // manual-upload fallback: download the hashed list and upload it in the platform's Ads Manager
+  const download = async (kind: 'email' | 'phone') => {
+    if (!seg) return;
+    const tok = localStorage.getItem('token') || '';
+    const res = await fetch(`/api/social/audiences/export?segment_key=${seg}&kind=${kind}`,
+      { headers: { Authorization: `Bearer ${tok}` } });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `audience_${seg}_${kind}_sha256.csv`;
+    a.click(); URL.revokeObjectURL(a.href);
+  };
 
   return (
     <div style={card}>
@@ -172,6 +186,11 @@ function AudienceBuilder({ platform, segments, ready, live, onSynced }: { platfo
           {ready && live ? '↗ Sync audience' : '🔒 Sync (dry-run)'}
         </button>
       </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        <span style={{ fontSize: 11, color: '#8a93a5' }}>No API access yet? Download the hashed list and upload it manually in {PLAT[platform].name} Ads Manager (Audiences → Customer File):</span>
+        <button onClick={() => download('email')} disabled={!seg} style={{ ...btn('#3a4252', '#cfd6e4'), padding: '6px 10px', fontSize: 12 }}>⬇ Hashed emails CSV</button>
+        <button onClick={() => download('phone')} disabled={!seg} style={{ ...btn('#3a4252', '#cfd6e4'), padding: '6px 10px', fontSize: 12 }}>⬇ Hashed phones CSV</button>
+      </div>
 
       {preview && !preview.error && (
         <div style={{ background: '#1c2231', borderRadius: 8, padding: 12, fontSize: 13, color: '#cfd6e4', marginBottom: result ? 10 : 0 }}>
@@ -193,24 +212,26 @@ function AudienceList({ audiences }: { audiences: any[] }) {
   return (
     <div style={card}>
       <div style={cap}>Audiences</div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-        <thead><tr style={{ color: '#8a93a5', textAlign: 'left' }}>
-          {['Platform', 'Name', 'Segment', 'Size', 'Status', 'When'].map(h => <th key={h} style={{ padding: 7 }}>{h}</th>)}
-        </tr></thead>
-        <tbody>{audiences.map(a => (
-          <tr key={a.id} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4' }}>
-            <td style={{ padding: 7 }}>{PLAT[a.platform]?.icon} {PLAT[a.platform]?.name || a.platform}</td>
-            <td style={{ padding: 7 }}>{a.name}</td>
-            <td style={{ padding: 7, color: '#8a93a5' }}>{a.segment_key}</td>
-            <td style={{ padding: 7 }}>{fmt(a.size)}</td>
-            <td style={{ padding: 7 }}>
-              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: a.dry_run ? '#5c451f44' : (a.status === 'synced' ? '#00e5a022' : '#5c1f1f44'), color: a.dry_run ? '#e9c97f' : (a.status === 'synced' ? '#00e5a0' : '#ff8888') }}>
-                {a.dry_run ? 'dry-run' : a.status}
-              </span>
-            </td>
-            <td style={{ padding: 7, color: '#8a93a5' }}>{(a.last_synced_at || a.created_at || '').toString().slice(0, 16).replace('T', ' ')}</td>
-          </tr>))}</tbody>
-      </table>
+      <div style={CT.scroll}>
+        <table style={CT.table}>
+          <thead><tr style={CT.theadTr}>
+            {['Platform', 'Name', 'Segment', 'Size', 'Status', 'When'].map(h => <th key={h} style={CT.th(false, h === 'Size' ? 'right' : 'left')}>{h}</th>)}
+          </tr></thead>
+          <tbody>{audiences.map(a => (
+            <tr key={a.id} style={CT.row()}>
+              <td style={CT.td}>{PLAT[a.platform]?.icon} {PLAT[a.platform]?.name || a.platform}</td>
+              <td style={CT.td}>{a.name}</td>
+              <td style={{ ...CT.td, color: '#8a93a5' }}>{a.segment_key}</td>
+              <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(a.size)}</td>
+              <td style={CT.td}>
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, background: a.dry_run ? '#5c451f44' : (a.status === 'synced' ? '#00e5a022' : '#5c1f1f44'), color: a.dry_run ? '#e9c97f' : (a.status === 'synced' ? '#00e5a0' : '#ff8888') }}>
+                  {a.dry_run ? 'dry-run' : a.status}
+                </span>
+              </td>
+              <td style={{ ...CT.td, color: '#8a93a5' }}>{(a.last_synced_at || a.created_at || '').toString().slice(0, 16).replace('T', ' ')}</td>
+            </tr>))}</tbody>
+        </table>
+      </div>
     </div>
   );
 }

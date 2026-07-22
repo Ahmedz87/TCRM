@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { apiGet, apiPost } from './api';
 import MyLoyalty from './MyLoyalty';
+import { CT } from './crmTable';
 
 const TIER_COLOR: any = { bronze:'#cd7f32', silver:'#c0c0c0', gold:'#ffd700', platinum:'#7fd3ff' };
 const TIER_BG: any = { bronze:'rgba(205,127,50,0.15)', silver:'rgba(192,192,192,0.15)', gold:'rgba(255,215,0,0.15)', platinum:'rgba(127,211,255,0.15)' };
 const TIER_RATE: any = { bronze:4, silver:5, gold:6, platinum:7 };
 const TIER_ORDER = ['bronze','silver','gold','platinum'];
-const fmtP = (n:number) => Math.round(n).toLocaleString();
+const fmtP = (n:number) => Math.round(n).toLocaleString('en-GB');
 const menuBtn: React.CSSProperties = { display:'block', width:'100%', textAlign:'left', padding:'9px 10px', background:'none', border:'none', color:'#e8e8e8', fontSize:12.5, cursor:'pointer', borderRadius:6 };
 
 export default function Loyalty() {
@@ -24,14 +25,23 @@ export default function Loyalty() {
   const [clientView, setClientView] = useState<number|null>(null);  // client_id to preview in client perspective
 
   // navigate to the Clients page for this member.
-  // Dashboard's 'navigate' handler switches to clients + fires 'clients_search';
-  // openProfile = client_id makes Clients fetch /clients/{id} directly (exact match).
+  // Dashboard's 'navigate' handler switches to clients + fires 'clients_search'; Clients then
+  // fetches /clients/{openProfile}, which is keyed on the trading LOGIN. loyalty client_id is the
+  // internal clients.id (NOT a login), so passing it opened the WRONG person / no filter — use login.
   const goToClient = (m:any) => {
     setMenu(null);
     try {
-      window.dispatchEvent(new CustomEvent('navigate', {
-        detail: { page: 'clients', search: m.name || String(m.client_id), openProfile: m.client_id }
-      }));
+      if (m.login) {
+        window.dispatchEvent(new CustomEvent('navigate', {
+          detail: { page: 'clients', search: String(m.login), openProfile: m.login }
+        }));
+      } else {
+        // no linked trading login on this loyalty member — filter the list by name only,
+        // and don't openProfile (which would resolve the wrong client).
+        window.dispatchEvent(new CustomEvent('navigate', {
+          detail: { page: 'clients', search: m.name || String(m.client_id) }
+        }));
+      }
     } catch {}
   };
 
@@ -133,34 +143,45 @@ export default function Loyalty() {
       </div>
 
       {/* Leaderboard */}
-      <div style={{ background:'var(--bg-card,#2c333e)', border:'1px solid var(--border,#4f596b)', borderRadius:10, overflow:'hidden' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'50px 1fr 90px 100px 80px 110px', gap:8, padding:'10px 14px', fontSize:10, color:'#666', textTransform:'uppercase', borderBottom:'1px solid #4f596b' }}>
-          <span>#</span><span>Member</span><span>Tier</span><span style={{textAlign:'right'}}>Points</span><span style={{textAlign:'right'}}>Streak</span><span style={{textAlign:'right'}}>Best</span>
-        </div>
-        {loading && <div style={{ padding:20, color:'#666', fontSize:13 }}>Loading…</div>}
-        {!loading && members.length===0 && <div style={{ padding:20, color:'#666', fontSize:13 }}>No members yet.</div>}
-        <div style={{ maxHeight:560, overflowY:'auto' }}>
-          {sortedMembers.map((m,i)=>(
-            <div key={m.client_id} onClick={()=>openMember(m.client_id)}
-              style={{ display:'grid', gridTemplateColumns:'50px 1fr 90px 100px 80px 110px', gap:8, padding:'11px 14px', fontSize:12.5, borderBottom:'1px solid #373f4d', cursor:'pointer', alignItems:'center' }}
-              onMouseEnter={e=>(e.currentTarget.style.background='#161922')}
-              onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
-              <span style={{ color:'#666' }}>{i+1}</span>
-              <span>
-                <span onClick={(e)=>openNameMenu(m,e)} style={{ color:'#4ea1ff', cursor:'pointer', textDecoration:'underline', textDecorationStyle:'dotted' }}
-                  title="Open…">{m.name}</span>
-                <span style={{ color:'#666', fontSize:10 }}> #{m.client_id} {m.country&&'· '+m.country}</span>
-              </span>
-              <span><span style={{ padding:'3px 9px', borderRadius:6, fontSize:10.5, fontWeight:700, textTransform:'uppercase', background:TIER_BG[m.tier], color:TIER_COLOR[m.tier] }}>{m.tier}</span></span>
-              <span style={{ textAlign:'right', color:'#00e5a0', fontWeight:600 }}>{fmtP(m.points_balance)}</span>
-              <span style={{ textAlign:'right', color: m.current_streak>=10?'#ffaa00':'#aaa' }}>🔥 {m.current_streak}</span>
-              <span style={{ textAlign:'right', fontSize:10 }}>
-                <span style={{ color: TIER_COLOR[m.best_tier]||'#888', fontWeight:600, textTransform:'uppercase' }}>{m.best_tier||m.tier}</span>
-                <span style={{ color:'#666' }}> · {m.best_streak}d</span>
-              </span>
-            </div>
-          ))}
-        </div>
+      <div style={{ ...CT.scroll, maxHeight:600, flex:'unset', minHeight:'unset' }}>
+        <table style={CT.table}>
+          <thead>
+            <tr style={CT.theadTr}>
+              <th style={CT.th()}>#</th>
+              <th style={CT.th()}>Member</th>
+              <th style={CT.th(sortBy==='tier')}>Tier</th>
+              <th style={CT.th(sortBy==='points', 'right')}>Points</th>
+              <th style={CT.th(sortBy==='streak', 'right')}>Streak</th>
+              <th style={CT.th(false, 'right')}>Best</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} style={{ padding:40, textAlign:'center', color:'#555' }}>Loading…</td></tr>
+            ) : members.length===0 ? (
+              <tr><td colSpan={6} style={{ padding:40, textAlign:'center', color:'#555' }}>No members yet.</td></tr>
+            ) : sortedMembers.map((m,i)=>(
+              <tr key={m.client_id} onClick={()=>openMember(m.client_id)}
+                style={{ ...CT.row(), cursor:'pointer' }}
+                onMouseEnter={e=>(e.currentTarget.style.background='var(--bg-card,#2c333e)')}
+                onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                <td style={{ ...CT.td, color:'#666' }}>{i+1}</td>
+                <td style={CT.td}>
+                  <span onClick={(e)=>openNameMenu(m,e)} style={{ color:'#4ea1ff', cursor:'pointer', textDecoration:'underline', textDecorationStyle:'dotted' }}
+                    title="Open…">{m.name}</span>
+                  <span style={{ color:'#666', fontSize:10 }}> #{m.client_id} {m.country&&'· '+m.country}</span>
+                </td>
+                <td style={CT.td}><span style={{ padding:'3px 9px', borderRadius:6, fontSize:10.5, fontWeight:700, textTransform:'uppercase', background:TIER_BG[m.tier], color:TIER_COLOR[m.tier] }}>{m.tier}</span></td>
+                <td style={{ ...CT.td, textAlign:'right', color:'#00e5a0', fontWeight:600 }}>{fmtP(m.points_balance)}</td>
+                <td style={{ ...CT.td, textAlign:'right', color: m.current_streak>=10?'#ffaa00':'#aaa' }}>🔥 {m.current_streak}</td>
+                <td style={{ ...CT.td, textAlign:'right', fontSize:10 }}>
+                  <span style={{ color: TIER_COLOR[m.best_tier]||'#888', fontWeight:600, textTransform:'uppercase' }}>{m.best_tier||m.tier}</span>
+                  <span style={{ color:'#666' }}> · {m.best_streak}d</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Name click menu: open client page OR their loyalty page (client perspective) */}

@@ -5,8 +5,8 @@ s = open(p, encoding="utf-8").read()
 if "BRIDGE_URL" not in s:
     # Add bridge URL constant near the top after imports
     s = s.replace(
-        'MT5_SERVER, MT5_LOGIN, MT5_PASSWORD = "192.109.15.62:443", 1025, "ZjFb!vA0"',
-        'MT5_SERVER, MT5_LOGIN, MT5_PASSWORD = "192.109.15.62:443", 1025, "ZjFb!vA0"\nBRIDGE_URL = "http://localhost:5000"'
+        'MT5_SERVER, MT5_LOGIN, MT5_PASSWORD = "192.109.15.62:443", 1025, "PW_MOVED_TO_mt_secrets"',
+        'MT5_SERVER, MT5_LOGIN, MT5_PASSWORD = "192.109.15.62:443", 1025, "PW_MOVED_TO_mt_secrets"\nBRIDGE_URL = "http://localhost:5000"'
     )
 
 # Replace _do_cover entirely to call the bridge

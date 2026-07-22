@@ -426,6 +426,9 @@ def manual_deposit(payload: dict, db: Session = Depends(get_db), client_id: int 
     """Client submits a manual deposit + screenshot (base64). AI OCRs + fraud-checks → verdict."""
     _ensure(db)
     login = int(payload.get("login") or 0)
+    # go-live hardening: the deposit target must be one of THIS client's own accounts
+    from portal_router import _assert_owns_login
+    _assert_owns_login(db, client_id, login)
     amount = float(payload.get("amount") or 0)
     method = (payload.get("method") or "").strip()
     card_id = int(payload.get("card_id") or 0)
@@ -490,10 +493,10 @@ def manual_deposit(payload: dict, db: Session = Depends(get_db), client_id: int 
                      OR reasons ILIKE '%old receipt%' OR reasons ILIKE '%fake%')"""), {"c": client_id}).scalar() or 0
             penalty = ""
             if fakes >= 2 and _downgrade_loyalty(db, client_id):
-                penalty = " 😬 This isn't your first — your loyalty points were reset and your tier dropped a step."
-            warn = ("🕵️ Nice try, but this receipt doesn't look genuine — so we didn't save it. "
-                    "Upload a clear photo of your REAL receipt and you're golden. "
-                    "Fake receipts cost loyalty points + a tier if it happens again!" + penalty)
+                penalty = " This is a repeat occurrence — your loyalty points have been reset and your tier has been lowered."
+            warn = ("This receipt could not be verified as genuine, so it was not saved. "
+                    "Please upload a clear photo of your original receipt. "
+                    "Repeated invalid receipts may affect your loyalty tier." + penalty)
             return {"ok": False, "verdict": "reupload", "case": "fake", "reasons": fr["reasons"], "message": warn}
 
         # ── DUPLICATE still pending -> nudge the back-office to speed the ORIGINAL up (no new record) ──
@@ -506,7 +509,7 @@ def manual_deposit(payload: dict, db: Session = Depends(get_db), client_id: int 
                 if hid:
                     db.execute(text("""INSERT INTO notifications (user_id, title, message, type, link, is_read, created_at)
                         VALUES (:uid,:t,:m,'deposit_confirm',:lnk,FALSE,NOW())"""), {
-                        "uid": hid, "t": "⏱ Please speed up a review",
+                        "uid": hid, "t": "Please prioritise a pending review",
                         "m": f"A client re-sent a ${amount:,.0f} {method} deposit that is still pending your confirmation. Please review it as soon as possible.",
                         "lnk": "/payment-cards"})
                     db.commit()
@@ -514,7 +517,7 @@ def manual_deposit(payload: dict, db: Session = Depends(get_db), client_id: int 
                 db.rollback()
         return {"ok": False, "verdict": "reupload", "case": case, "dup": fr.get("dup"), "reasons": fr["reasons"],
                 "message": reasons_txt if case == "duplicate"
-                           else "🔍 Hmm, we couldn't read that one — nothing was saved. Snap a clear shot where the Transaction ID & date are fully visible, then give it another go!"}
+                           else "We could not read this receipt, so nothing was saved. Please upload a clear photo showing the Transaction ID and date, then try again."}
 
     # ══════════════════════════════════════════════════════════════════════════════════════
     # PASSED the checks -> NOW create the deposit record (money request + proof) and list it for

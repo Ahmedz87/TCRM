@@ -16,6 +16,9 @@ build/
 !.env.example
 *.bak-*
 backend/db_config.py
+backend/mt_secrets.py
+backend/mt_secrets.NEW.txt
+backend/db_password.NEW.txt
 _secrets.py
 **/_secrets.py
 backend/ai_config.py
@@ -81,3 +84,17 @@ Old CRM Code/
 
 # ───────────────────────── local tooling ─────────────────────────
 .claude/
+
+# ───────────────────────── runtime data / large / SENSITIVE — never version ─────────────────────────
+# client call recordings + 1.6GB whisper model + QA worker logs (callqa is a self-contained subsystem)
+callqa/
+# cached client payment receipts (PII / financial docs)
+backend/receipt_cache/
+# worker + app logs
+backend/logs/
+logs/
+# stray runtime artefacts
+*.wav
+*.err
+*.out
+*.log

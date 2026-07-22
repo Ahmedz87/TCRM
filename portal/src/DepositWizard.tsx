@@ -214,9 +214,9 @@ export default function DepositWizard({ onClose }: { onClose: () => void }) {
                 {amt > 0 && (isStandard ? (
                   bonus && !bonus.blocked && bonusAmt > 0 ? (
                     <div style={BONUS_BOX}>
-                      <div style={{ fontSize: 13.5, fontWeight: 800, color: TH.gold }}>🎁 You'll receive +{fmtMoney(bonusAmt)} bonus</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: TH.gold }}>You'll receive +{fmtMoney(bonusAmt)} bonus</div>
                       {(bonus.lines || []).map((ln: any, i: number) => (
-                        <div key={i} style={{ fontSize: 11.5, color: TH.muted, marginTop: 3 }}>{ln.special ? '✨ ' : '• '}{ln.label} → +{fmtMoney(ln.bonus)}</div>
+                        <div key={i} style={{ fontSize: 11.5, color: TH.muted, marginTop: 3 }}>{'• '}{ln.label} → +{fmtMoney(ln.bonus)}</div>
                       ))}
                       <div style={{ fontSize: 11.5, color: TH.text, marginTop: 6, fontWeight: 700 }}>Total bonus credit: +{fmtMoney(bonusAmt)}</div>
                     </div>
@@ -225,7 +225,7 @@ export default function DepositWizard({ onClose }: { onClose: () => void }) {
                   ) : null
                 ) : (
                   <div style={{ marginTop: 16, background: 'rgba(150,160,180,0.08)', border: `1px solid ${TH.border}`, borderRadius: TH.radius, padding: '11px 14px', fontSize: 12, color: TH.muted }}>
-                    ℹ️ Deposit bonus is not applied to <b style={{ color: TH.text }}>{selAcct?.base_type || acctType || 'this'}</b> accounts — the bonus is available on <b style={{ color: TH.text }}>Standard</b> accounts only.
+                    Deposit bonus is not applied to <b style={{ color: TH.text }}>{selAcct?.base_type || acctType || 'this'}</b> accounts — the bonus is available on <b style={{ color: TH.text }}>Standard</b> accounts only.
                   </div>
                 ))}
               </div>
@@ -266,7 +266,7 @@ export default function DepositWizard({ onClose }: { onClose: () => void }) {
                 <div style={{ fontSize: 14, fontWeight: 800, color: TH.text }}>{method.name}</div>
                 <div style={{ fontSize: 11.5, color: TH.muted }}>Depositing {fmtMoney(amt)}{isLocal ? ` · ${localNum.toLocaleString()} ${curr}` : ''} → account #{login}</div>
               </div>
-              <span title="Locked — go Back to change the method" style={{ fontSize: 12, fontWeight: 700, color: TH.accent, background: 'rgba(58,210,159,0.14)', padding: '3px 8px', borderRadius: 6 }}>🔒 Locked</span>
+              <span title="Locked — go Back to change the method" style={{ fontSize: 12, fontWeight: 700, color: TH.accent, background: 'rgba(58,210,159,0.14)', padding: '3px 8px', borderRadius: 6 }}>Locked</span>
             </div>
           </>
         )}
@@ -279,7 +279,7 @@ export default function DepositWizard({ onClose }: { onClose: () => void }) {
               : (
               <>
                 <div style={{ fontSize: 13, fontWeight: 800, color: TH.text, marginBottom: 8 }}>Step 1 — Transfer <span style={{ color: TH.accent }}>{isLocal ? `${localNum.toLocaleString()} ${curr}` : fmtMoney(amt)}</span> from your {method.name} to:</div>
-                {card.on_shift === false && <div style={{ fontSize: 11, color: TH.gold, marginBottom: 8 }}>ℹ️ Outside working hours — review may take a little longer.</div>}
+                {card.on_shift === false && <div style={{ fontSize: 11, color: TH.gold, marginBottom: 8 }}>Outside working hours — review may take a little longer.</div>}
                 <div style={{ background: TH.panel, border: `1px solid ${TH.border}`, borderRadius: TH.radius, padding: 16, marginBottom: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
@@ -296,7 +296,7 @@ export default function DepositWizard({ onClose }: { onClose: () => void }) {
                 <div style={{ fontSize: 13, fontWeight: 800, color: TH.text, margin: '6px 0 8px' }}>Step 2 — Upload your transfer screenshot</div>
                 <label style={{ display: 'block', border: `1.5px dashed ${proofImg ? TH.accent : TH.border2}`, borderRadius: TH.radius, padding: 22, textAlign: 'center', cursor: 'pointer', background: TH.panel }}>
                   <input type="file" accept="image/*" style={{ display: 'none' }} onChange={pickProof} />
-                  <div style={{ fontSize: 24, marginBottom: 6 }}>{proofImg ? '✓' : '📎'}</div>
+                  <div style={{ fontSize: 24, marginBottom: 6, color: proofImg ? TH.accent : TH.muted }}>{proofImg ? '✓' : '+'}</div>
                   <div style={{ fontSize: 13, color: proofImg ? TH.accent : TH.muted }}>{proofName || 'Tap to upload screenshot / receipt'}</div>
                 </label>
                 {proofImg && <img src={proofImg} alt="proof" style={{ marginTop: 10, maxWidth: '100%', maxHeight: 180, borderRadius: 8, border: `1px solid ${TH.border}` }} />}
@@ -314,7 +314,7 @@ export default function DepositWizard({ onClose }: { onClose: () => void }) {
                 <div style={{ fontSize: 40, fontWeight: 900, color: TH.text }}>{fmtMoney(amt)}</div>
               </div>
               {([['Account', `#${login}`], ['Method', method.name], ['Fee', method.fee || '0%'],
-                 ...(bonusAmt > 0 ? [['🎁 Bonus', `+${fmtMoney(bonusAmt)}`]] : []),
+                 ...(bonusAmt > 0 ? [['Bonus', `+${fmtMoney(bonusAmt)}`]] : []),
                  ['You receive', fmtMoney(amt + bonusAmt)]] as [string, string][]).map(([k, v], i, arr) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < arr.length - 1 ? `1px solid ${TH.border}` : 'none' }}>
                   <span style={{ fontSize: 13, color: TH.muted }}>{k}</span><span style={{ fontSize: 13, fontWeight: 700 }}>{v}</span>
@@ -341,44 +341,44 @@ export default function DepositWizard({ onClose }: { onClose: () => void }) {
                 const isDupApproved = isDup && manualDone?.dup === 'approved'; // your OWN receipt already funded you
                 const success = manualDone?.ok && !manualDone?.warning;
                 const justClose = manualDone?.ok || isPending || isDupApproved;  // success / warning / your-own-duplicate → single button
-                // colour + emoji + headline per outcome (short, fun, on-brand)
+                // colour + glyph + headline per outcome (professional, financial tone)
                 const th = success
-                  ? { c: '#3ad29f', emoji: '🎉', title: 'Woohoo — receipt looks great!' }
+                  ? { c: '#3ad29f', emoji: '✓', title: 'Deposit submitted' }
                   : manualDone?.warning
-                  ? { c: '#E8B84B', emoji: '🫡', title: 'Submitted — one quick heads-up' }
+                  ? { c: '#E8B84B', emoji: '!', title: 'Submitted — please note' }
                   : manualDone?.case === 'fake'
-                  ? { c: '#F2667A', emoji: '🕵️', title: "That doesn't look genuine" }
+                  ? { c: '#F2667A', emoji: '✕', title: 'Receipt could not be verified' }
                   : isPending
-                  ? { c: '#5a9bff', emoji: '⏳', title: "You're already in the queue!" }
+                  ? { c: '#5a9bff', emoji: '•', title: 'Deposit already in review' }
                   : isDupApproved
-                  ? { c: '#3ad29f', emoji: '✅', title: 'Already deposited with this receipt!' }
+                  ? { c: '#3ad29f', emoji: '✓', title: 'Already deposited' }
                   : isDup
-                  ? { c: '#3ad29f', emoji: '✅', title: 'This receipt was already used' }
-                  : { c: '#E8B84B', emoji: '🔍', title: "Couldn't quite read that" };
+                  ? { c: '#3ad29f', emoji: '✓', title: 'Receipt already used' }
+                  : { c: '#E8B84B', emoji: '•', title: 'Could not read the receipt' };
                 const tint = (a: number) => th.c + Math.round(a * 255).toString(16).padStart(2, '0');
                 return (
                   <div style={{ padding: '2px 0' }}>
                     <div style={{ textAlign: 'center', marginBottom: 14 }}>
-                      <div style={{ width: 72, height: 72, borderRadius: 99, background: tint(0.14), display: 'grid', placeItems: 'center', fontSize: 38, margin: '0 auto 12px', border: `1px solid ${tint(0.4)}`, boxShadow: `0 8px 26px ${tint(0.22)}` }}>{th.emoji}</div>
-                      <div style={{ fontSize: 19, fontWeight: 900, color: th.c }}>{th.title}</div>
+                      <div style={{ width: 64, height: 64, borderRadius: 99, background: tint(0.14), display: 'grid', placeItems: 'center', fontSize: 30, fontWeight: 800, color: th.c, margin: '0 auto 12px', border: `1px solid ${tint(0.4)}` }}>{th.emoji}</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: th.c }}>{th.title}</div>
                     </div>
-                    <div style={{ background: tint(0.12), border: `1px solid ${tint(0.4)}`, borderRadius: TH.radius, padding: '13px 16px', fontSize: 13.5, color: TH.text, lineHeight: 1.65, textAlign: 'center', fontWeight: 600 }}>
+                    <div style={{ background: tint(0.10), border: `1px solid ${tint(0.35)}`, borderRadius: TH.radius, padding: '13px 16px', fontSize: 13.5, color: TH.text, lineHeight: 1.65, textAlign: 'center', fontWeight: 600 }}>
                       {success
-                        ? <>Your <b style={{ color: th.c }}>{fmtMoney(amt)}</b> deposit is with our team — you'll get a ping the moment it's approved. ✨</>
+                        ? <>Your <b style={{ color: th.c }}>{fmtMoney(amt)}</b> deposit has been submitted for review. You'll be notified once it is approved.</>
                         : msg}
                     </div>
                     {justClose ? (
-                      <button onClick={onClose} style={{ ...primaryBtn, width: '100%', marginTop: 18 }}>{isPending ? "OK, I'll wait 🙌" : success ? 'Sweet — done! 🚀' : 'Got it 👍'}</button>
+                      <button onClick={onClose} style={{ ...primaryBtn, width: '100%', marginTop: 18 }}>{isPending ? 'OK' : success ? 'Done' : 'Got it'}</button>
                     ) : (
                       <>
-                        <div style={{ fontSize: 12.5, color: TH.muted, margin: '15px 0 10px', lineHeight: 1.6, textAlign: 'center' }}>Nothing was saved — just upload a <b style={{ color: TH.text }}>clear</b> shot with the <b style={{ color: TH.text }}>Transaction ID + date</b> visible. 📸</div>
+                        <div style={{ fontSize: 12.5, color: TH.muted, margin: '15px 0 10px', lineHeight: 1.6, textAlign: 'center' }}>Nothing was saved — please upload a <b style={{ color: TH.text }}>clear</b> photo showing the <b style={{ color: TH.text }}>Transaction ID and date</b>.</div>
                         <label style={{ display: 'block', border: `1.5px dashed ${proofImg ? th.c : TH.border2}`, borderRadius: TH.radius, padding: 22, textAlign: 'center', cursor: 'pointer', background: TH.panel }}>
                           <input type="file" accept="image/*" style={{ display: 'none' }} onChange={pickProof} />
-                          <div style={{ fontSize: 24, marginBottom: 6 }}>{proofImg ? '✓' : '📎'}</div>
+                          <div style={{ fontSize: 24, marginBottom: 6, color: proofImg ? th.c : TH.muted }}>{proofImg ? '✓' : '+'}</div>
                           <div style={{ fontSize: 13, color: proofImg ? th.c : TH.muted }}>{proofName || 'Tap to upload a new screenshot'}</div>
                         </label>
                         {proofImg && <img src={proofImg} alt="proof" style={{ marginTop: 10, maxWidth: '100%', maxHeight: 180, borderRadius: 8, border: `1px solid ${TH.border}` }} />}
-                        <button onClick={submitManual} disabled={!proofImg || busy} style={{ ...primaryBtn, width: '100%', marginTop: 14, opacity: (!proofImg || busy) ? 0.5 : 1, cursor: (!proofImg || busy) ? 'not-allowed' : 'pointer' }}>{busy ? 'Processing…' : 'Try again 🎯'}</button>
+                        <button onClick={submitManual} disabled={!proofImg || busy} style={{ ...primaryBtn, width: '100%', marginTop: 14, opacity: (!proofImg || busy) ? 0.5 : 1, cursor: (!proofImg || busy) ? 'not-allowed' : 'pointer' }}>{busy ? 'Processing…' : 'Try again'}</button>
                         <button onClick={onClose} style={{ ...ghostBtn, width: '100%', marginTop: 8 }}>Cancel</button>
                       </>
                     )}
@@ -410,7 +410,7 @@ export default function DepositWizard({ onClose }: { onClose: () => void }) {
                 <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: TH.muted, fontWeight: 700, marginBottom: 8 }}>Upload payment proof</div>
                 <label style={{ display: 'block', border: `1.5px dashed ${proofName ? TH.accent : TH.border2}`, borderRadius: TH.radius, padding: 24, textAlign: 'center', cursor: 'pointer', background: TH.panel }}>
                   <input type="file" accept="image/*,application/pdf" style={{ display: 'none' }} onChange={e => setProofName(e.target.files?.[0]?.name || '')} />
-                  <div style={{ fontSize: 26, marginBottom: 6 }}>{proofName ? '✓' : '📎'}</div>
+                  <div style={{ fontSize: 26, marginBottom: 6, color: proofName ? TH.accent : TH.muted }}>{proofName ? '✓' : '+'}</div>
                   <div style={{ fontSize: 13, color: proofName ? TH.accent : TH.muted }}>{proofName || 'Tap to upload screenshot / receipt'}</div>
                 </label>
                 <button onClick={onClose} disabled={!proofName} style={{ ...primaryBtn, width: '100%', marginTop: 16, opacity: proofName ? 1 : 0.5, cursor: proofName ? 'pointer' : 'not-allowed' }}>Submit deposit</button>

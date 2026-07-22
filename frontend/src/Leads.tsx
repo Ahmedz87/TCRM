@@ -1,15 +1,45 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPost, apiPatch } from './api';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { apiGet, apiPost, apiPatch, openIbProfile } from './api';
+import NetworkBadge from './NetworkBadge';
 import { PhoneModal, EmailModal } from './ContactModals';
 import KYCPanel from './KYCPanel';
 import { DialerLauncher } from './PowerDialer';
 import { AgentCell } from './AgentCell';
 import { CT, Pager } from './crmTable';
+import OwnDataToggle from './OwnDataToggle';
+import { useColumnPicker, ColumnGear } from './ColumnPicker';
+import { useT } from './adminI18n';
+
+// Leads list columns (fixed order) — shared by the header, the colgroup and the ⚙ column picker.
+const LEAD_COLS = ['Lead','Phone','Country','Campaign','Source','Reg date','Last comment','Stage','Training status','Agent','IB','KYC','Network','Score','Actions'];
+const LEAD_COL_W: Record<string, number> = { Lead:190, Phone:96, Country:72, Campaign:80, Source:80, 'Reg date':94, 'Last comment':140, Stage:142, 'Training status':116, Agent:112, IB:72, KYC:60, Network:56, Score:52, Actions:76 };
+// Training-need levels sales can pick on a lead (drives the Training board).
+const TRAIN_LEVELS = [ {v:'', l:'—'}, {v:'beginner', l:'Beginner'}, {v:'needs_improvement', l:'Needs improvement'}, {v:'intermediate', l:'Intermediate'}, {v:'advanced', l:'Advanced'} ];
+const TRAIN_STAGE_LABEL: Record<string,string> = { requested:'Requested', under_training:'Under training', training_done:'Training done', first_patch_done:'First patch done', too_beginner:'Too beginner', trader_loses_alot:'Trader (loses a lot)' };
+const TRAIN_STAGE_COLOR: Record<string,string> = { requested:'#38bdf8', under_training:'#E8B84B', training_done:'#00e5a0', first_patch_done:'#22c55e', too_beginner:'#ff8800', trader_loses_alot:'#ff4d4d' };
 
 // Meta leads can have very long names — show only the first 3 words in the list.
-const firstWords = (name: string, n = 3) =>
+const firstWords = (name: string, n = 2) =>
   (name || '').trim().split(/\s+/).filter(Boolean).slice(0, n).join(' ');
 
+// STAGES (TradeSoft's pipeline, Jul 2026 — replaces the old status). Meta feedback is
+// AUTOMATIC now (meta_auto_feed.py): verified→qualified, deposit→converted, good stage→
+// qualified, bad stage→not_qualified, Bad Data→lost; No Answer waits for re-calls.
+const STAGES = ['New Lead','Contacted','Demo Trading','Not Interested','No Answer','Ask - Welcome Bonus',
+  'Unreachable','Contact Whatsapp','Bad Data','Won','Interested in Training','Under Training',
+  'Training Completed','Archived'];
+const STAGE_COLORS: Record<string,string> = {
+  'New Lead':'#00aaff', 'Contacted':'#ffaa00', 'Demo Trading':'#38bdf8', 'Not Interested':'#ff6b6b',
+  'No Answer':'#8b93a1', 'Ask - Welcome Bonus':'#ffc14d', 'Unreachable':'#ff8888',
+  'Contact Whatsapp':'#25d366', 'Bad Data':'#ff4d4d', 'Won':'#00e5a0',
+  'Interested in Training':'#a78bfa', 'Under Training':'#c4b5fd', 'Training Completed':'#34d399',
+  'Archived':'#667',
+};
+// legacy status -> stage (for rows the backend hasn't migrated yet)
+const LEGACY_STAGE: Record<string,string> = { new:'New Lead', contacted:'Contacted', callback:'Contacted',
+  converted:'Won', dead:'Not Interested', no_answer:'No Answer', interested:'Interested in Training' };
+const stageOf = (l:any) => l.stage || LEGACY_STAGE[l.status] || 'New Lead';
+// kept for old references
 const STATUS_COLORS: Record<string,string> = {
   new:        '#00aaff',
   contacted:  '#ffaa00',
@@ -26,6 +56,7 @@ const SOURCE_ICONS: Record<string,string> = {
   facebook:'📘', instagram:'📸', messenger:'💬', audience_network:'🌐',
   Facebook:'📘', Instagram:'📸', Google:'🔍', WhatsApp:'💬',
   TikTok:'🎵', manual:'✋', Email:'✉️', Referral:'🤝', Other:'🌐',
+  mql5:'📈', sales_agent:'🧑‍💼', webinar:'🎥', affiliate:'🤝', direct:'➡️',
 };
 
 // Brand logos as inline SVG (real colors)
@@ -69,26 +100,53 @@ const META_STAGES: Record<string,{label:string,color:string}> = {
 const L_REASON_ICON: Record<string,string> = { cid:'📱',mqid:'📱',email:'✉️',phone:'📞',family:'👪',ip:'🌐',payment:'💳',ib:'🤝',city:'📍' };
 function lConfColor(p:number){ return p>=90?'#ff4d4d':p>=70?'#ffaa00':p>=50?'#ffd400':'#00aaff'; }
 function LConnRow({ c }:{ c:any }){
+  const t = useT();
   const col = lConfColor(c.confidence);
+  const [open, setOpen] = useState(false);
+  const reasons = c.reasons || [];
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', background:'#2c333e', border:'1px solid #4f596b', borderRadius:10, marginBottom:6 }}>
-      <div style={{ width:46, textAlign:'center', flexShrink:0 }}>
-        <div style={{ fontSize:15, fontWeight:800, color:col }}>{c.confidence}%</div>
-        <div style={{ fontSize:9, color:'#667' }}>{c.score10}/10</div>
-      </div>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:12.5, color:'#e6e9ef', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-          {(c.name||'').split(/\s+/).slice(0,2).join(' ')} {c.kind==='lead'
-            ? <span style={{ fontSize:9, color:'#00aaff', border:'1px solid #00aaff55', borderRadius:4, padding:'0 4px' }}>LEAD</span>
-            : <span style={{ fontSize:9, color:'#00e5a0', border:'1px solid #00e5a055', borderRadius:4, padding:'0 4px' }}>CLIENT</span>}
+    <div style={{ background:'#2c333e', border:'1px solid '+(open?col+'88':'#4f596b'), borderRadius:10, marginBottom:6 }}>
+      <div onClick={()=>setOpen(o=>!o)} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', cursor:'pointer' }}>
+        <div style={{ width:46, textAlign:'center', flexShrink:0 }}>
+          <div style={{ fontSize:15, fontWeight:800, color:col }}>{c.confidence}%</div>
+          <div style={{ fontSize:9, color:'#667' }}>{c.score10}/10</div>
         </div>
-        <div style={{ fontSize:10, color:'#667', fontFamily:'monospace' }}>{c.login?('#'+c.login):('lead #'+c.id)}{c.city?(' · '+c.city):''}{c.ib_name?(' · '+c.ib_name):''}</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:12.5, color:'#e6e9ef', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {(c.name||'').split(/\s+/).slice(0,2).join(' ')} {c.kind==='lead'
+              ? <span style={{ fontSize:9, color:'#00aaff', border:'1px solid #00aaff55', borderRadius:4, padding:'0 4px' }}>{t('LEAD')}</span>
+              : <span style={{ fontSize:9, color:'#00e5a0', border:'1px solid #00e5a055', borderRadius:4, padding:'0 4px' }}>{t('CLIENT')}</span>}
+          </div>
+          <div style={{ fontSize:10, color:'#667', fontFamily:'monospace' }}>{c.login?('#'+c.login):('lead #'+c.id)}{c.city?(' · '+c.city):''}{c.ib_name?(' · '+c.ib_name):''}</div>
+        </div>
+        <div style={{ display:'flex', gap:4, flexWrap:'wrap', justifyContent:'flex-end', maxWidth:220 }}>
+          {reasons.map((r:any,ri:number)=>(
+            <span key={ri} title={`${r.label}: ${r.value}`} style={{ fontSize:9.5, padding:'2px 6px', borderRadius:99, background:'#373f4d', color:'#bcc3cf' }}>{L_REASON_ICON[r.type]||'·'} {r.type}</span>
+          ))}
+        </div>
+        <div style={{ color:'#667', fontSize:10, marginLeft:2, flexShrink:0 }}>{open?'▲':'▼'}</div>
       </div>
-      <div style={{ display:'flex', gap:4, flexWrap:'wrap', justifyContent:'flex-end', maxWidth:220 }}>
-        {(c.reasons||[]).map((r:any,ri:number)=>(
-          <span key={ri} title={`${r.label}: ${r.value}`} style={{ fontSize:9.5, padding:'2px 6px', borderRadius:99, background:'#373f4d', color:'#bcc3cf' }}>{L_REASON_ICON[r.type]||'·'} {r.type}</span>
-        ))}
-      </div>
+      {open && (
+        <div style={{ borderTop:'1px solid #4f596b', padding:'10px 12px', background:'#262c36', borderRadius:'0 0 10px 10px' }}>
+          <div style={{ fontSize:10, color:'#8a93a3', marginBottom:8, textTransform:'uppercase', letterSpacing:0.5 }}>{t('What links them — matching details')}</div>
+          {reasons.length===0 ? <div style={{ fontSize:11, color:'#667' }}>{t('No shared attributes recorded.')}</div> :
+            reasons.map((r:any,ri:number)=>(
+              <div key={ri} style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'5px 0', fontSize:11.5, borderBottom: ri<reasons.length-1?'1px solid #313946':'none' }}>
+                <span style={{ width:18, textAlign:'center', flexShrink:0 }}>{L_REASON_ICON[r.type]||'·'}</span>
+                <span style={{ color:'#9aa3b2', width:130, flexShrink:0 }}>{r.label||r.type}</span>
+                <span style={{ color:'#e6e9ef', fontFamily:'monospace', wordBreak:'break-all', flex:1 }}>{r.value||'—'}</span>
+                <span style={{ fontSize:9, color:'#00e5a0', border:'1px solid #00e5a033', borderRadius:4, padding:'0 5px', flexShrink:0 }}>{t('match')}</span>
+              </div>
+            ))}
+          {c.login && (
+            <div style={{ marginTop:8 }}>
+              <span onClick={(e)=>{ e.stopPropagation();
+                  window.dispatchEvent(new CustomEvent('navigate',{detail:{page:'clients', search:String(c.login), openProfile:c.login}})); }}
+                style={{ fontSize:10.5, color:'#00aaff', cursor:'pointer', textDecoration:'underline' }}>{t('Open')} #{c.login}{t("'s profile →")}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -121,24 +179,67 @@ function Field({ label, value, accent, onClick, mono, node, last }: any){
   );
 }
 
-function LeadProfile({ lead: leadProp, onClose, agents }: any) {
+function LeadProfile({ lead: leadProp, onClose, onUpdate, agents }: any) {
+  const t = useT();
   const [lead, setLead] = useState<any>(leadProp);
   const [tab, setTab] = useState('details');
   const [verifying, setVerifying] = useState(false);
   const [note, setNote] = useState('');
   const [status, setStatus] = useState(leadProp.status);
   const [saving, setSaving] = useState(false);
+  const notesFeedRef = useRef<HTMLDivElement>(null);   // notes feed — auto-scroll to bottom
   const [metaStage, setMetaStage] = useState(leadProp.meta_stage || '');
   const [metaSending, setMetaSending] = useState(false);
   const [metaDetails, setMetaDetails] = useState<any>(null);
   const [conns, setConns] = useState<any>(null);
+  const [tradingAccts, setTradingAccts] = useState<any[]|null>(null);  // verified lead's trading account(s)
   const [editContact, setEditContact] = useState(false);   // #90 edit email/phone/password
+  // Editing a lead's identity/contact info is ADMIN-TEAM ONLY (boss directive Jul 21, #241 —
+  // sales/retention at ANY level request changes from Admin/Nuha). Mirrors backend
+  // rbac.may_edit_lead_info; the backend still enforces.
+  const canEditLeadInfo = ['super_admin','admin','director']
+    .includes((localStorage.getItem('userRole') || '').toLowerCase());
+  const [phoneContact, setPhoneContact] = useState<any>(null);   // in-profile call / WhatsApp
+  // #242 — edit/delete OWN note lines within 60 min (parity with client comments)
+  const [editingNote, setEditingNote] = useState<string|null>(null);   // the original line being edited
+  const [editNoteText, setEditNoteText] = useState('');
+  const myName = (localStorage.getItem('userName') || '').trim();
+  const NOTE_EDIT_MS = 60 * 60 * 1000;
+  const parseNoteLine = (ln: string) => {
+    const m = ln.match(/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]\s*(.+?):\s([\s\S]*)$/);
+    return m ? { ts: m[1], author: m[2].trim(), text: m[3] } : null;
+  };
+  const canEditNote = (ln: string) => {
+    const p = parseNoteLine(ln);
+    if (!p || !myName || p.author !== myName) return false;
+    const t0 = new Date(p.ts.replace(' ', 'T') + ':00Z').getTime();   // stored in UTC
+    return !isNaN(t0) && (Date.now() - t0) < NOTE_EDIT_MS;
+  };
+  const saveNoteEdit = async (original: string, newText: string) => {
+    try {
+      const r: any = await apiPost(`/leads/${lead.id}/note-edit`, { original, note: newText });
+      setLead((prev: any) => ({ ...prev, notes: r.notes }));
+      onUpdate && onUpdate({ id: lead.id, notes: r.notes });
+      setEditingNote(null); setEditNoteText('');
+    } catch (e: any) { alert(e?.message || t('Could not save note — please try again')); }
+  };
+  const [emailContact, setEmailContact] = useState<any>(null);   // in-profile email templates
+
+  // Recapture identity: for a re-captured lead prefer the VERIFIED name on the existing record.
+  const isRecap = String(lead.match_badge||'').startsWith('recapture') && lead.matched_login > 0;
+  const displayName = (isRecap && lead.matched_name) ? lead.matched_name : (lead.full_name || 'Unknown');
+  const contactCard = { name: displayName, phone: lead.phone, email: lead.email };
+  const fmtD = (d:any) => d ? new Date(d).toLocaleDateString('en-GB') : null;
 
   // Load Meta details (custom questions, source, etc)
   useEffect(() => {
     apiGet(`/meta/lead/${leadProp.id}/details`).then(setMetaDetails).catch(()=>{});
     setConns(null);
     apiGet(`/network/connections?lead_id=${leadProp.id}`).then(setConns).catch(()=>{});
+    setTradingAccts(null);
+    apiGet(`/leads/${leadProp.id}/trading-accounts`)
+      .then((d:any)=>setTradingAccts(d?.trading_accounts || []))
+      .catch(()=>setTradingAccts([]));
   }, [leadProp.id]);
 
   const sendMetaStage = async (stage: string) => {
@@ -147,16 +248,22 @@ function LeadProfile({ lead: leadProp, onClose, agents }: any) {
     try {
       const res = await apiPost(`/meta/lead/${lead.id}/stage`, { status: stage });
       setLead({...lead, status: stage, meta_stage: res.meta_event});
-    } catch(e) { alert('Failed to send to Meta'); }
+    } catch(e) { alert(t('Failed to send to Meta')); }
     setMetaSending(false);
   };
 
   const save = async (updates: any) => {
     setSaving(true);
     try {
+      // apiPatch REJECTS on 4xx/5xx — so we only reflect the change AFTER the backend confirms.
       await apiPatch(`/leads/${lead.id}`, updates);
       setLead({...lead, ...updates});
-    } catch(e) { alert('Failed to save'); }
+      if (updates.stage !== undefined) setStatus(updates.stage);
+      // push the confirmed change to the OUTER leads table immediately (no need to close first)
+      if (onUpdate) onUpdate(lead.id, updates);
+    } catch(e:any) {
+      alert(t('Could not save — ') + (e?.message || t('please try again')));
+    }
     setSaving(false);
   };
 
@@ -164,51 +271,104 @@ function LeadProfile({ lead: leadProp, onClose, agents }: any) {
     if (!note.trim()) return;
     setSaving(true);
     try {
-      await apiPost(`/leads/${lead.id}/call`, { note });
-      setLead({...lead, call_attempts: (lead.call_attempts||0)+1, notes: (lead.notes||'')+'\n'+note });
-      setNote('');
-    } catch(e) {}
+      const r:any = await apiPost(`/leads/${lead.id}/call`, { note });
+      if (r && r.detail) { alert(t('Could not save note: ') + r.detail); }
+      else {
+        // reflect the saved note (formatted with timestamp + agent) so a reload matches
+        const saved = (r && r.note) ? r.note : note;
+        const nAtt = (lead.call_attempts||0)+1;
+        setLead({...lead, call_attempts: nAtt, notes: (lead.notes? lead.notes+'\n' : '')+saved });
+        // keep the list row's call count fresh without a full list reload (#171)
+        if (onUpdate) onUpdate(lead.id, { call_attempts: nAtt });
+        setNote('');
+      }
+    } catch(e:any) { alert(t('Could not save note — please try again') + (e?.message? ': '+e.message : '')); }
     setSaving(false);
   };
+  // #293: newest note is now at the TOP — keep it in view by scrolling the feed to the top
+  useEffect(() => {
+    if (notesFeedRef.current) notesFeedRef.current.scrollTop = 0;
+  }, [lead.notes]);
 
   return (
     <div style={{ position:'fixed', inset:0, zIndex:500, background:'var(--bg-main,#20252f)', color:'#e6e9ef', display:'flex', flexDirection:'column' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 20px', borderBottom:'1px solid #3a434f', background:'linear-gradient(180deg,#333b47,#2a313b)', boxShadow:'0 4px 18px rgba(0,0,0,0.25)', flexShrink:0, zIndex:10 }}>
-        <button onClick={onClose} style={{ background:'none', border:'1px solid #626d80', borderRadius:7, color:'#888', cursor:'pointer', padding:'5px 12px', fontSize:12 }}>← Back</button>
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:16, fontWeight:700 }}>{lead.full_name || 'Unknown'}{lead.customer_no && <span style={{ marginLeft:8, fontSize:11, fontFamily:'monospace', color:'#9966ff', background:'rgba(153,102,255,0.12)', padding:'2px 7px', borderRadius:6 }}>{lead.customer_no}</span>}</div>
-          <div style={{ fontSize:11, color:'#555', display:'flex', alignItems:'center', gap:5 }}>
+        <button onClick={onClose} style={{ background:'none', border:'1px solid #626d80', borderRadius:7, color:'#888', cursor:'pointer', padding:'5px 12px', fontSize:12 }}>← {t('Back')}</button>
+        <div style={{ width:42, height:42, borderRadius:12, background: lead.is_verified?'linear-gradient(135deg,#00e5a0,#00b37e)':'linear-gradient(135deg,#5b6cff,#9966ff)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:18, color:'#0b0f14', flexShrink:0 }}>{(displayName||'?')[0]?.toUpperCase()}</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:16, fontWeight:700, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <span>{displayName}</span>
+            {lead.is_verified && <span title={t('Verified account')} style={{ fontSize:11 }}>✅</span>}
+            {lead.customer_no && <span style={{ fontSize:11, fontFamily:'monospace', color:'#9966ff', background:'rgba(153,102,255,0.12)', padding:'2px 7px', borderRadius:6 }}>{lead.customer_no}</span>}
+            {isRecap && <span style={{ fontSize:9.5, fontWeight:700, padding:'2px 7px', borderRadius:99, background:'rgba(248,80,10,0.14)', color:'#FF6A1A', border:'1px solid #F8500A' }}>♻ {t('Re-captured')}</span>}
+          </div>
+          <div style={{ fontSize:11, color:'#8b93a1', display:'flex', alignItems:'center', gap:5, flexWrap:'wrap' }}>
             <span>{lead.phone} · {lead.country} {lead.city} ·</span>
             <SourceLogo source={lead.source} size={14} />
             <span>{lead.source}</span>
           </div>
         </div>
+        {/* Quick contact actions — call / WhatsApp / email straight from the profile */}
+        {lead.phone && <button onClick={()=>setPhoneContact(contactCard)} title={t('Call / WhatsApp')} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(0,229,160,0.4)', background:'rgba(0,229,160,0.1)', color:'#00e5a0', cursor:'pointer', fontSize:12, fontWeight:600 }}>📞 {t('Call')}</button>}
+        {lead.email && <button onClick={()=>setEmailContact(contactCard)} title={t('Send email')} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(77,159,255,0.4)', background:'rgba(77,159,255,0.1)', color:'#4d9fff', cursor:'pointer', fontSize:12, fontWeight:600 }}>✉️ {t('Email')}</button>}
+        {/* #294: send an email-verification request straight from the new CRM (no more old CRM) */}
+        {lead.email && <button onClick={async()=>{ try { const r:any = await apiPost(`/leads/${lead.id}/send-verification-email`, {}); alert(r?.ok ? (t('Verification email sent to ')+(r.sent_to||lead.email)) : (r?.error || t('Could not send the email.'))); } catch { alert(t('Could not send the email.')); } }} title={t('Send an email-verification request to this lead')} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(232,184,75,0.45)', background:'rgba(232,184,75,0.12)', color:'#E8B84B', cursor:'pointer', fontSize:12, fontWeight:600 }}>🔐 {t('Verify email')}</button>}
         {(lead.converted_login > 0 || lead.matched_login > 0) && (
           <button onClick={async () => {
             const lg = lead.converted_login || lead.matched_login;
             try {
               const res: any = await apiPost(`/portal/impersonate/${lg}`, {});
               if (res?.token) window.open(`/portal/?imp=${encodeURIComponent(res.token)}`, '_blank');
-              else alert(res?.error || 'No client portal account for this lead.');
-            } catch { alert('Could not open the client view.'); }
-          }} title="Open the client portal as this lead's account (read-only preview)" style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(232,184,75,0.4)', background:'rgba(232,184,75,0.1)', color:'#E8B84B', cursor:'pointer', fontSize:12, fontWeight:600 }}>👁 View as client</button>
+              else alert(res?.error || t('No client portal account for this lead.'));
+            } catch { alert(t('Could not open the client view.')); }
+          }} title={t("Open the client portal as this lead's account (read-only preview)")} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(232,184,75,0.4)', background:'rgba(232,184,75,0.1)', color:'#E8B84B', cursor:'pointer', fontSize:12, fontWeight:600 }}>👁 {t('View as client')}</button>
         )}
-        <span style={{ fontSize:11, padding:'3px 10px', borderRadius:99, background:STATUS_COLORS[lead.status]+'22', color:STATUS_COLORS[lead.status], fontWeight:700 }}>
-          {STATUS_LABELS[lead.status] || lead.status}
+        <span style={{ fontSize:11, padding:'3px 10px', borderRadius:99, background:(STAGE_COLORS[stageOf(lead)]||'#555')+'22', color:STAGE_COLORS[stageOf(lead)]||'#888', fontWeight:700 }}>
+          {t(stageOf(lead))}
         </span>
       </div>
 
+      {/* Re-capture summary — prominent + highlighted so the desk instantly sees this person
+          already exists, with first registration and last re-capture dates. */}
+      {isRecap && (
+        <div style={{ flexShrink:0, margin:'12px 20px 0', padding:'12px 16px', borderRadius:12, background:'linear-gradient(135deg, rgba(248,80,10,0.16), rgba(255,106,26,0.05))', border:'1px solid rgba(248,80,10,0.45)', display:'flex', alignItems:'center', gap:18, flexWrap:'wrap' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:22, lineHeight:1 }}>♻</span>
+            <div>
+              <div style={{ fontSize:13, fontWeight:800, color:'#FF6A1A' }}>{t('Re-captured lead')}</div>
+              <div style={{ fontSize:10.5, color:'#9aa3b2' }}>{t('This person already exists in our system')}</div>
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginLeft:'auto' }}>
+            <div style={{ background:'rgba(0,229,160,0.08)', border:'1px solid rgba(0,229,160,0.25)', borderRadius:10, padding:'7px 14px', minWidth:118 }}>
+              <div style={{ fontSize:9, color:'#8792a6', textTransform:'uppercase', letterSpacing:.6, fontWeight:700, marginBottom:2 }}>{t('First registration')}</div>
+              <div style={{ fontSize:15, fontWeight:800, color:'#00e5a0' }}>{fmtD(lead.matched_reg_date) || '—'}</div>
+            </div>
+            <div style={{ background:'rgba(255,209,102,0.08)', border:'1px solid rgba(255,209,102,0.28)', borderRadius:10, padding:'7px 14px', minWidth:118 }}>
+              <div style={{ fontSize:9, color:'#8792a6', textTransform:'uppercase', letterSpacing:.6, fontWeight:700, marginBottom:2 }}>{t('Last re-capture')}</div>
+              <div style={{ fontSize:15, fontWeight:800, color:'#ffd166' }}>{fmtD(lead.meta_created||lead.created_at) || '—'}</div>
+            </div>
+            {lead.full_name && lead.matched_name && lead.full_name!==lead.matched_name && (
+              <div style={{ background:'rgba(196,181,253,0.08)', border:'1px solid rgba(196,181,253,0.28)', borderRadius:10, padding:'7px 14px', minWidth:118 }}>
+                <div style={{ fontSize:9, color:'#8792a6', textTransform:'uppercase', letterSpacing:.6, fontWeight:700, marginBottom:2 }}>{t('Name on new ad')}</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#c4b5fd', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:160 }}>{firstWords(lead.full_name)}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Tabs (pill style) */}
       <div style={{ display:'flex', gap:6, padding:'10px 20px', borderBottom:'1px solid #313945', background:'#2c333e', flexShrink:0 }}>
-        {['details','verification'].map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            style={{ padding:'7px 16px', borderRadius:9, fontWeight:tab===t?700:500, textTransform:'capitalize', cursor:'pointer', fontSize:12.5, fontFamily:'inherit',
-              color: tab===t?'#0b0f14':'#9aa3b2',
-              background: tab===t?'linear-gradient(135deg,#00e5a0,#00c48f)':'#262c36',
-              border:'1px solid '+(tab===t?'transparent':'#353d49'),
-              boxShadow: tab===t?'0 3px 12px rgba(0,229,160,0.28)':'none', transition:'all 0.15s' }}>
-            {t}
+        {['details','verification'].map(tb => (
+          <button key={tb} onClick={() => setTab(tb)}
+            style={{ padding:'7px 16px', borderRadius:9, fontWeight:tab===tb?700:500, textTransform:'capitalize', cursor:'pointer', fontSize:12.5, fontFamily:'inherit',
+              color: tab===tb?'#0b0f14':'#9aa3b2',
+              background: tab===tb?'linear-gradient(135deg,#00e5a0,#00c48f)':'#262c36',
+              border:'1px solid '+(tab===tb?'transparent':'#353d49'),
+              boxShadow: tab===tb?'0 3px 12px rgba(0,229,160,0.28)':'none', transition:'all 0.15s' }}>
+            {t(tb)}
           </button>
         ))}
       </div>
@@ -224,51 +384,95 @@ function LeadProfile({ lead: leadProp, onClose, agents }: any) {
             {/* LEFT COLUMN */}
             <div style={{ display:'flex', flexDirection:'column', gap:14, minWidth:0 }}>
             {/* Lead details (personal + status merged) */}
-            <InfoCard icon="👤" title="Lead details" accent="#38bdf8"
-              action={<button onClick={()=>setEditContact(true)} style={{ padding:'4px 10px', background:'rgba(56,189,248,0.1)', border:'1px solid rgba(56,189,248,0.4)', borderRadius:7, color:'#38bdf8', cursor:'pointer', fontSize:11, fontFamily:'inherit', fontWeight:600 }}>✎ Edit</button>}>
-              <Field label="Customer ID" value={lead.customer_no} mono accent="#c4b5fd" />
-              <Field label="Name" value={lead.full_name} />
-              <Field label="Phone" value={lead.phone} />
-              <Field label="Email" value={lead.email} />
-              <Field label="Date of birth" value={lead.date_of_birth} />
-              <Field label="Country" value={lead.country} />
-              <Field label="City" value={lead.city} />
-              <Field label="Language" value={lead.language} />
-              <Field label="Portal password" value={lead.has_password ? '•••••• (set)' : '— (not set)'} accent={lead.has_password?'#00e5a0':undefined} last />
+            <InfoCard icon="👤" title={t('Lead details')} accent="#38bdf8"
+              action={canEditLeadInfo ? <button onClick={()=>setEditContact(true)} style={{ padding:'4px 10px', background:'rgba(56,189,248,0.1)', border:'1px solid rgba(56,189,248,0.4)', borderRadius:7, color:'#38bdf8', cursor:'pointer', fontSize:11, fontFamily:'inherit', fontWeight:600 }}>✎ {t('Edit')}</button> : undefined}>
+              <Field label={t('Customer ID')} value={lead.customer_no} mono accent="#c4b5fd" />
+              <Field label={t('Name')} value={displayName} accent={isRecap && lead.matched_name ? '#00e5a0' : undefined} />
+              {isRecap && lead.full_name && lead.matched_name && lead.full_name!==lead.matched_name && <Field label={t('Ad-form name')} value={lead.full_name} accent="#c4b5fd" />}
+              <Field label={t('Phone')} value={lead.phone} />
+              <Field label={t('Email')} value={lead.email} />
+              <Field label={t('Date of birth')} value={lead.date_of_birth} />
+              <Field label={t('Country')} value={lead.country} />
+              <Field label={t('City')} value={lead.city} />
+              <Field label={t('Language')} value={lead.language} />
+              <Field label={t('Portal password')} value={lead.has_password ? t('•••••• (set)') : t('— (not set)')} accent={lead.has_password?'#00e5a0':undefined} last />
 
               {/* Status & assignment merged in */}
               <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid #333b46' }}>
-                <div style={{ fontSize:11, color:'#8b93a1', margin:'0 0 6px' }}>Lead status</div>
-                <select value={status} onChange={e => { setStatus(e.target.value); save({status: e.target.value}); }}
-                  style={{ width:'100%', padding:'9px', background:'#373f4d', border:'1px solid #4f596b', borderRadius:8, color:'#e0e0e0', fontSize:13, marginBottom:12, fontFamily:'inherit' }}>
-                  {Object.entries(STATUS_LABELS).map(([k,l]) => <option key={k} value={k}>{l as string}</option>)}
+                <div style={{ fontSize:11, color:'#8b93a1', margin:'0 0 6px' }}>{t('Stage')}</div>
+                <select value={STAGES.includes(status) ? status : stageOf(lead)} disabled={saving} onChange={e => save({stage: e.target.value})}
+                  style={{ width:'100%', padding:'9px', background:'#373f4d', border:'1px solid #4f596b', borderRadius:8, color:'#e0e0e0', fontSize:13, marginBottom:12, fontFamily:'inherit', opacity:saving?0.6:1 }}>
+                  {STAGES.map(s => <option key={s} value={s}>{t(s)}</option>)}
                 </select>
-                <div style={{ fontSize:11, color:'#8b93a1', marginBottom:6 }}>Assigned agent</div>
+                <div style={{ fontSize:11, color:'#8b93a1', marginBottom:6 }}>{t('Assigned agent')}</div>
+                {/* Only admins & Rahaf may change the sales agent; everyone else sees it read-only. */}
+                {localStorage.getItem('canReassign') === '1' ? (
                 <select value={lead.assigned_agent_id||''} onChange={e => save({assigned_agent_id: e.target.value || null})}
                   style={{ width:'100%', padding:'9px', background:'#373f4d', border:'1px solid #4f596b', borderRadius:8, color:'#e0e0e0', fontSize:13, fontFamily:'inherit' }}>
-                  <option value="">Unassigned</option>
+                  <option value="">{t('Unassigned')}</option>
                   {agents.map((a:any) => <option key={a.id} value={a.id}>{a.full_name}</option>)}
                 </select>
+                ) : (
+                  <div style={{ width:'100%', padding:'9px', background:'#2a303a', border:'1px solid #4f596b', borderRadius:8, color:'#9fb0c0', fontSize:13 }}>
+                    {lead.agent_name || t('Unassigned')}
+                  </div>
+                )}
+
+                {/* Training needs — sales pick a level; this sends the lead to the Training team's board */}
+                <div style={{ fontSize:11, color:'#8b93a1', margin:'12px 0 6px', display:'flex', alignItems:'center', gap:6 }}>🎓 {t('Training needs')}</div>
+                <select value={lead.training_need||''} onChange={e => save({training_need: e.target.value})} disabled={saving}
+                  style={{ width:'100%', padding:'9px', background: lead.training_need?'rgba(232,184,75,0.10)':'#373f4d', border:`1px solid ${lead.training_need?'#E8B84B':'#4f596b'}`, borderRadius:8, color: lead.training_need?'#E8B84B':'#e0e0e0', fontSize:13, fontFamily:'inherit' }}>
+                  {TRAIN_LEVELS.map(x=><option key={x.v} value={x.v} style={{background:'#373f4d',color:'#e0e0e0'}}>{t(x.l)}</option>)}
+                </select>
+                {lead.training_stage && <div style={{ fontSize:11, color:'#8792a6', marginTop:6 }}>{t('On the training board')}: <b style={{color:TRAIN_STAGE_COLOR[lead.training_stage]||'#aaa'}}>{t(TRAIN_STAGE_LABEL[lead.training_stage]||lead.training_stage)}</b></div>}
               </div>
+            </InfoCard>
+
+            {/* Trading accounts — verified/matched leads own trading login(s) */}
+            <InfoCard icon="💹" title={t('Trading accounts')} accent="#00e5a0">
+              {tradingAccts === null ? (
+                <div style={{ fontSize:12, color:'#5a6472', textAlign:'center', padding:'12px 0' }}>{t('Loading…')}</div>
+              ) : tradingAccts.length === 0 ? (
+                <div style={{ fontSize:12, color:'#5a6472', textAlign:'center', padding:'12px 0' }}>{t('No trading accounts yet')}</div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  {tradingAccts.map((a:any, i:number) => (
+                    <div key={a.login ?? i}
+                      onClick={()=>window.dispatchEvent(new CustomEvent('navigate',{detail:{page:'clients', search:String(a.login), openProfile:a.login}}))}
+                      title={t("Open this account's profile")}
+                      style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'9px 11px', background:'var(--bg-input,#373f4d)', border:'1px solid var(--border,#3a434f)', borderRadius:10, cursor:'pointer' }}>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontSize:14, fontWeight:800, fontFamily:'monospace', color:'var(--accent,#00e5a0)' }}>#{a.login}</div>
+                        <div style={{ fontSize:10.5, color:'#8b93a1', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          <span style={{ fontWeight:600 }}>{a.platform || 'MT5'}</span>{a.group_name ? ' · '+a.group_name : ''}
+                        </div>
+                      </div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'var(--text,#e6e9ef)', flexShrink:0, fontFamily:'monospace' }}>
+                        ${Number(a.balance||0).toLocaleString('en-GB',{minimumFractionDigits:2, maximumFractionDigits:2})}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </InfoCard>
             </div>{/* end LEFT column */}
 
             {/* RIGHT COLUMN */}
             <div style={{ display:'flex', flexDirection:'column', gap:14, minWidth:0 }}>
             {/* Source & campaign */}
-            <InfoCard icon={<SourceLogo source={lead.meta_platform||lead.source} size={15} />} title="Source & campaign" accent="#fbbf24">
-              <Field label="Source" node={<span style={{ display:'flex', alignItems:'center', gap:6, color:'#eef1f6', fontWeight:600, fontSize:12.5, justifyContent:'flex-end' }}><SourceLogo source={lead.meta_platform||lead.source} size={14} />{metaDetails?.meta_platform || lead.meta_platform || lead.source || '—'}</span>} />
-              <Field label="Publisher" value={metaDetails?.meta_publisher_platform} />
-              <Field label="Placement" value={metaDetails?.meta_platform_position} />
-              <Field label="Campaign" value={metaDetails?.campaign_name || lead.campaign_name} />
-              <Field label="Ad set" value={metaDetails?.adset_name} />
-              <Field label="Ad" value={metaDetails?.ad_name || lead.ad_name} />
-              <Field label="Created" value={lead.created_at ? new Date(lead.created_at).toLocaleString() : '—'} />
-              <Field label="Meta lead ID" value={metaDetails?.meta_lead_id || lead.meta_lead_id} mono />
+            <InfoCard icon={<SourceLogo source={lead.meta_platform||lead.source} size={15} />} title={t('Source & campaign')} accent="#fbbf24">
+              <Field label={t('Source')} node={<span style={{ display:'flex', alignItems:'center', gap:6, color:'#eef1f6', fontWeight:600, fontSize:12.5, justifyContent:'flex-end' }}><SourceLogo source={lead.meta_platform||lead.source} size={14} />{metaDetails?.meta_platform || lead.meta_platform || lead.source || '—'}</span>} />
+              <Field label={t('Publisher')} value={metaDetails?.meta_publisher_platform} />
+              <Field label={t('Placement')} value={metaDetails?.meta_platform_position} />
+              <Field label={t('Campaign')} value={metaDetails?.campaign_name || lead.campaign_name} />
+              <Field label={t('Ad set')} value={metaDetails?.adset_name} />
+              <Field label={t('Ad')} value={metaDetails?.ad_name || lead.ad_name} />
+              <Field label={t('Created')} value={lead.created_at ? new Date(lead.created_at).toLocaleString('en-GB') : '—'} />
+              <Field label={t('Meta lead ID')} value={metaDetails?.meta_lead_id || lead.meta_lead_id} mono />
             </InfoCard>
 
             {/* Form answers */}
-            <InfoCard icon="📝" title={`Form answers${metaDetails?.custom_questions?.length ? ` (${metaDetails.custom_questions.length})` : ''}`} accent="#00e5a0">
+            <InfoCard icon="📝" title={`${t('Form answers')}${metaDetails?.custom_questions?.length ? ` (${metaDetails.custom_questions.length})` : ''}`} accent="#00e5a0">
               {metaDetails?.custom_questions?.length ? (
                 metaDetails.custom_questions.map((qa:any, i:number) => (
                   <div key={i} style={{ padding:'8px 0', borderBottom:'1px solid #333b46' }}>
@@ -278,7 +482,7 @@ function LeadProfile({ lead: leadProp, onClose, agents }: any) {
                 ))
               ) : (
                 <div style={{ fontSize:12, color:'#5a6472', textAlign:'center', padding:'16px 0' }}>
-                  No custom questions for this lead
+                  {t('No custom questions for this lead')}
                 </div>
               )}
             </InfoCard>
@@ -294,14 +498,14 @@ function LeadProfile({ lead: leadProp, onClose, agents }: any) {
           {/* TOP 40% — Connections */}
           <div style={{ minHeight:0, display:'flex', flexDirection:'column', background:'linear-gradient(160deg,#2c333e,#262c35)', border:'1px solid #3a434f', borderRadius:16, overflow:'hidden', boxShadow:'0 6px 22px rgba(0,0,0,0.28)' }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 16px', borderBottom:'1px solid #373f4d', flexShrink:0 }}>
-              <span style={{ fontSize:13, fontWeight:700 }}>🕸️ Connections</span>
+              <span style={{ fontSize:13, fontWeight:700 }}>🕸️ {t('Connections')}</span>
               {(conns?.connections?.length>0) && <span style={{ fontSize:10, color:'#8a93a3', background:'#373f4d', padding:'2px 7px', borderRadius:99 }}>{conns.connections.length}</span>}
             </div>
             <div style={{ flex:1, overflowY:'auto', padding:'10px 12px' }}>
-              <div style={{ fontSize:10.5, color:'#667', marginBottom:8, lineHeight:1.5 }}>Existing clients/leads this person is linked to — by phone, email, city or payment. The % / x-of-10 is our confidence.</div>
-              {!conns ? <div style={{ textAlign:'center', color:'#556', padding:20, fontSize:12 }}>Loading connections…</div>
+              <div style={{ fontSize:10.5, color:'#667', marginBottom:8, lineHeight:1.5 }}>{t('Existing clients/leads this person is linked to — by phone, email, city or payment. The % / x-of-10 is our confidence.')}</div>
+              {!conns ? <div style={{ textAlign:'center', color:'#556', padding:20, fontSize:12 }}>{t('Loading connections…')}</div>
                 : (conns.connections||[]).length === 0
-                  ? <div style={{ textAlign:'center', color:'#556', padding:20, fontSize:12 }}>No connections found — a fresh, unlinked lead.</div>
+                  ? <div style={{ textAlign:'center', color:'#556', padding:20, fontSize:12 }}>{t('No connections found — a fresh, unlinked lead.')}</div>
                   : (conns.connections||[]).map((c:any,i:number) => <LConnRow key={i} c={c} />)}
             </div>
           </div>
@@ -309,28 +513,50 @@ function LeadProfile({ lead: leadProp, onClose, agents }: any) {
           {/* BOTTOM 60% — Notes / call log centre */}
           <div style={{ minHeight:0, display:'flex', flexDirection:'column', background:'linear-gradient(160deg,#2c333e,#262c35)', border:'1px solid #3a434f', borderRadius:16, overflow:'hidden', boxShadow:'0 6px 22px rgba(0,0,0,0.28)' }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 16px', borderBottom:'1px solid #373f4d', flexShrink:0 }}>
-              <span style={{ fontSize:13, fontWeight:700 }}>📞 Notes & call log</span>
-              {(lead.call_attempts>0) && <span style={{ fontSize:10, color:'#8a93a3', background:'#373f4d', padding:'2px 7px', borderRadius:99 }}>{lead.call_attempts} call{lead.call_attempts>1?'s':''}</span>}
+              <span style={{ fontSize:13, fontWeight:700 }}>📞 {t('Notes & call log')}</span>
+              {(lead.call_attempts>0) && <span style={{ fontSize:10, color:'#8a93a3', background:'#373f4d', padding:'2px 7px', borderRadius:99 }}>{lead.call_attempts} {lead.call_attempts>1?t('calls'):t('call')}</span>}
             </div>
-            {/* feed */}
-            <div style={{ flex:1, overflowY:'auto', padding:'12px 14px', display:'flex', flexDirection:'column', gap:8 }}>
+            {/* feed — #293: NEWEST at the top, oldest below */}
+            <div ref={notesFeedRef} style={{ flex:1, overflowY:'auto', padding:'12px 14px', display:'flex', flexDirection:'column', gap:8 }}>
               {(() => {
                 const entries = String(lead.notes||'').split('\n').map(s=>s.trim()).filter(Boolean).reverse();
                 return entries.length===0
-                  ? <div style={{ color:'#556', fontSize:12, textAlign:'center', padding:'24px 0' }}>No notes yet.<br/>Log the first call below.</div>
+                  ? <div style={{ color:'#556', fontSize:12, textAlign:'center', padding:'24px 0' }}>{t('No notes yet.')}<br/>{t('Log the first call below.')}</div>
                   : entries.map((n:string,i:number)=>(
-                    <div key={i} style={{ background:'#262c36', border:'1px solid #373f4d', borderRadius:10, padding:'9px 12px', fontSize:12.5, color:'#c7ccd6', lineHeight:1.5, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{n}</div>
+                    <div key={i} style={{ background:'#262c36', border:'1px solid #373f4d', borderRadius:10, padding:'9px 12px', fontSize:12.5, color:'#c7ccd6', lineHeight:1.5, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
+                      {editingNote === n ? (
+                        <div>
+                          <textarea value={editNoteText} onChange={e=>setEditNoteText(e.target.value)} rows={2} autoFocus
+                            style={{ width:'100%', padding:'8px 10px', background:'#373f4d', border:'1px solid #4f596b', borderRadius:8, color:'#fff', fontSize:12.5, outline:'none', resize:'vertical', boxSizing:'border-box' as any, fontFamily:'inherit' }} />
+                          <div style={{ display:'flex', gap:8, marginTop:6 }}>
+                            <button onClick={()=>saveNoteEdit(n, editNoteText)} disabled={!editNoteText.trim()} style={{ padding:'5px 12px', background:'#00e5a0', border:'none', borderRadius:7, color:'#20252f', fontWeight:700, fontSize:11.5, cursor:'pointer' }}>{t('Save')}</button>
+                            <button onClick={()=>{ setEditingNote(null); setEditNoteText(''); }} style={{ padding:'5px 12px', background:'#373f4d', border:'1px solid #4f596b', borderRadius:7, color:'#c7ccd6', fontWeight:600, fontSize:11.5, cursor:'pointer' }}>{t('Cancel')}</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {n}
+                          {canEditNote(n) && (
+                            <div style={{ display:'flex', gap:12, marginTop:6, alignItems:'center' }}>
+                              <button onClick={()=>{ setEditingNote(n); setEditNoteText(parseNoteLine(n)?.text || ''); }} style={{ background:'none', border:'none', color:'#7cc4ff', fontSize:11, cursor:'pointer', padding:0 }}>✏️ {t('Edit')}</button>
+                              <button onClick={()=>{ if (window.confirm(t('Delete this note?'))) saveNoteEdit(n, ''); }} style={{ background:'none', border:'none', color:'#ff7a7a', fontSize:11, cursor:'pointer', padding:0 }}>🗑 {t('Delete')}</button>
+                              <span style={{ color:'#5a6472', fontSize:10 }}>{t('editable for 60 min')}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   ));
               })()}
             </div>
             {/* composer */}
             <div style={{ borderTop:'1px solid #373f4d', padding:'10px 12px', background:'#262c36', flexShrink:0 }}>
-              <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Log a call or add a note…" rows={2}
-                onKeyDown={e=>{ if((e.ctrlKey||e.metaKey) && e.key==='Enter') logCall(); }}
+              <textarea value={note} onChange={e => setNote(e.target.value)} placeholder={t('Log a call or add a note… (Enter to save, Shift+Enter = new line)')} rows={2}
+                onKeyDown={e=>{ if(e.key==='Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey){ e.preventDefault(); if(note.trim()&&!saving) logCall(); } }}
                 style={{ width:'100%', padding:'8px 10px', background:'#373f4d', border:'1px solid #4f596b', borderRadius:8, color:'#e0e0e0', fontSize:12.5, outline:'none', resize:'none', fontFamily:'inherit', boxSizing:'border-box' as any }} />
               <button onClick={logCall} disabled={saving || !note.trim()}
                 style={{ marginTop:8, width:'100%', padding:'8px 18px', background:note.trim()?'#00e5a0':'#4f596b', border:'none', borderRadius:8, color:note.trim()?'#000':'#667', fontWeight:700, cursor:note.trim()?'pointer':'default', fontSize:12, fontFamily:'inherit' }}>
-                {saving ? '…' : 'Log call / note'}
+                {saving ? '…' : t('Log call / note')}
               </button>
             </div>
           </div>
@@ -345,12 +571,15 @@ function LeadProfile({ lead: leadProp, onClose, agents }: any) {
           onSaved={(u:any)=>{ setLead({...lead, ...u}); setEditContact(false); }}
         />
       )}
+      {phoneContact && <PhoneModal contact={phoneContact} onClose={()=>setPhoneContact(null)} />}
+      {emailContact && <EmailModal contact={emailContact} type="lead" onClose={()=>setEmailContact(null)} />}
     </div>
   );
 }
 
 // #90 (Nuha) — edit a lead's Email, Phone and Portal password.
 function EditContactModal({ lead, onClose, onSaved }: any) {
+  const t = useT();
   const [email, setEmail]       = useState(lead.email || '');
   const [phone, setPhone]       = useState(lead.phone || '');
   const [dob, setDob]           = useState(lead.date_of_birth || '');  // YYYY-MM-DD (#90)
@@ -380,7 +609,7 @@ function EditContactModal({ lead, onClose, onSaved }: any) {
         date_of_birth: dob.trim(),
         has_password: lead.has_password || !!password,
       });
-    } catch(e) { setErr('Failed to save'); }
+    } catch(e) { setErr(t('Failed to save')); }
     setSaving(false);
   };
 
@@ -393,35 +622,35 @@ function EditContactModal({ lead, onClose, onSaved }: any) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center' }} onClick={onClose}>
       <div style={{ background:'#2c333e', borderRadius:14, padding:24, width:420, border:'1px solid #626d80' }} onClick={e=>e.stopPropagation()}>
-        <div style={{ fontSize:15, fontWeight:700, marginBottom:4 }}>Edit contact</div>
-        <div style={{ fontSize:11, color:'#666', marginBottom:16 }}>{lead.full_name || `Lead #${lead.id}`}</div>
+        <div style={{ fontSize:15, fontWeight:700, marginBottom:4 }}>{t('Edit contact')}</div>
+        <div style={{ fontSize:11, color:'#666', marginBottom:16 }}>{lead.full_name || `${t('Lead')} #${lead.id}`}</div>
 
-        <div style={{ fontSize:11, color:'#888', marginBottom:5 }}>Email</div>
+        <div style={{ fontSize:11, color:'#888', marginBottom:5 }}>{t('Email')}</div>
         <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="name@example.com" style={fieldStyle(emailValid)} />
-        {!emailValid && <div style={{ fontSize:10, color:'#ff4d4d', marginTop:3 }}>Enter a valid email (or leave blank to clear)</div>}
+        {!emailValid && <div style={{ fontSize:10, color:'#ff4d4d', marginTop:3 }}>{t('Enter a valid email (or leave blank to clear)')}</div>}
 
-        <div style={{ fontSize:11, color:'#888', margin:'14px 0 5px' }}>Phone</div>
+        <div style={{ fontSize:11, color:'#888', margin:'14px 0 5px' }}>{t('Phone')}</div>
         <input value={phone} onChange={e=>setPhone(e.target.value)} type="tel" placeholder="+9715xxxxxxx" style={fieldStyle(phoneValid)} />
-        {!phoneValid && <div style={{ fontSize:10, color:'#ff4d4d', marginTop:3 }}>Phone looks too short</div>}
+        {!phoneValid && <div style={{ fontSize:10, color:'#ff4d4d', marginTop:3 }}>{t('Phone looks too short')}</div>}
 
-        <div style={{ fontSize:11, color:'#888', margin:'14px 0 5px' }}>Date of birth</div>
-        <input value={dob} onChange={e=>setDob(e.target.value)} type="date" style={fieldStyle(dobValid)} />
-        {!dobValid && <div style={{ fontSize:10, color:'#ff4d4d', marginTop:3 }}>Use the date picker (YYYY-MM-DD)</div>}
+        <div style={{ fontSize:11, color:'#888', margin:'14px 0 5px' }}>{t('Date of birth')}</div>
+        <input value={dob} onChange={e=>setDob(e.target.value)} type="date" max={new Date().toISOString().slice(0,10)} style={fieldStyle(dobValid)} />
+        {!dobValid && <div style={{ fontSize:10, color:'#ff4d4d', marginTop:3 }}>{t('Use the date picker (YYYY-MM-DD)')}</div>}
 
         <div style={{ fontSize:11, color:'#888', margin:'14px 0 5px', display:'flex', justifyContent:'space-between' }}>
-          <span>Portal password {lead.has_password ? '(set — leave blank to keep)' : '(optional)'}</span>
-          <span onClick={()=>setShowPw(s=>!s)} style={{ cursor:'pointer', color:'#00aaff' }}>{showPw?'Hide':'Show'}</span>
+          <span>{t('Portal password')} {lead.has_password ? t('(set — leave blank to keep)') : t('(optional)')}</span>
+          <span onClick={()=>setShowPw(s=>!s)} style={{ cursor:'pointer', color:'#00aaff' }}>{showPw?t('Hide'):t('Show')}</span>
         </div>
-        <input value={password} onChange={e=>setPassword(e.target.value)} type={showPw?'text':'password'} placeholder="Leave blank to keep current" style={fieldStyle(pwValid)} autoComplete="new-password" />
-        {!pwValid && <div style={{ fontSize:10, color:'#ff4d4d', marginTop:3 }}>Password must be at least 6 characters</div>}
+        <input value={password} onChange={e=>setPassword(e.target.value)} type={showPw?'text':'password'} placeholder={t('Leave blank to keep current')} style={fieldStyle(pwValid)} autoComplete="new-password" />
+        {!pwValid && <div style={{ fontSize:10, color:'#ff4d4d', marginTop:3 }}>{t('Password must be at least 6 characters')}</div>}
 
         {err && <div style={{ fontSize:11, color:'#ff4d4d', marginTop:12 }}>{err}</div>}
 
         <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:20 }}>
-          <button onClick={onClose} style={{ padding:'8px 16px', background:'#373f4d', border:'1px solid #626d80', borderRadius:8, color:'#888', cursor:'pointer', fontSize:13, fontFamily:'inherit' }}>Cancel</button>
+          <button onClick={onClose} style={{ padding:'8px 16px', background:'#373f4d', border:'1px solid #626d80', borderRadius:8, color:'#888', cursor:'pointer', fontSize:13, fontFamily:'inherit' }}>{t('Cancel')}</button>
           <button onClick={save} disabled={!canSave}
             style={{ padding:'8px 20px', background:canSave?'#00e5a0':'#4f596b', border:'none', borderRadius:8, color:canSave?'#000':'#666', fontWeight:700, cursor:canSave?'pointer':'default', fontSize:13, fontFamily:'inherit' }}>
-            {saving ? 'Saving...' : 'Save changes'}
+            {saving ? t('Saving...') : t('Save changes')}
           </button>
         </div>
       </div>
@@ -435,6 +664,7 @@ const actionLabels: any = { connected_done:'Connected & Done', no_answer:'No Ans
 const API_BASE = '/api';
 
 function LeadActions({ lead, onUpdate, onView, showView=true }: any) {
+  const t = useT();
   const [open, setOpen]           = React.useState(false);
   const [step, setStep]           = React.useState<'menu'|'form'>('menu');
   const [actionType, setActionType] = React.useState('');
@@ -450,10 +680,13 @@ function LeadActions({ lead, onUpdate, onView, showView=true }: any) {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
-      // Map action to lead status
-      const statusMap: any = { connected_done:'contacted', no_answer:'no_answer', call_later:'callback', not_interested:'dead' };
-      const newStatus = statusMap[actionType] || 'contacted';
-      
+      // Map the call outcome to a STAGE. Meta feeding is automatic from the stage:
+      //  Not Interested -> stage 'Not Interested' -> auto-fed to Meta as not_qualified;
+      //  No Answer -> stage 'No Answer' -> NOT fed (waits for re-calls);
+      //  Connected & Done -> 'Contacted' -> auto-fed qualified.
+      const stageMap: any = { connected_done:'Contacted', no_answer:'No Answer', not_interested:'Not Interested' };
+      const legacyMap: any = { connected_done:'contacted', no_answer:'no_answer', call_later:'callback', not_interested:'dead' };
+
       // Save action + note via call endpoint
       await fetch(`${API_BASE}/leads/${lead.id}/call`, {
         method: 'POST',
@@ -464,11 +697,13 @@ function LeadActions({ lead, onUpdate, onView, showView=true }: any) {
           call_later_hours: callLaterHours,
         })
       });
-      // Update status
+      // Update stage (+legacy status for old filters); call_later keeps the current stage.
+      const body: any = { status: legacyMap[actionType] || 'contacted' };
+      if (stageMap[actionType]) body.stage = stageMap[actionType];
       await fetch(`${API_BASE}/leads/${lead.id}`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify(body)
       });
       close();
       onUpdate();
@@ -482,12 +717,12 @@ function LeadActions({ lead, onUpdate, onView, showView=true }: any) {
         {showView && (
           <button onClick={onView}
             style={{ padding:'3px 8px', background:'rgba(0,229,160,0.1)', border:'1px solid rgba(0,229,160,0.3)', borderRadius:5, color:'#00e5a0', cursor:'pointer', fontSize:10 }}>
-            View
+            {t('View')}
           </button>
         )}
         <button onClick={()=>setOpen(true)}
           style={{ padding:'3px 8px', background:'#373f4d', border:'1px solid #626d80', borderRadius:5, color:'#888', cursor:'pointer', fontSize:10 }}>
-          Action ▾
+          {t('Action')} ▾
         </button>
       </div>
 
@@ -498,12 +733,12 @@ function LeadActions({ lead, onUpdate, onView, showView=true }: any) {
             {step === 'menu' && (
               <>
                 <div style={{ fontSize:13, fontWeight:500, marginBottom:3 }}>{lead.full_name}</div>
-                <div style={{ fontSize:11, color:'#555', marginBottom:16 }}>Select outcome</div>
+                <div style={{ fontSize:11, color:'#555', marginBottom:16 }}>{t('Select outcome')}</div>
                 {[
-                  { key:'connected_done', icon:'✓', label:'Connected & Done',   sub:'Resurfaces in 14 days', color:'#00e5a0' },
-                  { key:'no_answer',      icon:'✗', label:'No Answer',           sub:'Resurfaces in 2 hours', color:'#ffaa00' },
-                  { key:'call_later',     icon:'⏰', label:'Call Later',          sub:'Set custom follow-up',  color:'#0066ff' },
-                  { key:'not_interested', icon:'⊘', label:'Not Interested',      sub:'Pass to manager / hide',color:'#ff4d4d' },
+                  { key:'connected_done', icon:'✓', label:t('Connected & Done'),   sub:t('Resurfaces in 14 days'), color:'#00e5a0' },
+                  { key:'no_answer',      icon:'✗', label:t('No Answer'),           sub:t('Resurfaces in 2 hours'), color:'#ffaa00' },
+                  { key:'call_later',     icon:'⏰', label:t('Call Later'),          sub:t('Set custom follow-up'),  color:'#0066ff' },
+                  { key:'not_interested', icon:'⊘', label:t('Not Interested'),      sub:t('Pass to manager / hide'),color:'#ff4d4d' },
                 ].map(a => (
                   <div key={a.key} onClick={()=>{ setActionType(a.key); setStep('form'); }}
                     style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:8, cursor:'pointer', marginBottom:6, border:'1px solid #4f596b' }}
@@ -521,18 +756,18 @@ function LeadActions({ lead, onUpdate, onView, showView=true }: any) {
             {step === 'form' && (
               <>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:16 }}>
-                  <div onClick={()=>setStep('menu')} style={{ cursor:'pointer', color:'#888', fontSize:12 }}>← Back</div>
-                  <div style={{ fontSize:13, fontWeight:500, color:actionColors[actionType] }}>{actionLabels[actionType]}</div>
+                  <div onClick={()=>setStep('menu')} style={{ cursor:'pointer', color:'#888', fontSize:12 }}>← {t('Back')}</div>
+                  <div style={{ fontSize:13, fontWeight:500, color:actionColors[actionType] }}>{t(actionLabels[actionType])}</div>
                 </div>
                 {actionType === 'call_later' && (
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:12 }}>
                     <div>
-                      <div style={{ fontSize:11, color:'#555', marginBottom:4 }}>Days</div>
+                      <div style={{ fontSize:11, color:'#555', marginBottom:4 }}>{t('Days')}</div>
                       <input type="number" value={callLaterDays} onChange={e=>setCallLaterDays(parseInt(e.target.value)||0)} min={0}
                         style={{ width:'100%', padding:'8px 10px', background:'#373f4d', border:'1px solid #626d80', borderRadius:8, color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' as any }} />
                     </div>
                     <div>
-                      <div style={{ fontSize:11, color:'#555', marginBottom:4 }}>Hours</div>
+                      <div style={{ fontSize:11, color:'#555', marginBottom:4 }}>{t('Hours')}</div>
                       <input type="number" value={callLaterHours} onChange={e=>setCallLaterHours(parseInt(e.target.value)||0)} min={0} max={23}
                         style={{ width:'100%', padding:'8px 10px', background:'#373f4d', border:'1px solid #626d80', borderRadius:8, color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' as any }} />
                     </div>
@@ -541,17 +776,17 @@ function LeadActions({ lead, onUpdate, onView, showView=true }: any) {
                 {actionType === 'not_interested' && (
                   <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:13, color:'#888', marginBottom:12 }}>
                     <input type="checkbox" checked={passToManager} onChange={e=>setPassToManager(e.target.checked)} />
-                    Pass to line manager
+                    {t('Pass to line manager')}
                   </label>
                 )}
                 <div style={{ marginBottom:14 }}>
-                  <div style={{ fontSize:11, color:'#555', marginBottom:4 }}>Note (optional)</div>
-                  <textarea value={actionNote} onChange={e=>setActionNote(e.target.value)} placeholder="Add a note..." rows={3}
+                  <div style={{ fontSize:11, color:'#555', marginBottom:4 }}>{t('Note (optional)')}</div>
+                  <textarea value={actionNote} onChange={e=>setActionNote(e.target.value)} placeholder={t('Add a note...')} rows={3}
                     style={{ width:'100%', padding:'8px 10px', background:'#373f4d', border:'1px solid #626d80', borderRadius:8, color:'#fff', fontSize:12, outline:'none', resize:'none' as any, boxSizing:'border-box' as any }} />
                 </div>
                 <button onClick={saveAction} disabled={saving}
                   style={{ width:'100%', padding:11, background:actionColors[actionType], border:'none', borderRadius:8, color:'#fff', fontWeight:700, cursor:'pointer', fontSize:13 }}>
-                  {saving ? '...' : 'Save'}
+                  {saving ? '...' : t('Save')}
                 </button>
               </>
             )}
@@ -563,6 +798,7 @@ function LeadActions({ lead, onUpdate, onView, showView=true }: any) {
 }
 
 export default function Leads() {
+  const t = useT();
   const [view, setView]             = useState<'leads'|'verified'>('leads');  // #95 sub-view
   const [leads, setLeads]           = useState<any[]>([]);
   const [total, setTotal]           = useState(0);
@@ -578,9 +814,19 @@ export default function Leads() {
   const [loading, setLoading]       = useState(false);
   const [networkHover, setNetworkHover] = useState<number|null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);   // #6 Verified-leads filter
-  const [scoreHover, setScoreHover] = useState<number|null>(null);
+  const [scoreHover, setScoreHover] = useState<any>(null);   // {lead, x, y} — fixed-positioned so it clears the KPI cards (#158)
   const [badgeHover, setBadgeHover] = useState<any>(null);
   const [selected, setSelected]     = useState<any>(null);
+  // #286 — remember the list's scroll position while a profile is open (the profile REPLACES the
+  // list, unmounting it) and restore it on return, so closing a lead lands you where you were.
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const savedScrollTop = useRef(0);
+  const openLead = (l: any) => { savedScrollTop.current = listScrollRef.current?.scrollTop || 0; setSelected(l); };
+  useEffect(() => {
+    if (!selected) requestAnimationFrame(() => {
+      if (listScrollRef.current) listScrollRef.current.scrollTop = savedScrollTop.current;
+    });
+  }, [selected]);
   const [showAdd, setShowAdd]       = useState(false);
   const [phoneContact, setPhoneContact] = useState<any>(null);
   const [emailContact, setEmailContact] = useState<any>(null);
@@ -590,6 +836,40 @@ export default function Leads() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   const clearSelection = () => { setSelectedIds([]); setBulkMenuOpen(false); };
+
+  // jump-to-search from the global search page (navigate event → leads_search)
+  useEffect(() => {
+    const h = (e: any) => { const s = e.detail?.search; if (s != null) { setSearch(String(s)); setPage(1); } };
+    window.addEventListener('leads_search', h);
+    return () => window.removeEventListener('leads_search', h);
+  }, []);
+  // deep-link: ?lead=<id> → open that lead's profile directly (right-click open-in-tab)
+  useEffect(() => {
+    const h = (e: any) => {
+      const id = e.detail?.id; if (!id) return;
+      apiGet(`/leads?lead_id=${id}`).then((r: any) => {
+        const l = (r?.leads || [])[0]; if (l) setSelected(l);
+      }).catch(() => {});
+    };
+    window.addEventListener('leads_open', h);
+    return () => window.removeEventListener('leads_open', h);
+  }, []);
+  // Per-TAB open-profile persistence: reopen this tab's lead on mount (so a refresh returns to the
+  // same lead with a clean my1.tnfx.co URL), and keep sessionStorage in sync as it opens/closes.
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('crm_open_lead');
+      if (saved) apiGet(`/leads?lead_id=${saved}`).then((r: any) => {
+        const l = (r?.leads || [])[0]; if (l) setSelected(l);
+      }).catch(() => {});
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      if (selected?.id) sessionStorage.setItem('crm_open_lead', String(selected.id));
+      else sessionStorage.removeItem('crm_open_lead');
+    } catch {}
+  }, [selected]);
   const toggleSelect = (id: number) =>
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
@@ -604,31 +884,46 @@ export default function Leads() {
   const [filterVerified, setFilterVerified] = useState('');
   const [filterBadge,    setFilterBadge]    = useState('');
   const [period,         setPeriod]         = useState('all_time');
+  const [showCustom,     setShowCustom]     = useState(false);   // reveal the custom date-range inputs
+  // default to MY-data ONLY for team-leaders (who get the toggle to expand); everyone else (admins,
+  // agents) has NO toggle, so defaulting own=true stranded them on an empty list (Jul 20 fix).
+  const [own,            setOwn]            = useState(() => localStorage.getItem('isTeamLead') === '1');
+  const colPick = useColumnPicker(LEAD_COLS, 'leads_cols_v2', { locked: ['Lead','Actions'], hideDefault: ['Training status'] });
+  // hide de-selected columns by their (1-based) position — no change to the row markup.
+  // #277: COLLAPSE hidden cells to zero-width IN PLACE (keep them in the grid) rather than
+  // display:none. display:none removed the <th>/<td> from the table's column model while its
+  // <col> stayed in the colgroup, so under table-layout:fixed the fixed widths landed on the
+  // wrong columns and the visible headers overlapped. Zero-width-in-place keeps col↔cell 1:1.
+  const _hiddenCss = LEAD_COLS.map((h,i)=>({h,n:i+1})).filter(x=>!colPick.V(x.h))
+    .map(x=>`.leads-cols th:nth-child(${x.n}),.leads-cols td:nth-child(${x.n}){width:0 !important;max-width:0 !important;min-width:0 !important;padding-left:0 !important;padding-right:0 !important;border:0 !important;overflow:hidden !important;white-space:nowrap !important}.leads-cols th:nth-child(${x.n})>*,.leads-cols td:nth-child(${x.n})>*{display:none !important}.leads-cols col:nth-child(${x.n}){width:0 !important}`).join('');
+  const [connected,      setConnected]      = useState(false);   // "Connected (7d)" tab — leads contacted this week
 
-  const hasFilters = !![filterStatus,filterSource,filterCountry,filterCity,filterAgent,filterPlatform,filterVerified,filterBadge,dateFrom,dateTo].filter(Boolean).length || period !== 'all_time';
+  const hasFilters = !![filterStatus,filterSource,filterCountry,filterCity,filterAgent,filterPlatform,filterVerified,filterBadge,filterIB,dateFrom,dateTo].filter(Boolean).length || period !== 'all_time';
 
-  const clearFilters = () => { setFilterStatus(''); setFilterSource(''); setFilterCountry(''); setFilterCity(''); setFilterAgent(''); setFilterPlatform(''); setFilterVerified(''); setFilterBadge(''); setDateFrom(''); setDateTo(''); setPeriod('all_time'); setPage(1); };
+  const clearFilters = () => { setFilterStatus(''); setFilterSource(''); setFilterCountry(''); setFilterCity(''); setFilterAgent(''); setFilterPlatform(''); setFilterVerified(''); setFilterBadge(''); setFilterIB(''); setDateFrom(''); setDateTo(''); setPeriod('all_time'); setPage(1); };
 
   // Archive / unarchive (ticket #57)
   const archiveLead = async (id: number, archived: boolean) => {
     try { await apiPost(`/leads/${id}/archive`, { archived }); load(); }
-    catch { alert('Failed to update archive status'); }
+    catch { alert(t('Failed to update archive status')); }
   };
   const bulkArchive = async (archived: boolean) => {
     if (!selectedIds.length) return;
     try { await apiPost('/leads/archive', { ids: selectedIds, archived }); clearSelection(); load(); }
-    catch { alert('Failed to archive selection'); }
+    catch { alert(t('Failed to archive selection')); }
   };
   // #63 — one-click: move every still-active "not interested" (dead) lead to the archive.
   const archiveNotInterested = async () => {
-    if (!window.confirm('Archive all leads marked "Not interested"? They move to the Archived list and leave the main list clean.')) return;
-    try { const r:any = await apiPost('/leads/archive-not-interested', {}); alert(`Archived ${r.count||0} "not interested" lead(s).`); load(); }
-    catch { alert('Failed to archive not-interested leads'); }
+    if (!window.confirm(t('Archive all leads marked "Not interested"? They move to the Archived list and leave the main list clean.'))) return;
+    try { const r:any = await apiPost('/leads/archive-not-interested', {}); alert(`${t('Archived')} ${r.count||0} ${t('"not interested" lead(s).')}`); load(); }
+    catch { alert(t('Failed to archive not-interested leads')); }
   };
 
   useEffect(() => {
-    apiGet('/users?role=sales_agent&page_size=100')
-      .then((d:any) => setAgents(d.users || d || []))
+    // #276: use /assign/agents (sales + RETENTION + managers) instead of role=sales_agent, so
+    // retention employees appear in the assign dropdown. Normalise name -> full_name for the UI.
+    apiGet('/assign/agents')
+      .then((d:any) => setAgents((d.agents || d.users || d || []).map((a:any) => ({ ...a, full_name: a.full_name || a.name }))))
       .catch(() => {});
   }, []);
 
@@ -649,13 +944,15 @@ export default function Leads() {
       if (dateTo)         p.set('date_to',   dateTo);
       if (verifiedOnly)   p.set('kyc', 'verified');
       p.set('archived', archiveView);
+      if (own) p.set('own', '1');
+      if (connected) p.set('connected', '1');
       const data = await apiGet(`/leads?${p}`);
       setLeads(data.leads || []);
       setTotal(data.total || 0);
       setKpis(data.kpis || {});
     } catch(e) { setLeads([]); }
     setLoading(false);
-  }, [page, pageSize, search, sort, period, filterStatus, filterSource, filterCountry, filterCity, filterAgent, filterIB, filterPlatform, filterVerified, filterBadge, dateFrom, dateTo, archiveView, verifiedOnly]);
+  }, [page, pageSize, search, sort, period, filterStatus, filterSource, filterCountry, filterCity, filterAgent, filterIB, filterPlatform, filterVerified, filterBadge, dateFrom, dateTo, archiveView, verifiedOnly, own, connected]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -669,7 +966,13 @@ export default function Leads() {
   const uniqueCities    = Array.from(new Set(leads.map((l:any) => l.city).filter(Boolean))).sort();
   const uniqueAgents    = Array.from(new Set(leads.map((l:any) => l.agent_name).filter(Boolean))).sort();
 
-  if (selected) return <LeadProfile lead={selected} onClose={() => { setSelected(null); load(); }} agents={agents} />;
+  if (selected) return <LeadProfile lead={selected}
+    // #171: don't re-query the whole (166k-row) leads list on close — switching between leads was
+    // slow because each "back" reloaded the list. The changed row is already updated in place via
+    // onUpdate, so closing is now instant.
+    onClose={() => { setSelected(null); }}
+    onUpdate={(id:number, upd:any) => { setLeads(prev => prev.map((l:any) => l.id===id ? {...l, ...upd} : l)); setSelected((s:any)=> s && s.id===id ? {...s, ...upd} : s); }}
+    agents={agents} />;
 
   if (view === 'verified') return <VerifiedAccounts view={view} setView={setView} />;
 
@@ -678,30 +981,52 @@ export default function Leads() {
 
       {/* KPI bar */}
       <div style={{ background:'#262c36', borderBottom:'1px solid #373f4d', flexShrink:0 }}>
-        {/* Period selector */}
-        <div style={{ display:'flex', gap:4, padding:'8px 14px 0', overflowX:'auto' }}>
-          {[['all_time','All time'],['today','Today'],['this_week','This week'],['last_week','Last week'],['this_month','This month'],['last_month','Last month'],['this_year','This year'],['last_year','Last year']].map(([k,l])=>(
-            <button key={k} onClick={()=>{ setPeriod(k); setPage(1); }}
-              style={{ padding:'4px 12px', borderRadius:6, border:`1px solid ${period===k?'#00e5a0':'#626d80'}`, background:period===k?'rgba(0,229,160,0.1)':'transparent', color:period===k?'#00e5a0':'#555', cursor:'pointer', fontSize:11, whiteSpace:'nowrap', fontFamily:'inherit' }}>
-              {l}
+        {/* Period selector + custom date range (one row) */}
+        <div style={{ display:'flex', alignItems:'center', gap:4, padding:'8px 14px 0', overflowX:'auto' }}>
+          {[['all_time','All time'],['today','Today'],['yesterday','Yesterday'],['this_week','This week'],['last_week','Last week'],['this_month','This month'],['last_month','Last month'],['this_year','This year'],['last_year','Last year']].map(([k,l])=>{
+            // a custom range OVERRIDES the preset — deselect the period buttons while it's active
+            const sel = period===k && !(dateFrom||dateTo);
+            return (
+            <button key={k} onClick={()=>{ setPeriod(k); setDateFrom(''); setDateTo(''); setShowCustom(false); setPage(1); }}
+              style={{ padding:'4px 12px', borderRadius:6, border:`1px solid ${sel?'#00e5a0':'var(--border2,#626d80)'}`, background:sel?'rgba(0,229,160,0.1)':'transparent', color:sel?'#00e5a0':'var(--text3,#555)', cursor:'pointer', fontSize:11, whiteSpace:'nowrap', fontFamily:'inherit' }}>
+              {t(l)}
             </button>
-          ))}
+          );})}
+          {/* Custom range — reveals from/to date inputs that win over the preset */}
+          {(() => { const custActive = showCustom || !!(dateFrom||dateTo); return (
+            <button onClick={()=>setShowCustom(s=>!s)}
+              style={{ padding:'4px 12px', borderRadius:6, border:`1px solid ${custActive?'#00e5a0':'var(--border2,#626d80)'}`, background:custActive?'rgba(0,229,160,0.1)':'transparent', color:custActive?'#00e5a0':'var(--text3,#555)', cursor:'pointer', fontSize:11, whiteSpace:'nowrap', fontFamily:'inherit' }}>
+              {t('Custom')}
+            </button>
+          ); })()}
+          {(showCustom || dateFrom || dateTo) && (<>
+            <span style={{ width:1, height:18, background:'var(--border,#4f596b)', margin:'0 6px', flexShrink:0 }} />
+            <input type="date" title={t('Custom range — from')} max={new Date(Date.now()+86400000).toISOString().slice(0,10)} value={dateFrom} onChange={e=>{ setDateFrom(e.target.value); setPage(1); }}
+              style={{ padding:'4px 8px', background:'var(--bg-input,#373f4d)', border:'1px solid var(--border2,#626d80)', borderRadius:6, color:'var(--text,#e0e0e0)', fontSize:11, width:125, flexShrink:0, fontFamily:'inherit', colorScheme:'dark' as any }} />
+            <span style={{ color:'var(--text3,#555)', flexShrink:0 }}>—</span>
+            <input type="date" title={t('Custom range — to')} max={new Date(Date.now()+86400000).toISOString().slice(0,10)} value={dateTo} onChange={e=>{ setDateTo(e.target.value); setPage(1); }}
+              style={{ padding:'4px 8px', background:'var(--bg-input,#373f4d)', border:'1px solid var(--border2,#626d80)', borderRadius:6, color:'var(--text,#e0e0e0)', fontSize:11, width:125, flexShrink:0, fontFamily:'inherit', colorScheme:'dark' as any }} />
+            {(dateFrom || dateTo) && (
+              <button onClick={()=>{ setDateFrom(''); setDateTo(''); setPage(1); }} title={t('Clear the custom date range')}
+                style={{ padding:'4px 8px', borderRadius:6, border:'1px solid var(--border2,#626d80)', background:'transparent', color:'var(--text3,#888)', cursor:'pointer', fontSize:11, flexShrink:0, fontFamily:'inherit' }}>✕</button>
+            )}
+          </>)}
           <button onClick={() => { const n=!showKpi; setShowKpi(n); localStorage.setItem('kpi_hidden', n?'0':'1'); }}
-            title="Show/hide the KPI cards" style={{ marginLeft:'auto', padding:'4px 12px', borderRadius:6, border:'1px solid #626d80', background:'transparent', color:'#888', cursor:'pointer', fontSize:11, whiteSpace:'nowrap' }}>
-            {showKpi ? '📊 Hide KPI' : '📊 Show KPI'}</button>
+            title={t('Show/hide the KPI cards')} style={{ marginLeft:'auto', padding:'4px 12px', borderRadius:6, border:'1px solid #626d80', background:'transparent', color:'#888', cursor:'pointer', fontSize:11, whiteSpace:'nowrap' }}>
+            {showKpi ? `📊 ${t('Hide KPI')}` : `📊 ${t('Show KPI')}`}</button>
         </div>
         {/* KPI cards */}
-        {showKpi && <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, padding:'8px 14px 10px' }}>
+        {showKpi && <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:6, padding:'8px 14px 10px' }}>
           {[
-            { label:'Total leads',   value:(kpis.total||0).toLocaleString(),     color:'#e0e0e0' },
-            { label:'🔵 New',        value:(kpis.new||0).toLocaleString(),        color:'#00aaff' },
-            { label:'🟠 Contacted',  value:(kpis.contacted||0).toLocaleString(), color:'#ffaa00' },
-            { label:'🟣 Callback',   value:(kpis.callback||0).toLocaleString(),  color:'#cc88ff' },
-            { label:'✅ Converted',  value:(kpis.converted||0).toLocaleString(), color:'#00e5a0' },
-            { label:'💀 Dead',       value:(kpis.dead||0).toLocaleString(),      color:'#555' },
-            { label:'📘 Facebook',   value:(kpis.from_facebook||0).toLocaleString(), color:'#1877f2' },
-            { label:'📸 Instagram',  value:(kpis.from_instagram||0).toLocaleString(), color:'#e1306c' },
-            { label:'🔍 Google',     value:(kpis.from_google||0).toLocaleString(),   color:'#ea4335' },
+            { label:t('Total leads'),   value:(kpis.total||0).toLocaleString('en-GB'),     color:'#e0e0e0' },
+            { label:`🔵 ${t('New')}`,        value:(kpis.new||0).toLocaleString('en-GB'),        color:'#00aaff' },
+            { label:`🟠 ${t('Contacted')}`,  value:(kpis.contacted||0).toLocaleString('en-GB'), color:'#ffaa00' },
+            { label:`🟣 ${t('Callback')}`,   value:(kpis.callback||0).toLocaleString('en-GB'),  color:'#cc88ff' },
+            { label:`✅ ${t('Converted')}`,  value:(kpis.converted||0).toLocaleString('en-GB'), color:'#00e5a0' },
+            { label:`💀 ${t('Dead')}`,       value:(kpis.dead||0).toLocaleString('en-GB'),      color:'#555' },
+            { label:`📘 ${t('Facebook')}`,   value:(kpis.from_facebook||0).toLocaleString('en-GB'), color:'#1877f2' },
+            { label:`📸 ${t('Instagram')}`,  value:(kpis.from_instagram||0).toLocaleString('en-GB'), color:'#e1306c' },
+            { label:`🔍 ${t('Google')}`,     value:(kpis.from_google||0).toLocaleString('en-GB'),   color:'#ea4335' },
           ].map((k,i)=>(
             <div key={i} style={{ background:'#2c333e', border:'1px solid #373f4d', borderRadius:8, padding:'8px 12px' }}>
               <div style={{ fontSize:9, color:'#555', textTransform:'uppercase', letterSpacing:.5, marginBottom:3 }}>{k.label}</div>
@@ -711,31 +1036,52 @@ export default function Leads() {
         </div>}
       </div>
 
-      {/* Search + filters bar */}
-      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'#2c333e', borderBottom:'1px solid #373f4d', flexShrink:0, flexWrap:'wrap' }}>
-        <div style={{ fontWeight:600, fontSize:13 }}>Leads</div>
-        <div style={{ fontSize:11, color:'#555' }}>{total.toLocaleString()} leads</div>
-        <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1); }} placeholder="Search name, phone, email, country..."
-          style={{ flex:1, minWidth:200, padding:'6px 10px', background:'#373f4d', border:'1px solid #626d80', borderRadius:7, color:'#e0e0e0', fontSize:12, outline:'none' }} />
-        {[{key:'created_at',label:'Newest'},{key:'score',label:'Priority'},{key:'network',label:'Network'}].map(s=>(
+      {/* Search + filters bar — ONE line (no wrap); scrolls sideways only if the window is very narrow.
+          The ⚙ column picker is the last item so it always sits at the end of this single row.
+          The scoped rule keeps every control at its natural width (only the search input flexes),
+          so the row scrolls instead of squashing/wrapping the buttons. */}
+      <style>{`.leads-toolbar > * { flex-shrink: 0; } .leads-toolbar > input { flex-shrink: 1; }`}</style>
+      <div className="leads-toolbar" style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'#2c333e', borderBottom:'1px solid #373f4d', flexShrink:0, flexWrap:'nowrap', overflowX:'auto' }}>
+        <div style={{ fontWeight:600, fontSize:13, whiteSpace:'nowrap' }}>{t('Leads')}</div>
+        <div style={{ fontSize:11, color:'#555' }}>{total.toLocaleString('en-GB')} {t('leads')}</div>
+        <OwnDataToggle own={own} setOwn={(v:boolean)=>{ setOwn(v); setPage(1); }} section="leads" />
+        <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1); }} placeholder={t('Search name, phone, email, country...')}
+          style={{ flex:'1 1 140px', minWidth:120, padding:'6px 10px', background:'#373f4d', border:'1px solid #626d80', borderRadius:7, color:'#e0e0e0', fontSize:12, outline:'none' }} />
+        {[{key:'created_at',label:'Newest'},{key:'score',label:'Priority'},{key:'network',label:'Network'},{key:'last_login',label:'Last login'}].map(s=>(
           <button key={s.key} onClick={()=>{setSort(s.key);setPage(1);}}
             style={{padding:'5px 10px',borderRadius:6,border:`1px solid ${sort===s.key?'#00e5a0':'#626d80'}`,background:sort===s.key?'rgba(0,229,160,0.1)':'transparent',color:sort===s.key?'#00e5a0':'#888',cursor:'pointer',fontSize:11,fontFamily:'inherit'}}>
-            {s.label}
+            {t(s.label)}
           </button>
         ))}
         {/* Verified leads filter (#6) — beside Priority / Network */}
         <button onClick={()=>{ setVerifiedOnly(v=>!v); setPage(1); }}
           style={{padding:'5px 10px',borderRadius:6,border:`1px solid ${verifiedOnly?'#00e5a0':'#626d80'}`,background:verifiedOnly?'rgba(0,229,160,0.1)':'transparent',color:verifiedOnly?'#00e5a0':'#888',cursor:'pointer',fontSize:11,fontFamily:'inherit'}}>
-          ✅ Verified leads
+          ✅ {t('Verified leads')}
+        </button>
+        {/* Connected (last 7d) tab — leads YOU contacted this week, newest contact first, with the comments */}
+        <button onClick={()=>{ setConnected(v=>!v); setPage(1); }} title={t('Leads you connected with in the last 7 days, sorted by most recent — so contacted leads that dropped down the priority list stay easy to follow up')}
+          style={{padding:'5px 10px',borderRadius:6,border:`1px solid ${connected?'#4d9fff':'#626d80'}`,background:connected?'rgba(77,159,255,0.14)':'transparent',color:connected?'#4d9fff':'#888',cursor:'pointer',fontSize:11,fontFamily:'inherit',fontWeight:connected?700:400}}>
+          📞 {t('Connected (7d)')}
+        </button>
+        {/* Archive toggle — ONE button: default active; click to see archived, click again to return */}
+        <button onClick={()=>{ setArchiveView(archiveView==='archived'?'active':'archived'); setPage(1); }} title={t('Show archived leads — click again to return to the active list')}
+          style={{padding:'5px 10px',borderRadius:6,border:`1px solid ${archiveView==='archived'?'#ffaa00':'#626d80'}`,background:archiveView==='archived'?'rgba(255,170,0,0.12)':'transparent',color:archiveView==='archived'?'#ffaa00':'#888',cursor:'pointer',fontSize:11,fontFamily:'inherit',fontWeight:archiveView==='archived'?700:400}}>
+          🗄 {t('Archived')}
         </button>
         <button onClick={()=>setShowFilters(!showFilters)}
           style={{ padding:'6px 12px', borderRadius:7, border:`1px solid ${showFilters||hasFilters?'#00e5a0':'#626d80'}`, background:showFilters||hasFilters?'rgba(0,229,160,0.08)':'transparent', color:showFilters||hasFilters?'#00e5a0':'#888', cursor:'pointer', fontSize:12, fontFamily:'inherit' }}>
-          ⚙ Filters {hasFilters?`(${[filterStatus,filterSource,filterCountry,filterCity,filterAgent,filterPlatform].filter(Boolean).length} active)`:''}
+          ⚙ {t('Filters')} {hasFilters?`(${[filterStatus,filterSource,filterCountry,filterCity,filterAgent,filterPlatform].filter(Boolean).length} ${t('active')})`:''}
         </button>
+        {filterIB && (
+          <span onClick={()=>{ setFilterIB(''); setPage(1); }} title={t('Remove IB filter')}
+            style={{ padding:'5px 10px', borderRadius:99, border:'1px solid #00aaff', background:'rgba(0,170,255,0.12)', color:'#00aaff', cursor:'pointer', fontSize:11.5, whiteSpace:'nowrap' }}>
+            🔗 {t('IB:')} {filterIB} ✕
+          </span>
+        )}
         {hasFilters && (
           <button onClick={clearFilters}
             style={{ padding:'6px 12px', borderRadius:7, border:'1px solid #ff4d4d', background:'rgba(255,77,77,0.1)', color:'#ff4d4d', cursor:'pointer', fontSize:12, fontFamily:'inherit' }}>
-            ✕ Clear all
+            ✕ {t('Clear filter')}
           </button>
         )}
         <DialerLauncher
@@ -750,67 +1096,69 @@ export default function Leads() {
         />
         <button onClick={()=>setShowAdd(true)}
           style={{ padding:'6px 14px', borderRadius:7, border:'none', background:'#00e5a0', color:'#000', fontWeight:700, cursor:'pointer', fontSize:12, fontFamily:'inherit' }}>
-          + Add lead
+          + {t('Add lead')}
         </button>
+        {/* ⚙ column picker — sits right next to Add lead on the same row */}
+        <ColumnGear picker={colPick} t={t} />
       </div>
 
       {/* Filter panel */}
       {showFilters && (
         <div style={{ padding:'10px 14px', background:'#262c36', borderBottom:'1px solid #373f4d', flexShrink:0, display:'flex', gap:8, flexWrap:'wrap', alignItems:'flex-end' }}>
           {[
-            ['Status', filterStatus, setFilterStatus, ['','new','contacted','callback','interested','converted','dead'], ['All','New','Contacted','Callback','Interested','Converted','Dead']],
-            ['Source', filterSource, setFilterSource, ['','facebook','instagram','messenger','audience_network','Google','WhatsApp','TikTok','manual','Email','Referral'], ['All','Facebook','Instagram','Messenger','Meta Audience','Google','WhatsApp','TikTok','Manual','Email','Referral']],
+            ['Stage', filterStatus, setFilterStatus, ['', ...STAGES], ['All', ...STAGES]],
+            ['Source', filterSource, setFilterSource, ['','meta','facebook','instagram','google','MQL5','sales_agent','webinar','messenger','audience_network','WhatsApp','TikTok','manual','Email','Referral'], ['All','Meta (ads)','Facebook','Instagram','Google','MQL5','Sales agent','Webinar','Messenger','Meta Audience','WhatsApp','TikTok','Manual','Email','Referral']],
             ['Platform', filterPlatform, setFilterPlatform, ['','meta','google','manual'], ['All','Meta','Google','Manual']],
             ['Badge', filterBadge, setFilterBadge, ['','recapture','registered_no_deposit'], ['All','♻ Recapture','🔥 No Deposit']],
           ].map(([label, val, setter, opts, labels]: any) => (
             <div key={label}>
-              <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>{label}</div>
+              <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>{t(label)}</div>
               <select value={val} onChange={e=>{ setter(e.target.value); setPage(1); }}
                 style={{ padding:'5px 8px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:'#e0e0e0', fontSize:11 }}>
-                {opts.map((o:string, i:number) => <option key={o} value={o}>{labels[i]}</option>)}
+                {opts.map((o:string, i:number) => <option key={o} value={o}>{t(labels[i])}</option>)}
               </select>
             </div>
           ))}
           <div>
-            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>Country</div>
+            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>{t('Country')}</div>
             <select value={filterCountry} onChange={e=>{ setFilterCountry(e.target.value); setPage(1); }}
               style={{ padding:'5px 8px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:'#e0e0e0', fontSize:11 }}>
-              <option value="">All countries</option>
+              <option value="">{t('All countries')}</option>
               {uniqueCountries.map((c:any) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
-            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>Agent</div>
+            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>{t('Agent')}</div>
             <select value={filterAgent} onChange={e=>{ setFilterAgent(e.target.value); setPage(1); }}
               style={{ padding:'5px 8px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:'#e0e0e0', fontSize:11 }}>
-              <option value="">All agents</option>
+              <option value="">{t('All agents')}</option>
               {uniqueAgents.map((a:any) => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
           <div>
-            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>Verification</div>
+            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>{t('Verification')}</div>
             <select value={filterVerified} onChange={e=>{ setFilterVerified(e.target.value); setPage(1); }}
               style={{ padding:'5px 8px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:'#e0e0e0', fontSize:11 }}>
-              <option value="">All</option>
-              <option value="verified">✅ Fully verified</option>
-              <option value="phone_only">📞 Phone verified</option>
-              <option value="email_only">✉️ Email verified</option>
-              <option value="unverified">❌ Unverified</option>
-              <option value="repeated_ip">🌐 Repeated IP</option>
-              <option value="repeated_cid">📱 Repeated CID</option>
-              <option value="kyc_id">🪪 ID uploaded</option>
-              <option value="kyc_address">📄 Address uploaded</option>
+              <option value="">{t('All')}</option>
+              <option value="verified">✅ {t('Fully verified')}</option>
+              <option value="phone_only">📞 {t('Phone verified')}</option>
+              <option value="email_only">✉️ {t('Email verified')}</option>
+              <option value="unverified">❌ {t('Unverified')}</option>
+              <option value="repeated_ip">🌐 {t('Repeated IP')}</option>
+              <option value="repeated_cid">📱 {t('Repeated CID')}</option>
+              <option value="kyc_id">🪪 {t('ID uploaded')}</option>
+              <option value="kyc_address">📄 {t('Address uploaded')}</option>
             </select>
           </div>
           {/* Date range on created_at (ticket #62) */}
           <div>
-            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>Created from</div>
-            <input type="date" value={dateFrom} onChange={e=>{ setDateFrom(e.target.value); setPage(1); }}
+            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>{t('Created from')}</div>
+            <input type="date" max={new Date(Date.now()+86400000).toISOString().slice(0,10)} value={dateFrom} onChange={e=>{ setDateFrom(e.target.value); setPage(1); }}
               style={{ padding:'4px 8px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:'#e0e0e0', fontSize:11, colorScheme:'dark' as any }} />
           </div>
           <div>
-            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>Created to</div>
-            <input type="date" value={dateTo} onChange={e=>{ setDateTo(e.target.value); setPage(1); }}
+            <div style={{ fontSize:10, color:'#555', marginBottom:4, textTransform:'uppercase' }}>{t('Created to')}</div>
+            <input type="date" max={new Date(Date.now()+86400000).toISOString().slice(0,10)} value={dateTo} onChange={e=>{ setDateTo(e.target.value); setPage(1); }}
               style={{ padding:'4px 8px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:'#e0e0e0', fontSize:11, colorScheme:'dark' as any }} />
           </div>
         </div>
@@ -819,19 +1167,19 @@ export default function Leads() {
       {/* Bulk-action bar (ticket #39) — appears when ≥1 lead is selected */}
       {selectedIds.length > 0 && (
         <div style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 14px', background:'rgba(0,229,160,0.08)', borderBottom:'1px solid #373f4d', flexShrink:0, position:'relative', zIndex:20 }}>
-          <span style={{ fontSize:13, fontWeight:600, color:'#00e5a0' }}>{selectedIds.length} selected</span>
+          <span style={{ fontSize:13, fontWeight:600, color:'#00e5a0' }}>{selectedIds.length} {t('selected')}</span>
           <div style={{ position:'relative' }}>
             <button onClick={()=>setBulkMenuOpen(o=>!o)}
               style={{ padding:'5px 14px', borderRadius:7, border:'1px solid #00e5a0', background:'rgba(0,229,160,0.12)', color:'#00e5a0', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'inherit' }}>
-              Bulk actions ▾
+              {t('Bulk actions')} ▾
             </button>
             {bulkMenuOpen && (
               <div style={{ position:'absolute', top:'110%', left:0, background:'#2c333e', border:'1px solid #626d80', borderRadius:8, padding:6, minWidth:210, zIndex:50, boxShadow:'0 8px 24px rgba(0,0,0,0.5)' }}>
-                <div style={{ fontSize:10, color:'#555', padding:'4px 10px', textTransform:'uppercase', letterSpacing:.5 }}>Starting point — wire up later</div>
+                <div style={{ fontSize:10, color:'#555', padding:'4px 10px', textTransform:'uppercase', letterSpacing:.5 }}>{t('Starting point — wire up later')}</div>
                 {[
-                  { key:'export', label:'⬇ Export selected (CSV)' },
-                  { key:'assign', label:'👤 Assign to agent…' },
-                  { key:'status', label:'🏷 Set status…' },
+                  { key:'export', label:`⬇ ${t('Export selected (CSV)')}` },
+                  { key:'assign', label:`👤 ${t('Assign to agent…')}` },
+                  { key:'status', label:`🏷 ${t('Set status…')}` },
                 ].map(a => (
                   <div key={a.key}
                     onClick={() => {
@@ -846,7 +1194,7 @@ export default function Leads() {
                         URL.revokeObjectURL(url);
                         setBulkMenuOpen(false);
                       } else {
-                        alert(`Bulk "${a.label.replace(/^[^ ]+ /,'')}" for ${selectedIds.length} leads — coming soon.\nLead IDs: ${selectedIds.join(', ')}`);
+                        alert(`${t('Bulk')} "${a.label.replace(/^[^ ]+ /,'')}" ${t('for')} ${selectedIds.length} ${t('leads — coming soon.')}\n${t('Lead IDs:')} ${selectedIds.join(', ')}`);
                         setBulkMenuOpen(false);
                       }
                     }}
@@ -862,74 +1210,65 @@ export default function Leads() {
           {/* (bulk archive buttons removed — each lead row has its own archive action) */}
           <button onClick={clearSelection}
             style={{ padding:'5px 12px', borderRadius:7, border:'1px solid #626d80', background:'transparent', color:'#888', cursor:'pointer', fontSize:12, fontFamily:'inherit' }}>
-            ✕ Clear selection
+            ✕ {t('Clear selection')}
           </button>
         </div>
       )}
 
       {/* Table */}
-      <div style={CT.scroll}>
-        <table style={CT.table}>
+      <div ref={listScrollRef} style={CT.scroll}>
+        {_hiddenCss && <style>{_hiddenCss}</style>}
+        <table className="leads-cols" style={{ ...CT.table, tableLayout:'fixed' as any }}>
+          <colgroup>
+            {LEAD_COLS.map((h)=><col key={h} style={{ width:LEAD_COL_W[h] }} />)}
+          </colgroup>
           <thead>
             <tr style={CT.theadTr}>
-              <th style={{ ...CT.th(false,'center'), width:30 }}>
-                <input type="checkbox"
-                  checked={leads.length > 0 && leads.every((l:any) => selectedIds.includes(l.id))}
-                  ref={el => { if (el) el.indeterminate = selectedIds.length > 0 && !leads.every((l:any) => selectedIds.includes(l.id)); }}
-                  onChange={e => {
-                    if (e.target.checked) setSelectedIds(Array.from(new Set([...selectedIds, ...leads.map((l:any)=>l.id)])));
-                    else clearSelection();
-                  }}
-                  title="Select all on this page"
-                  style={{ cursor:'pointer' }} />
-              </th>
-              {['Lead','Phone','Country','Campaign','Source','Reg date','Last call','Status','Meta Quality','Agent','IB','KYC','Network','Score','Actions'].map(h=>(
-                <th key={h} style={CT.th(false, (h==='Network'||h==='Score') ? 'right' : 'left')}>{h}</th>
+              {LEAD_COLS.map(h=>(
+                <th key={h} style={CT.th(false, (h==='Network'||h==='Score') ? 'right' : 'left')}>{t(h)}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={16} style={{ padding:40, textAlign:'center', color:'#555' }}>Loading...</td></tr>
+              <tr><td colSpan={16} style={{ padding:40, textAlign:'center', color:'#555' }}>{t('Loading...')}</td></tr>
             ) : leads.length === 0 ? (
-              <tr><td colSpan={16} style={{ padding:40, textAlign:'center', color:'#555' }}>No leads found</td></tr>
+              <tr><td colSpan={16} style={{ padding:40, textAlign:'center', color:'#555' }}>{t('No leads found')}</td></tr>
             ) : leads.map((l:any) => (
-              <tr key={l.id} onClick={()=>setSelected(l)} style={{ ...CT.row(selectedIds.includes(l.id)), cursor:'pointer' }}
+              <tr key={l.id} onClick={()=>openLead(l)} style={{ ...CT.row(selectedIds.includes(l.id)), cursor:'pointer' }}
                 onMouseEnter={e=>(e.currentTarget.style.background = selectedIds.includes(l.id) ? 'rgba(0,229,160,0.1)' : '#2c333e')}
                 onMouseLeave={e=>(e.currentTarget.style.background = selectedIds.includes(l.id) ? 'rgba(0,229,160,0.06)' : 'transparent')}>
-                <td style={{ ...CT.td, textAlign:'center' }} onClick={e=>e.stopPropagation()}>
-                  <input type="checkbox" checked={selectedIds.includes(l.id)}
-                    onChange={()=>toggleSelect(l.id)} style={{ cursor:'pointer' }} />
-                </td>
                 <td style={CT.td}>
-                  <div style={{ fontSize:10, color:'#667', fontFamily:'monospace', marginBottom:2 }}>#{l.id}</div>
-                  <div style={{ fontWeight:600, color: l.is_verified ? '#00e5a0' : '#e0e0e0', fontSize:12, display:'flex', alignItems:'center', gap:4 }} title={l.full_name || ''}>
-                    {firstWords(l.full_name) || 'Unknown'}
+                  <div style={{ fontSize:10, color:'#667', fontFamily:'monospace', marginBottom:2 }}>{l.customer_no || `Lead #${l.id}`}</div>
+                  <a href={`?lead=${l.id}`} title={`${l.full_name || ''}${t(' — right-click to open in a new tab')}`}
+                     onClick={(e)=>{ if (e.ctrlKey||e.metaKey||e.shiftKey||(e as any).button===1) { e.stopPropagation(); return; } e.preventDefault(); }}
+                     style={{ fontWeight:600, color: l.is_verified ? '#00e5a0' : '#e0e0e0', fontSize:12, display:'flex', alignItems:'center', gap:4, textDecoration:'none' }}>
+                    {firstWords((String(l.match_badge||'').startsWith('recapture') && l.matched_name) ? l.matched_name : l.full_name) || t('Unknown')}
                     {l.is_verified && (
-                      <span title="Fully verified — click to filter" onClick={e=>{e.stopPropagation();setFilterVerified('verified');setPage(1);}}
+                      <span title={t('Fully verified — click to filter')} onClick={e=>{e.stopPropagation();setFilterVerified('verified');setPage(1);}}
                         style={{ color:'#00e5a0', fontSize:11, cursor:'pointer' }}>✅</span>
                     )}
                     {l.match_badge === 'recapture' && (
                       <span onMouseEnter={e=>setBadgeHover({lead:l, kind:'recapture', x:e.clientX, y:e.clientY})} onMouseLeave={()=>setBadgeHover(null)}
-                        style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:99, background:'#ff4d4d22', color:'#ff4d4d', border:'1px solid #ff4d4d', whiteSpace:'nowrap', cursor:'help' }}>♻</span>
+                        style={{ fontSize:12, padding:'1px 5px', borderRadius:99, background:'rgba(255,77,77,0.15)', border:'1px solid #ff4d4d', whiteSpace:'nowrap', cursor:'help' }}>♻</span>
                     )}
                     {l.match_badge === 'registered_no_deposit' && (
                       <span onMouseEnter={e=>setBadgeHover({lead:l, kind:'no_deposit', x:e.clientX, y:e.clientY})} onMouseLeave={()=>setBadgeHover(null)}
                         style={{ fontSize:11, padding:'1px 5px', borderRadius:99, background:'#ff880022', border:'1px solid #ff8800', whiteSpace:'nowrap', cursor:'help' }}>🔥</span>
                     )}
                     {l.match_badge === 'reactivated' && (
-                      <span title="Re-captured from archive (re-engaged) — +50 score"
-                        style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:99, background:'rgba(248,80,10,0.14)', color:'#FF6A1A', border:'1px solid #F8500A', whiteSpace:'nowrap' }}>📦 Re-captured</span>
+                      <span title={t('Re-captured from archive (re-engaged) — +50 score')}
+                        style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:99, background:'rgba(248,80,10,0.14)', color:'#FF6A1A', border:'1px solid #F8500A', whiteSpace:'nowrap' }}>📦 {t('Re-captured')}</span>
                     )}
                     {l.match_badge === 'recapture_archive' && (
-                      <span title="Archived lead that re-submitted the Meta form — recapture + archive, +50 score"
-                        style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:99, background:'rgba(248,80,10,0.14)', color:'#FF6A1A', border:'1px solid #F8500A', whiteSpace:'nowrap' }}>♻📦 Re-captured</span>
+                      <span onMouseEnter={e=>setBadgeHover({lead:l, kind:'recapture', x:e.clientX, y:e.clientY})} onMouseLeave={()=>setBadgeHover(null)}
+                        style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:99, background:'rgba(248,80,10,0.14)', color:'#FF6A1A', border:'1px solid #F8500A', whiteSpace:'nowrap', cursor:'help' }}>📦 {t('Re-captured')}</span>
                     )}
                     {l.is_archived && (
-                      <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:99, background:'rgba(255,170,0,0.12)', color:'#ffaa00', border:'1px solid rgba(255,170,0,0.3)', whiteSpace:'nowrap' }}>🗄 Archived</span>
+                      <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:99, background:'rgba(255,170,0,0.12)', color:'#ffaa00', border:'1px solid rgba(255,170,0,0.3)', whiteSpace:'nowrap' }}>🗄 {t('Archived')}</span>
                     )}
-                  </div>
-                  <div style={{ fontSize:10, color:'#555', marginTop:2 }}>{l.email ? <span style={{ display:'inline-flex', alignItems:'center', gap:2 }}><span onClick={e=>{e.stopPropagation();setEmailContact({name:l.full_name,email:l.email});}} style={{ cursor:'pointer', color:'#888' }}>{l.email}</span>{l.email_verified && <span title="Email verified — click to filter" onClick={e=>{e.stopPropagation();setFilterVerified('email_only');setPage(1);}} style={{ color:'#00e5a0', cursor:'pointer' }}>✓</span>}</span> : '—'}</div>
+                  </a>
+                  <div style={{ fontSize:10, color:'#555', marginTop:2, display:'flex', alignItems:'center', gap:4 }}>{l.email ? <><span onClick={e=>{e.stopPropagation();setEmailContact({name:l.full_name,email:l.email});}} title={l.email} style={{ cursor:'pointer', color:'#8a93a3' }}>✉️ {t('Email')}</span>{l.email_verified && <span title={t('Email verified — click to filter')} onClick={e=>{e.stopPropagation();setFilterVerified('email_only');setPage(1);}} style={{ color:'#00e5a0', cursor:'pointer' }}>✓</span>}</> : <span style={{ color:'#445' }}>—</span>}</div>
                 </td>
                 <td style={CT.td}>
                   {l.phone ? (
@@ -937,16 +1276,16 @@ export default function Leads() {
                       <div onClick={e=>{e.stopPropagation();setPhoneContact({name:l.full_name,phone:l.phone});}} title={l.phone} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 7px', borderRadius:5, border:`1px solid ${l.phone_verified?'#00e5a0':'#626d80'}`, background:'#373f4d', fontSize:11, color:'#888', cursor:'pointer' }}>
                         📞 ···{(l.phone||'').slice(-4)}
                       </div>
-                      {l.phone_verified && <span title="Phone verified — click to filter" onClick={e=>{e.stopPropagation();setFilterVerified('phone_only');setPage(1);}}
+                      {l.phone_verified && <span title={t('Phone verified — click to filter')} onClick={e=>{e.stopPropagation();setFilterVerified('phone_only');setPage(1);}}
                         style={{ color:'#00e5a0', fontSize:12, cursor:'pointer' }}>✓</span>}
                     </div>
                   ) : '—'}
                 </td>
                 <td style={{ ...CT.td, color:'#888', fontSize:11 }}>
-                  <div onClick={e=>{e.stopPropagation();l.country&&setFilterCountry(l.country);setPage(1);}} style={{ cursor:'pointer', color:'#888' }} title="Filter by country">{l.country || '—'}</div>
-                  {l.city && <div onClick={e=>{e.stopPropagation();setFilterCity(l.city);setPage(1);}} style={{ color:'#555', cursor:'pointer' }} title="Filter by city">{l.city}</div>}
+                  <div onClick={e=>{e.stopPropagation();l.country&&setFilterCountry(l.country);setPage(1);}} style={{ cursor:'pointer', color:'#888' }} title={t('Filter by country')}>{l.country || '—'}</div>
+                  {l.city && <div onClick={e=>{e.stopPropagation();setFilterCity(l.city);setPage(1);}} style={{ color:'#555', cursor:'pointer' }} title={t('Filter by city')}>{l.city}</div>}
                 </td>
-                <td style={{ ...CT.td, color:'#888', fontSize:11, width:140, maxWidth:140, overflow:'hidden', textOverflow:'ellipsis' }} title={l.campaign_name || ''}>
+                <td style={{ ...CT.td, color:'#888', fontSize:11, width:90, maxWidth:90, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={l.campaign_name || ''}>
                   {l.campaign_name || '—'}
                 </td>
                 <td style={CT.td} onClick={e=>{e.stopPropagation();l.source&&setFilterSource(l.source);setPage(1);}}>
@@ -955,52 +1294,54 @@ export default function Leads() {
                     <span>{l.source ? l.source.replace(/_/g,' ') : '—'}</span>
                   </div>
                 </td>
-                <td style={{ ...CT.td, color:'#888', fontSize:11 }} title="Registration date — when the Meta ad form was submitted">
-                  {(l.meta_created || l.created_at) ? new Date(l.meta_created || l.created_at).toLocaleDateString('en-GB') : '—'}
+                <td style={{ ...CT.td, color:'#888', fontSize:11 }}>
+                  <div title={t('Registration date')}>{(l.meta_created || l.created_at) ? new Date(l.meta_created || l.created_at).toLocaleDateString('en-GB') : '—'}</div>
+                  <div onClick={e=>{ e.stopPropagation(); setSort('last_login'); setPage(1); }} title={t('Last login — click to sort by most recent login')}
+                    style={{ fontSize:10, color: l.last_login ? '#7fb0ff' : '#556', cursor:'pointer', marginTop:2, whiteSpace:'nowrap' }}>
+                    🕑 {l.last_login ? new Date(l.last_login).toLocaleDateString('en-GB') : '—'}
+                  </div>
                 </td>
+                {/* Last comment — the most recent communication (latest note line + call outcome). #194 */}
                 <td style={CT.td}>
-                  {l.last_call_outcome ? (() => {
-                    const m:any = { no_answer:['No answer','#9aa3b2'], off:['Off','#888'], rejected:['Rejected','#ff5d6c'], connected:['Connected','#00e5a0'], done:['Connected','#00e5a0'], call_later:['Callback','#ffaa00'] };
-                    const [lbl,col] = m[l.last_call_outcome] || [l.last_call_outcome,'#888'];
-                    return <div style={{ fontSize:11 }}>
-                      <span style={{ color:col, fontWeight:600 }}>{lbl}</span>
-                      {l.last_call_at && <div style={{ fontSize:9, color:'#667' }}>{new Date(l.last_call_at).toLocaleDateString('en-GB')} {new Date(l.last_call_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>}
-                    </div>;
-                  })() : <span style={{ color:'#445' }}>—</span>}
+                  {(() => {
+                    // last comment = last non-empty line of the running notes log ("[time] agent: text")
+                    const lastLine = String(l.notes||'').split('\n').map((s:string)=>s.trim()).filter(Boolean).pop() || '';
+                    const txt = lastLine.replace(/^\[[^\]]*\]\s*[^:]*:\s*/, '');
+                    const m:any = { no_answer:[t('No answer'),'#9aa3b2'], off:[t('Off'),'#888'], rejected:[t('Rejected'),'#ff5d6c'], connected:[t('Connected'),'#00e5a0'], done:[t('Connected'),'#00e5a0'], call_later:[t('Callback'),'#ffaa00'] };
+                    const oc = l.last_call_outcome ? (m[l.last_call_outcome] || [l.last_call_outcome,'#888']) : null;
+                    if (!txt && !oc) return <span style={{ color:'#445' }}>—</span>;
+                    return (
+                      <div style={{ maxWidth:200 }}>
+                        {txt && <div title={txt} style={{ fontSize:11, color:'#c7ccd6', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>💬 {txt}</div>}
+                        {(oc || l.last_call_at || l.call_attempts>0) && (
+                          <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:txt?2:0 }}>
+                            {oc && <span style={{ color:oc[1], fontWeight:600, fontSize:10 }}>{oc[0]}</span>}
+                            {l.last_call_at && <span style={{ fontSize:9, color:'#667' }}>{new Date(l.last_call_at).toLocaleDateString('en-GB')}</span>}
+                            {/* #273: times this number was called — so agents avoid over-calling */}
+                            {l.call_attempts>0 && <span title={t('Times this number was called')} style={{ fontSize:9, color:'#8a93a3', background:'#2a2f3a', padding:'1px 6px', borderRadius:99, whiteSpace:'nowrap' }}>📞 {l.call_attempts}</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </td>
+                {/* Stage (TradeSoft pipeline). Meta quality is fed AUTOMATICALLY from stage/
+                    verification/deposits — the manual rating column is gone. */}
                 <td style={CT.td} onClick={e=>e.stopPropagation()}>
-                  <select value={l.status} onChange={async e=>{
+                  <select value={stageOf(l)} onChange={async e=>{
                     e.stopPropagation();
-                    await apiPatch(`/leads/${l.id}`,{status:e.target.value});
+                    await apiPatch(`/leads/${l.id}`,{stage:e.target.value});
                     load();
-                  }} style={{ padding:'3px 8px', background:(STATUS_COLORS[l.status]||'#555')+'22', border:`1px solid ${STATUS_COLORS[l.status]||'#555'}`, borderRadius:99, color:STATUS_COLORS[l.status]||'#555', cursor:'pointer', fontSize:10, fontWeight:600, outline:'none', fontFamily:'inherit' }}>
-                    {Object.entries(STATUS_LABELS).map(([k,v])=><option key={k} value={k} style={{background:'#373f4d',color:'#e0e0e0'}}>{v as string}</option>)}
+                  }} style={{ padding:'3px 8px', background:(STAGE_COLORS[stageOf(l)]||'#555')+'22', border:`1px solid ${STAGE_COLORS[stageOf(l)]||'#555'}`, borderRadius:99, color:STAGE_COLORS[stageOf(l)]||'#888', cursor:'pointer', fontSize:10, fontWeight:600, outline:'none', fontFamily:'inherit', maxWidth:130 }}>
+                    {STAGES.map(s=><option key={s} value={s} style={{background:'#373f4d',color:'#e0e0e0'}}>{t(s)}</option>)}
                   </select>
+                  {l.meta_quality && <div title={t('Quality auto-fed to Meta')} style={{ fontSize:9, color:'#667', marginTop:2 }}>→ {t('Meta:')} {l.meta_quality}</div>}
                 </td>
-
-                {/* Meta Quality — sends feedback to Meta */}
-                <td style={CT.td} onClick={e=>e.stopPropagation()}>
-                  <select value={l.meta_quality || ''} onChange={async e=>{
-                    e.stopPropagation();
-                    const v = e.target.value;
-                    if (!v) return;
-                    try {
-                      await apiPost(`/meta/lead/${l.id}/stage`, { status: v });
-                      load();
-                    } catch(err) { alert('Failed to send to Meta'); }
-                  }} style={{
-                    padding:'3px 8px',
-                    background: l.meta_quality ? (META_STAGES[l.meta_quality]?.color || '#888')+'22' : '#373f4d',
-                    border:`1px solid ${l.meta_quality ? (META_STAGES[l.meta_quality]?.color || '#555') : '#626d80'}`,
-                    borderRadius:99,
-                    color: l.meta_quality ? (META_STAGES[l.meta_quality]?.color || '#888') : '#666',
-                    cursor:'pointer', fontSize:10, fontWeight:600, outline:'none', fontFamily:'inherit', minWidth:90 }}
-                    title={l.meta_quality ? `Sent to Meta: ${META_STAGES[l.meta_quality]?.label}` : 'Rate this lead for Meta'}>
-                    <option value="" style={{background:'#373f4d',color:'#666'}}>{l.meta_quality ? '✓ '+(META_STAGES[l.meta_quality]?.label||l.meta_quality) : 'Rate...'}</option>
-                    {Object.entries(META_STAGES).map(([k,v])=>(
-                      <option key={k} value={k} style={{background:'#373f4d',color:'#e0e0e0'}}>{v.label}</option>
-                    ))}
-                  </select>
+                {/* Training status — set by the training team on the Training board (hidden by default) */}
+                <td style={{ ...CT.td, fontSize:11 }}>
+                  {l.training_stage
+                    ? <span style={{ fontSize:9.5, fontWeight:700, padding:'2px 7px', borderRadius:99, whiteSpace:'nowrap', background:(TRAIN_STAGE_COLOR[l.training_stage]||'#888')+'22', color:TRAIN_STAGE_COLOR[l.training_stage]||'#aaa', border:`1px solid ${TRAIN_STAGE_COLOR[l.training_stage]||'#888'}` }}>{t(TRAIN_STAGE_LABEL[l.training_stage]||l.training_stage)}</span>
+                    : <span style={{ color:'#556' }}>—</span>}
                 </td>
 
                 <td style={{ ...CT.td, fontSize:11 }} onClick={e=>e.stopPropagation()}>
@@ -1008,124 +1349,51 @@ export default function Leads() {
                     onSortBy={(n)=>{ setFilterAgent(n); setPage(1); }}
                     onChanged={()=> load()} />
                   {!l.agent_name && l.legacy_sales_agent && l.legacy_sales_agent!=='-' &&
-                    <div title="Sales agent from TradeSoft (not matched to a current staff member yet)"
-                      style={{ color:'#9966ff', fontSize:10, marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:120 }}>👤 {l.legacy_sales_agent}</div>}
+                    <div onClick={e=>{ e.stopPropagation(); setFilterAgent(l.legacy_sales_agent); setPage(1); }}
+                      title={t('TradeSoft sales agent — click to filter leads by this agent')}
+                      style={{ color:'#b08cff', fontSize:10, marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:120, cursor:'pointer', textDecoration:'underline' }}>👤 {l.legacy_sales_agent}</div>}
                 </td>
-                <td style={{ ...CT.td, fontSize:11 }} onClick={e=>e.stopPropagation()}>
+                <td style={{ ...CT.td, fontSize:11, width:80, maxWidth:80 }} onClick={e=>e.stopPropagation()}>
                   {l.ib_name
-                    ? <span onClick={()=>{ if(filterIB===l.ib_name){ window.dispatchEvent(new CustomEvent('navigate',{detail:{page:'ib_admin',ib:l.ib_name}})); } else { setFilterIB(l.ib_name); setPage(1); } }}
-                        title={filterIB===l.ib_name?'Open IB page':'Filter by this IB (click again to open IB page)'}
-                        style={{ color:'#00aaff', cursor:'pointer' }}>{l.ib_name}</span>
+                    ? <span onClick={e=>{ e.stopPropagation(); if(filterIB===l.ib_name){ openIbProfile(l.ib_name); } else { setFilterIB(l.ib_name); setPage(1); } }}
+                        title={l.ib_name + (filterIB===l.ib_name?t(' — open IB page'):t(' — filter by this IB (click again to open IB page)'))}
+                        style={{ color:'#00aaff', cursor:'pointer', display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{l.ib_name}</span>
                     : <span style={{ color:'#555' }}>—</span>}
                 </td>
 
                 {/* KYC */}
                 <td style={{ ...CT.td, padding:'9px 6px' }} onClick={e=>e.stopPropagation()}>
                   <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
-                    <span title="Identity document — click to filter" onClick={e=>{e.stopPropagation();setFilterVerified('kyc_id');setPage(1);}}
+                    <span title={t('Identity document — click to filter')} onClick={e=>{e.stopPropagation();setFilterVerified('kyc_id');setPage(1);}}
                       style={{ fontSize:10, color: l.kyc_id_verified?'#00e5a0':l.kyc_id_uploaded?'#ffaa00':'#555', cursor:'pointer' }}>
                       🪪 {l.kyc_id_verified?'✓':l.kyc_id_uploaded?'⏳':'—'}
                     </span>
-                    <span title="Address proof — click to filter" onClick={e=>{e.stopPropagation();setFilterVerified('kyc_address');setPage(1);}}
+                    <span title={t('Address proof — click to filter')} onClick={e=>{e.stopPropagation();setFilterVerified('kyc_address');setPage(1);}}
                       style={{ fontSize:10, color: l.kyc_address_verified?'#00e5a0':l.kyc_address_uploaded?'#ffaa00':'#555', cursor:'pointer' }}>
                       📄 {l.kyc_address_verified?'✓':l.kyc_address_uploaded?'⏳':'—'}
                     </span>
                     {/* trading account (#2): show the account once KYC-verified, else "not yet verified" */}
                     {(l.kyc_status==='verified' && l.converted_login)
                       ? <span style={{ fontSize:10, color:'#00e5a0', fontWeight:700 }}>💼 {l.converted_login}</span>
-                      : <span style={{ fontSize:9.5, color:'#777' }}>account not yet verified</span>}
+                      : <span style={{ fontSize:9.5, color:'#777' }}>{t('not yet verified')}</span>}
                   </div>
                 </td>
-                {/* IP */}
+                {/* Network — ONE unified badge (canonical 0-10; click for linked accounts) */}
                 <td style={{ ...CT.td, textAlign:'right' }} onClick={e=>e.stopPropagation()}>
-                  <div style={{ position:'relative', display:'inline-block' }}
-                    onMouseEnter={()=>setNetworkHover(l.id)} onMouseLeave={()=>setNetworkHover(null)}>
-                    {(() => {
-                      const raw = l.network_score || 0;
-                      const score = Math.min(10, Math.round(raw/10));
-                      const color = score>=7?'#ff4d4d':score>=4?'#ffaa00':'#00e5a0';
-                      return <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px', borderRadius:99, cursor:'pointer', border:`1px solid ${color}`, color, fontSize:11, fontWeight:600 }}>{score}/10</span>;
-                    })()}
-                    {networkHover === l.id && (() => {
-                      const ipc = l.ip_count||0, cidc = l.cid_count||0;
-                      const out10 = Math.min(10, Math.round((l.network_score||0)/10));
-                      return (
-                      <div style={{ position:'absolute', bottom:'110%', left:'50%', transform:'translateX(-50%)', background:'#373f4d', border:'1px solid #626d80', borderRadius:10, padding:12, width:240, zIndex:999, pointerEvents:'none', textAlign:'left' }}>
-                        <div style={{ fontSize:12, fontWeight:600, marginBottom:2 }}>Network risk = {out10}/10</div>
-                        <div style={{ fontSize:9, color:'#777', marginBottom:8 }}>shared device/IP with other accounts</div>
-                        {!l.matched_login ? (
-                          <div style={{ fontSize:10, color:'#888' }}>Lead isn’t linked to a registered trading account — no network data.</div>
-                        ) : (ipc===0 && cidc===0) ? (
-                          <div style={{ fontSize:10, color:'#888' }}>Linked to account #{l.matched_login}, but its IP/device isn’t shared with anyone — clean (0/10).</div>
-                        ) : (
-                          <>
-                          {[
-                            [`🌐 Same IP (×35 each)`, ipc>0 ? `${ipc} other${ipc>1?'s':''} = +${ipc*35}` : '—', ipc>0],
-                            [`📱 Same device/CID (×50 each)`, cidc>0 ? `${cidc} other${cidc>1?'s':''} = +${cidc*50}` : '—', cidc>0],
-                          ].map(([label,val,active]:any) => (
-                            <div key={label} style={{ display:'flex', justifyContent:'space-between', fontSize:10, padding:'3px 0', borderBottom:'1px solid #4f596b', color: active?'#e0e0e0':'#555' }}>
-                              <span>{label}</span><span style={{ color: active?'#ff8800':'#555' }}>{val}</span>
-                            </div>
-                          ))}
-                          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, fontWeight:700, paddingTop:6 }}>
-                            <span>Total</span><span style={{ color:'#fff' }}>{out10}/10</span>
-                          </div>
-                          </>
-                        )}
-                        {l.cid && <div style={{ fontSize:9, color:'#444', marginTop:6, fontFamily:'monospace' }} title={l.cid}>CID: {l.cid.substring(0,16)}...</div>}
-                        {l.ip_address && <div style={{ fontSize:9, color:'#444', fontFamily:'monospace' }}>IP: {l.ip_address}</div>}
-                      </div>
-                      );
-                    })()}
-                  </div>
+                  <NetworkBadge score={l.network_score} leadId={l.id} />
                 </td>
                 <td style={{ ...CT.td, textAlign:'right' }}>
-                  <div style={{ position:'relative', display:'inline-block' }}
-                    onMouseEnter={()=>setScoreHover(l.id)} onMouseLeave={()=>setScoreHover(null)}>
+                  <div style={{ display:'inline-block' }}
+                    onMouseEnter={e=>{ const r=(e.currentTarget as HTMLElement).getBoundingClientRect(); setScoreHover({ lead:l, x:r.right, y:r.top }); }}
+                    onMouseLeave={()=>setScoreHover(null)}>
                     <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius:'50%', border:`2px solid ${(l.score||0)>=50?'#ff4d4d':(l.score||0)>=25?'#ff8800':'#555'}`, color:(l.score||0)>=50?'#ff4d4d':(l.score||0)>=25?'#ff8800':'#888', fontWeight:700, fontSize:12, cursor:'help' }}>
                       {l.score||0}
                     </div>
-                    {scoreHover === l.id && (() => {
-                      const matched = l.match_badge==='recapture'||l.match_badge==='registered_no_deposit';
-                      const mb = matched ? 50 : 0;
-                      const pv = l.phone_verified ? 15 : 0;
-                      const ev = l.email_verified ? 15 : 0;
-                      const both = (l.phone && l.email) ? 10 : 0;
-                      const recency = Math.max(0, (l.score||0) - mb - pv - ev - both); // backend uses real lead date
-                      const rows:any[] = [
-                        [l.match_badge==='recapture'?'♻ Recapture (was a depositor)':l.match_badge==='registered_no_deposit'?'🔥 Registered, no deposit':'Matched a client', mb, matched],
-                        ['📞 Phone verified', pv, !!pv],
-                        ['✉️ Email verified', ev, !!ev],
-                        ['Phone + email on file', both, !!both],
-                        ['🕑 Recency (lead age)', recency, recency>0],
-                      ];
-                      return (
-                        <div style={{ position:'absolute', bottom:'110%', right:0, background:'#373f4d', border:'1px solid #626d80', borderRadius:10, padding:12, width:230, zIndex:999, pointerEvents:'none', textAlign:'left' }}>
-                          <div style={{ fontSize:12, fontWeight:600, marginBottom:8 }}>Why score = {l.score||0}</div>
-                          {rows.map(([label,val,active]:any)=>(
-                            <div key={label} style={{ display:'flex', justifyContent:'space-between', fontSize:10, padding:'3px 0', borderBottom:'1px solid #4f596b', color: active?'#e0e0e0':'#555' }}>
-                              <span>{label}</span>
-                              <span style={{ color: active?'#00e5a0':'#555' }}>{active?`+${val}`:'—'}</span>
-                            </div>
-                          ))}
-                          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, fontWeight:700, paddingTop:6 }}>
-                            <span>Total</span><span style={{ color:'#fff' }}>{l.score||0}/100</span>
-                          </div>
-                        </div>
-                      );
-                    })()}
                   </div>
                 </td>
                 <td style={CT.td} onClick={e=>e.stopPropagation()}>
                   <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                    <LeadActions lead={l} onUpdate={load} onView={()=>setSelected(l)} showView={false} />
-                    {l.is_archived ? (
-                      <button title="Unarchive" onClick={e=>{ e.stopPropagation(); archiveLead(l.id, false); }}
-                        style={{ padding:'3px 7px', background:'rgba(0,229,160,0.1)', border:'1px solid rgba(0,229,160,0.3)', borderRadius:5, color:'#00e5a0', cursor:'pointer', fontSize:10 }}>♻</button>
-                    ) : (
-                      <button title="Archive" onClick={e=>{ e.stopPropagation(); archiveLead(l.id, true); }}
-                        style={{ padding:'3px 7px', background:'rgba(255,170,0,0.1)', border:'1px solid rgba(255,170,0,0.3)', borderRadius:5, color:'#ffaa00', cursor:'pointer', fontSize:10 }}>🗄</button>
-                    )}
+                    <LeadActions lead={l} onUpdate={load} onView={()=>openLead(l)} showView={false} />
                   </div>
                 </td>
               </tr>
@@ -1137,30 +1405,88 @@ export default function Leads() {
 
       {/* Pagination + page-size selector (ticket #58) */}
       <Pager page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize}
-        count={leads.length} total={total} label="leads" />
+        count={leads.length} total={total} label={t('leads')} />
 
       {phoneContact && <PhoneModal contact={phoneContact} onClose={()=>setPhoneContact(null)} />}
       {emailContact && <EmailModal contact={emailContact} type="lead" onClose={()=>setEmailContact(null)} />}
 
+      {/* Score-breakdown tooltip — position:fixed at top level so it ALWAYS clears the KPI cards
+          (it used to render behind them for the first rows — ticket #158). */}
+      {scoreHover && (() => {
+        const l = scoreHover.lead;
+        const matched = l.match_badge==='recapture'||l.match_badge==='registered_no_deposit';
+        const mb = matched ? 50 : 0;
+        const pv = l.phone_verified ? 15 : 0;
+        const ev = l.email_verified ? 15 : 0;
+        const both = (l.phone && l.email) ? 10 : 0;
+        const recency = Math.max(0, (l.score||0) - mb - pv - ev - both); // backend uses real lead date
+        const rows:any[] = [
+          [l.match_badge==='recapture'?t('♻ Recapture (was a depositor)'):l.match_badge==='registered_no_deposit'?t('🔥 Registered, no deposit'):t('Matched a client'), mb, matched],
+          [t('📞 Phone verified'), pv, !!pv],
+          [t('✉️ Email verified'), ev, !!ev],
+          [t('Phone + email on file'), both, !!both],
+          [t('🕑 Recency (lead age)'), recency, recency>0],
+        ];
+        const width = 230;
+        const left = Math.min(Math.max(8, scoreHover.x - width), window.innerWidth - width - 8);
+        const top  = Math.max(8, scoreHover.y - 185);   // above the score circle, clamped on-screen
+        return (
+          <div style={{ position:'fixed', left, top, width, zIndex:99999, background:'#373f4d', border:'1px solid #626d80', borderRadius:10, padding:12, boxShadow:'0 8px 32px rgba(0,0,0,0.6)', pointerEvents:'none', textAlign:'left' }}>
+            <div style={{ fontSize:12, fontWeight:600, marginBottom:8 }}>{t('Why score =')} {l.score||0}</div>
+            {rows.map(([label,val,active]:any)=>(
+              <div key={label} style={{ display:'flex', justifyContent:'space-between', fontSize:10, padding:'3px 0', borderBottom:'1px solid #4f596b', color: active?'#e0e0e0':'#555' }}>
+                <span>{label}</span>
+                <span style={{ color: active?'#00e5a0':'#555' }}>{active?`+${val}`:'—'}</span>
+              </div>
+            ))}
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, fontWeight:700, paddingTop:6 }}>
+              <span>{t('Total')}</span><span style={{ color:'#fff' }}>{l.score||0}/100</span>
+            </div>
+          </div>
+        );
+      })()}
+
       {badgeHover && (() => {
         const l = badgeHover.lead;
-        const when = l.meta_created ? new Date(l.meta_created).toLocaleString('en-GB') : null;
-        const left = Math.min(badgeHover.x + 12, window.innerWidth - 290);
-        const top  = Math.min(badgeHover.y + 14, window.innerHeight - 150);
+        const when = l.meta_created ? new Date(l.meta_created).toLocaleString('en-GB') : (l.created_at ? new Date(l.created_at).toLocaleString('en-GB') : null);
+        const isRe = badgeHover.kind==='recapture';
+        const origReg = l.matched_reg_date ? new Date(l.matched_reg_date).toLocaleDateString('en-GB') : null;
+        const hasOld = isRe && l.matched_login > 0;
+        const left = Math.min(badgeHover.x + 12, window.innerWidth - 316);
+        const top  = Math.min(badgeHover.y + 14, window.innerHeight - (hasOld?250:150));
         return (
-          <div style={{ position:'fixed', left, top, zIndex:99999, background:'#2c333e', border:'1px solid #626d80', borderRadius:10, padding:13, width:270, boxShadow:'0 8px 32px rgba(0,0,0,0.6)', pointerEvents:'none' }}>
-            <div style={{ fontSize:12, fontWeight:600, color: badgeHover.kind==='recapture'?'#ff4d4d':'#ff8800', marginBottom:6 }}>
-              {badgeHover.kind==='recapture' ? '♻ Recapture' : '🔥 Registered, no deposit'}
+          <div style={{ position:'fixed', left, top, zIndex:99999, background:'#2c333e', border:`1px solid ${isRe?'#ff6a1a':'#626d80'}`, borderRadius:10, padding:13, width:296, boxShadow:'0 8px 32px rgba(0,0,0,0.6)', pointerEvents:'none' }}>
+            <div style={{ fontSize:12.5, fontWeight:700, color: isRe?'#ff6a1a':'#ff8800', marginBottom:8 }}>
+              {isRe ? t('♻ Recapture — already in our system') : t('🔥 Registered, no deposit')}
             </div>
-            <div style={{ fontSize:11, color:'#ccc', marginBottom:4 }}>
-              📋 Filled the Meta ad form on:
-            </div>
-            <div style={{ fontSize:13, fontWeight:600, color:'#00e5a0' }}>{when || 'date not available'}</div>
-            <div style={{ fontSize:10, color:'#666', marginTop:7, lineHeight:1.5 }}>
-              {badgeHover.kind==='recapture'
-                ? `Was a client (#${l.matched_login}) and submitted the ad form again — re-engaged.`
-                : `Opened account #${l.matched_login} from this lead but never deposited.`}
-            </div>
+            {hasOld ? (<>
+              {/* THE OLD RECORD — clearly shown so the desk knows who this really is */}
+              <div style={{ background:'rgba(255,106,26,0.10)', border:'1px solid rgba(255,106,26,0.35)', borderRadius:8, padding:'9px 11px', marginBottom:9 }}>
+                <div style={{ fontSize:9.5, color:'#ffb488', fontWeight:700, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>📇 {t('Existing record')}</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#fff' }}>{l.matched_name || l.full_name || '—'} <span style={{ color:'#9aa6b8', fontWeight:500 }}>· #{l.matched_login}</span></div>
+                <div style={{ display:'flex', justifyContent:'space-between', marginTop:6, fontSize:11 }}>
+                  <span style={{ color:'#9aa6b8' }}>{t('Registered')}</span>
+                  <span style={{ color:'#00e5a0', fontWeight:700 }}>{origReg || '—'}</span>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', marginTop:3, fontSize:11 }}>
+                  <span style={{ color:'#9aa6b8' }}>{t('Deposited')}</span>
+                  <span style={{ color:(l.matched_deposits>0)?'#00e5a0':'#888', fontWeight:700 }}>{(l.matched_deposits>0)?('$'+Number(l.matched_deposits).toLocaleString('en-GB')):t('never')}</span>
+                </div>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:11 }}>
+                <span style={{ color:'#9aa6b8' }}>♻ {t('Re-filled the form')}</span>
+                <span style={{ color:'#ffd166', fontWeight:700 }}>{when || '—'}</span>
+              </div>
+              <div style={{ fontSize:9.5, color:'#8792a6', marginTop:8, lineHeight:1.5 }}>{t('Same person came back through a new ad. Their original registration date and history are kept — this is an update of the old record, not a new client.')}</div>
+            </>) : (<>
+              <div style={{ fontSize:11, color:'#ccc', marginBottom:4 }}>📋 {t('Filled the Meta ad form on:')}</div>
+              <div style={{ fontSize:13, fontWeight:600, color:'#00e5a0' }}>{when || t('date not available')}</div>
+              <div style={{ fontSize:10, color:'#8792a6', marginTop:7, lineHeight:1.5 }}>
+                {isRe
+                  ? t('Re-submitted our ad form — was already in our system (older archived lead reactivated).')
+                  : `${t('Opened account')} #${l.matched_login} ${t('from this lead but never deposited.')}`}
+              </div>
+            </>)}
           </div>
         );
       })()}
@@ -1169,7 +1495,7 @@ export default function Leads() {
       {showAdd && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
           <div style={{ background:'#2c333e', borderRadius:12, padding:24, width:480, border:'1px solid #626d80' }}>
-            <div style={{ fontSize:15, fontWeight:700, marginBottom:16 }}>Add new lead</div>
+            <div style={{ fontSize:15, fontWeight:700, marginBottom:16 }}>{t('Add new lead')}</div>
             <AddLeadForm onClose={()=>setShowAdd(false)} onSaved={()=>{ setShowAdd(false); load(); }} agents={agents} />
           </div>
         </div>
@@ -1182,6 +1508,7 @@ export default function Leads() {
 // number (login), regardless of deposit. (Replaced the old "Approved & funded" tab —
 // accounts that deposit move to the Clients list automatically.)
 function VerifiedAccounts({ view, setView }: any) {
+  const t = useT();
   const [rows, setRows]   = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [kpis, setKpis]   = useState<any>({});
@@ -1217,7 +1544,7 @@ function VerifiedAccounts({ view, setView }: any) {
         {([['leads','📋 All leads'],['verified','✅ Verified Accounts']] as const).map(([k,l])=>(
           <button key={k} onClick={()=>setView(k)}
             style={{ padding:'6px 16px', borderRadius:'8px 8px 0 0', border:`1px solid ${view===k?'#00e5a0':'#626d80'}`, borderBottom:'none', background:view===k?'rgba(0,229,160,0.1)':'transparent', color:view===k?'#00e5a0':'#888', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'inherit' }}>
-            {l}
+            {t(l)}
           </button>
         ))}
       </div>
@@ -1225,7 +1552,7 @@ function VerifiedAccounts({ view, setView }: any) {
       {/* KPI bar */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(1,minmax(0,300px))', gap:8, padding:'10px 14px', background:'#262c36', borderBottom:'1px solid #373f4d', flexShrink:0 }}>
         {[
-          { label:'Verified accounts (KYC-approved + has trading account)', value:(kpis.accounts||0).toLocaleString(), color:'#00e5a0' },
+          { label:t('Verified accounts (KYC-approved + has trading account)'), value:(kpis.accounts||0).toLocaleString('en-GB'), color:'#00e5a0' },
         ].map((k,i)=>(
           <div key={i} style={{ background:'#2c333e', border:'1px solid #373f4d', borderRadius:8, padding:'8px 14px' }}>
             <div style={{ fontSize:9, color:'#555', textTransform:'uppercase', letterSpacing:.5, marginBottom:3 }}>{k.label}</div>
@@ -1236,19 +1563,19 @@ function VerifiedAccounts({ view, setView }: any) {
 
       {/* Controls */}
       <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'#2c333e', borderBottom:'1px solid #373f4d', flexShrink:0, flexWrap:'wrap' }}>
-        <div style={{ fontWeight:600, fontSize:13 }}>Verified Accounts</div>
-        <div style={{ fontSize:11, color:'#555' }}>{total.toLocaleString()} accounts</div>
-        <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1); }} placeholder="Search name, login, email, phone..."
+        <div style={{ fontWeight:600, fontSize:13 }}>{t('Verified Accounts')}</div>
+        <div style={{ fontSize:11, color:'#555' }}>{total.toLocaleString('en-GB')} {t('accounts')}</div>
+        <input value={search} onChange={e=>{ setSearch(e.target.value); setPage(1); }} placeholder={t('Search name, login, email, phone...')}
           style={{ flex:1, minWidth:200, padding:'6px 10px', background:'#373f4d', border:'1px solid #626d80', borderRadius:7, color:'#e0e0e0', fontSize:12, outline:'none' }} />
         <select value={country} onChange={e=>{ setCountry(e.target.value); setPage(1); }}
           style={{ padding:'6px 8px', background:'#373f4d', border:'1px solid #626d80', borderRadius:7, color:'#e0e0e0', fontSize:11 }}>
-          <option value="">All countries</option>
+          <option value="">{t('All countries')}</option>
           {countries.map((c:any)=><option key={c} value={c}>{c}</option>)}
         </select>
         {[{key:'date',label:'Newest'},{key:'name',label:'Name'},{key:'login',label:'Login'}].map(s=>(
           <button key={s.key} onClick={()=>{ setSort(s.key); setPage(1); }}
             style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${sort===s.key?'#00e5a0':'#626d80'}`, background:sort===s.key?'rgba(0,229,160,0.1)':'transparent', color:sort===s.key?'#00e5a0':'#888', cursor:'pointer', fontSize:11, fontFamily:'inherit' }}>
-            {s.label}
+            {t(s.label)}
           </button>
         ))}
       </div>
@@ -1259,15 +1586,15 @@ function VerifiedAccounts({ view, setView }: any) {
           <thead>
             <tr style={{ background:'#262c36', position:'sticky', top:0, zIndex:5 }}>
               {['Name','Account / Login','Platform','Country','KYC / Approval','Registered','Deposited?','From lead'].map(h=>(
-                <th key={h} style={{ padding:'8px 10px', textAlign:'left', color:'#cfd6e0', fontWeight:600, fontSize:10, borderBottom:'1px solid #373f4d', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:.5 }}>{h}</th>
+                <th key={h} style={{ padding:'8px 10px', textAlign:'left', color:'#cfd6e0', fontWeight:600, fontSize:10, borderBottom:'1px solid #373f4d', whiteSpace:'nowrap', textTransform:'uppercase', letterSpacing:.5 }}>{t(h)}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} style={{ padding:40, textAlign:'center', color:'#555' }}>Loading...</td></tr>
+              <tr><td colSpan={8} style={{ padding:40, textAlign:'center', color:'#555' }}>{t('Loading...')}</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={8} style={{ padding:40, textAlign:'center', color:'#555' }}>No verified accounts found</td></tr>
+              <tr><td colSpan={8} style={{ padding:40, textAlign:'center', color:'#555' }}>{t('No verified accounts found')}</td></tr>
             ) : rows.map((r:any) => (
               <tr key={r.login} style={{ borderBottom:'1px solid #262c36' }}
                 onMouseEnter={e=>(e.currentTarget.style.background='#2c333e')}
@@ -1281,18 +1608,18 @@ function VerifiedAccounts({ view, setView }: any) {
                     background: r.kyc_status==='verified' ? 'rgba(0,229,160,0.12)' : 'rgba(255,170,0,0.12)',
                     color: r.kyc_status==='verified' ? '#00e5a0' : '#ffaa00',
                     border:`1px solid ${r.kyc_status==='verified' ? '#00e5a0' : '#ffaa00'}` }}>
-                    {r.kyc_status==='verified' ? '✓ Approved' : (r.kyc_status || 'pending')}
+                    {r.kyc_status==='verified' ? `✓ ${t('Approved')}` : (r.kyc_status || t('pending'))}
                   </span>
                 </td>
                 <td style={{ padding:'8px 10px', color:'#888', whiteSpace:'nowrap' }}>{r.reg_date ? new Date(r.reg_date).toLocaleDateString('en-GB') : '—'}</td>
                 <td style={{ padding:'8px 10px', textAlign:'center' }}>
                   {r.has_deposit
-                    ? <span style={{ fontSize:10, color:'#00e5a0' }} title="Has at least one deposit">✓</span>
-                    : <span style={{ fontSize:10, color:'#556' }} title="No deposit yet">—</span>}
+                    ? <span style={{ fontSize:10, color:'#00e5a0' }} title={t('Has at least one deposit')}>✓</span>
+                    : <span style={{ fontSize:10, color:'#556' }} title={t('No deposit yet')}>—</span>}
                 </td>
                 <td style={{ padding:'8px 10px', fontSize:11, color:'#888' }}>
                   {r.lead_id
-                    ? <span title={`From lead #${r.lead_id}`}>
+                    ? <span title={`${t('From lead')} #${r.lead_id}`}>
                         🎯 {firstWords(r.lead_name,2) || `#${r.lead_id}`}
                         {r.match_badge==='recapture' && <span style={{ marginLeft:4, color:'#ff4d4d' }}>♻</span>}
                       </span>
@@ -1306,10 +1633,10 @@ function VerifiedAccounts({ view, setView }: any) {
         {/* Pagination */}
         <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:8, padding:'12px' }}>
           <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}
-            style={{ padding:'5px 14px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:page===1?'#626d80':'#888', cursor:page===1?'default':'pointer', fontSize:12 }}>← Prev</button>
-          <span style={{ color:'#555', fontSize:12 }}>Page {page} of {Math.max(1, Math.ceil(total/pageSize))}</span>
+            style={{ padding:'5px 14px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:page===1?'#626d80':'#888', cursor:page===1?'default':'pointer', fontSize:12 }}>← {t('Prev')}</button>
+          <span style={{ color:'#555', fontSize:12 }}>{t('Page')} {page} {t('of')} {Math.max(1, Math.ceil(total/pageSize))}</span>
           <button onClick={()=>setPage(p=>p+1)} disabled={rows.length<pageSize}
-            style={{ padding:'5px 14px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:rows.length<pageSize?'#626d80':'#00e5a0', cursor:rows.length<pageSize?'default':'pointer', fontSize:12, borderColor:rows.length<pageSize?'#626d80':'#00e5a0' }}>Next →</button>
+            style={{ padding:'5px 14px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:rows.length<pageSize?'#626d80':'#00e5a0', cursor:rows.length<pageSize?'default':'pointer', fontSize:12, borderColor:rows.length<pageSize?'#626d80':'#00e5a0' }}>{t('Next')} →</button>
         </div>
       </div>
     </div>
@@ -1317,16 +1644,23 @@ function VerifiedAccounts({ view, setView }: any) {
 }
 
 function AddLeadForm({ onClose, onSaved, agents }: any) {
+  const t = useT();
+  // a SALES AGENT can only create leads for themselves — the agent box is locked to their name
+  const isSalesAgent = (localStorage.getItem('userRole') || '') === 'sales_agent';
+  const myName = localStorage.getItem('userName') || '';
   const [form, setForm] = useState({ full_name:'', phone:'', email:'', country:'', city:'', source:'manual', status:'new', assigned_agent_id:'', notes:'' });
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
 
   const submit = async () => {
-    if (!form.full_name && !form.phone) { alert('Name or phone required'); return; }
+    setErr('');
+    if (!form.phone.trim() && !form.email.trim()) { setErr(t('At least a phone number or an email is required')); return; }
     setSaving(true);
     try {
-      await apiPost('/leads', form);
-      onSaved();
-    } catch(e) { alert('Failed'); }
+      const res: any = await apiPost('/leads', form);
+      if (res && res.id) onSaved();
+      else setErr(res?.detail || t('Failed to create the lead'));
+    } catch(e) { setErr(t('Failed to create the lead')); }
     setSaving(false);
   };
 
@@ -1339,28 +1673,34 @@ function AddLeadForm({ onClose, onSaved, agents }: any) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-        {inp('full_name','Full name')}
-        {inp('phone','Phone number','tel')}
-        {inp('email','Email','email')}
-        {inp('country','Country')}
-        {inp('city','City')}
+        {inp('full_name',t('Full name'))}
+        {inp('phone',t('Phone number'),'tel')}
+        {inp('email',t('Email'),'email')}
+        {inp('country',t('Country'))}
+        {inp('city',t('City'))}
         <select value={form.source} onChange={e=>setForm({...form,source:e.target.value})}
           style={{ padding:'8px 10px', background:'#373f4d', border:'1px solid #626d80', borderRadius:7, color:'#e0e0e0', fontSize:13 }}>
           {['manual','facebook','instagram','messenger','audience_network','Google','WhatsApp','TikTok','Email','Referral','Other'].map(s=><option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={form.assigned_agent_id} onChange={e=>setForm({...form,assigned_agent_id:e.target.value})}
-          style={{ padding:'8px 10px', background:'#373f4d', border:'1px solid #626d80', borderRadius:7, color:'#e0e0e0', fontSize:13 }}>
-          <option value="">Unassigned</option>
-          {agents.map((a:any)=><option key={a.id} value={a.id}>{a.full_name}</option>)}
-        </select>
+        {isSalesAgent ? (
+          <input value={myName} disabled title={t('Sales agents can only create leads for themselves')}
+            style={{ padding:'8px 10px', background:'#2c333e', border:'1px solid #626d80', borderRadius:7, color:'#8b93a1', fontSize:13, boxSizing:'border-box' as any, fontFamily:'inherit' }} />
+        ) : (
+          <select value={form.assigned_agent_id} onChange={e=>setForm({...form,assigned_agent_id:e.target.value})}
+            style={{ padding:'8px 10px', background:'#373f4d', border:'1px solid #626d80', borderRadius:7, color:'#e0e0e0', fontSize:13 }}>
+            <option value="">{t('Unassigned')}</option>
+            {agents.map((a:any)=><option key={a.id} value={a.id}>{a.full_name}</option>)}
+          </select>
+        )}
       </div>
-      <textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Notes..." rows={2}
+      <textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder={t('Notes...')} rows={2}
         style={{ width:'100%', padding:'8px 10px', background:'#373f4d', border:'1px solid #626d80', borderRadius:7, color:'#e0e0e0', fontSize:13, outline:'none', resize:'none', fontFamily:'inherit', boxSizing:'border-box' as any }} />
+      {err && <div style={{ fontSize:12, color:'#ff6b6b', background:'rgba(255,77,77,0.08)', border:'1px solid rgba(255,77,77,0.3)', borderRadius:7, padding:'8px 10px' }}>{err}</div>}
       <div style={{ display:'flex', gap:8, justifyContent:'flex-end', marginTop:4 }}>
-        <button onClick={onClose} style={{ padding:'7px 16px', background:'#373f4d', border:'1px solid #626d80', borderRadius:7, color:'#888', cursor:'pointer', fontSize:13 }}>Cancel</button>
+        <button onClick={onClose} style={{ padding:'7px 16px', background:'#373f4d', border:'1px solid #626d80', borderRadius:7, color:'#888', cursor:'pointer', fontSize:13 }}>{t('Cancel')}</button>
         <button onClick={submit} disabled={saving}
           style={{ padding:'7px 20px', background:'#00e5a0', border:'none', borderRadius:7, color:'#000', fontWeight:700, cursor:'pointer', fontSize:13, fontFamily:'inherit' }}>
-          {saving ? 'Saving...' : 'Add lead'}
+          {saving ? t('Saving...') : t('Add lead')}
         </button>
       </div>
     </div>

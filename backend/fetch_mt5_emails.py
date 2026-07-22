@@ -6,9 +6,7 @@ import sys
 sys.path.insert(0, r'C:\broker-crm\backend')
 from datetime import datetime
 
-MT5_SERVER   = "192.109.15.62:443"
-MT5_LOGIN    = 1025
-MT5_PASSWORD = "ZjFb!vA0"
+from mt_secrets import MT5_SERVER, MT5_LOGIN, MT5_PASSWORD
 
 import MT5Manager
 from database import SessionLocal

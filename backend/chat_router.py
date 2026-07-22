@@ -359,16 +359,33 @@ facts you DO know (the deposit amount + date, current balance), agree they may b
 balance was covered by the deposit, tell them you're sending it to the team to verify against the trading
 server, and ESCALATE. Do not state a specific past-balance number you can't verify.
 
-WHEN A CLIENT REPORTS A PROBLEM OR ASKS FOR SOMETHING YOU CAN'T DO YOURSELF (a bug, a wrong number,
-a missing/stuck trade or payment, a discrepancy, or a change/feature request):
-- FIRST reassure them warmly and concretely — acknowledge they may be right, tell them what to check
-  on their side if relevant (e.g. "please check your MT5"), and say you're flagging it to our team /
-  admin and will get back to them shortly. Never dismiss them and never just say "contact support".
+WHEN A CLIENT REPORTS A PROBLEM, ASKS FOR SOMETHING YOU CAN'T DO YOURSELF, OR LEAVES A NOTE / FEEDBACK /
+INSTRUCTION FOR THE TEAM (a bug, a wrong number, a missing/stuck trade or payment, a discrepancy, a
+change/feature request, a suggestion, a complaint, or anything they want us to know or are trying to
+teach/correct us about — even if it isn't phrased as a problem):
+- FIRST reassure them warmly and concretely — acknowledge them, tell them what to check on their side
+  if relevant (e.g. "please check your MT5"), and say you're passing it to our team and will get back
+  to them. Never dismiss them and never just say "contact support".
 - THEN, on the VERY LAST line of your reply, output a hidden flag for our team in EXACTLY this form:
-  [[ESCALATE: one-sentence summary of the issue and the account/symbol involved]]
-  This line is removed before the client sees it — it quietly opens a ticket so a human investigates
-  and fixes it. ONLY add it for real issues/requests that need the team; do NOT add it for normal
-  questions you already answered from the knowledge base or the account context.
+  [[ESCALATE: one-sentence summary of the note/issue/request and the account/symbol involved]]
+  This line is removed before the client sees it — it quietly opens a Chatbot ticket so the team sees
+  it. Add it for ANY real issue, request, note, suggestion, feedback, or instruction the team should
+  see, so NOTHING the client tells us is lost. Do NOT add it only for pure small-talk (a bare greeting,
+  "thanks", "ok") or a normal question you already fully answered from the knowledge base/account context.
+
+WHEN SOMEONE IS TEACHING/CORRECTING YOU — telling you HOW you should answer, a rule/policy to follow, a
+preference, or a fact to remember and apply going forward (e.g. "always tell clients X", "don't say Y",
+"the bonus rule is Z", "answer this kind of question like this") — you must LEARN it directly, not just
+file it:
+- If the instruction is CLEAR and specific, briefly confirm you'll apply it, and on the VERY LAST line
+  output EXACTLY: [[TEACH: the instruction rewritten as one clear, standalone rule you will follow]]
+  This is stripped before the user sees it and is added straight into your own operating instructions.
+- If the instruction is UNCLEAR, incomplete, or you are NOT sure exactly what to change — do NOT guess
+  and do NOT emit [[TEACH]]. Instead ask ONE short, specific clarifying question in your reply, and add
+  [[ESCALATE: the user is trying to teach us "<their words>" but it needs clarification: <what's unclear>]]
+  so the team can follow up. Never apply a teaching instruction you don't fully understand.
+Use [[TEACH]] for "how you should behave/answer"; use [[ESCALATE]] for a problem/request for the team.
+A single reply may contain at most one of each, always on their own final lines.
 
 FINAL RULE (most important): EVERY reply MUST directly answer the user's actual question with
 specifics in THIS reply. NEVER reply with only a greeting or only "how can I help / what do you
@@ -416,6 +433,7 @@ def build_market_snapshot(db: Session) -> str:
             LIMIT 25
         """)).fetchall()
     except Exception:
+        db.rollback()          # aborted txn would poison every later query this request
         rows = []
 
     # merge by normalised symbol, keep the most-traded variant
@@ -1061,13 +1079,74 @@ def _maybe_escalate(db: Session, reply: str, user_type: str, login, client_quest
             row = db.execute(text("SELECT name, id FROM clients WHERE login=:l LIMIT 1"), {"l": int(login)}).fetchone()
             if row:
                 name, cid = row[0], row[1]
+        cname = name or "Live chat client"
         note = (f"[Auto-raised by the AI assistant from a live chat]\n"
                 f"Client message: {client_question[:600]}\n\nWhat the bot flagged: {summary}")
+        # DEDUP: don't spawn a fresh ticket for every message from the same client — a chatty
+        # tester/FAQ-asker made 9+ near-identical tickets. If this client already has an OPEN chat
+        # escalation from the last 48h, append this message to that thread instead of a new ticket.
+        existing = db.execute(text("""
+            SELECT id FROM tickets
+            WHERE source='chat' AND section='AI assistant — escalation'
+              AND status NOT IN ('done','rejected')
+              AND ((:cid IS NOT NULL AND creator_id = :cid) OR (:cid IS NULL AND creator_name = :cname))
+              AND created_at > NOW() - INTERVAL '48 hours'
+            ORDER BY id DESC LIMIT 1
+        """), {"cid": cid, "cname": cname}).fetchone()
+        if existing:
+            db.execute(text("""INSERT INTO ticket_replies (ticket_id, author_type, author_name, body, created_at)
+                VALUES (:tid,'client',:cname,:body, NOW())"""),
+                {"tid": existing[0], "cname": cname,
+                 "body": f"[Another live-chat message from this client]\n{client_question[:600]}\n\nBot flagged: {summary}"})
+            db.execute(text("UPDATE tickets SET admin_unread=TRUE WHERE id=:tid"), {"tid": existing[0]})
+        else:
+            db.execute(text("""
+                INSERT INTO tickets (source, creator_type, creator_id, creator_name, section, note,
+                                     critical, route, for_ai, status, admin_unread)
+                VALUES ('chat','client',:cid,:cname,'AI assistant — escalation',:note,'medium','fix',FALSE,'under_review',TRUE)
+            """), {"cid": cid, "cname": cname, "note": note})
+        db.commit()
+    except Exception:
+        db.rollback()
+    return cleaned
+
+
+_TEACH_RE = re.compile(r"\[\[TEACH:\s*(.+?)\]\]", re.IGNORECASE | re.DOTALL)
+
+
+# Client logins whose in-chat teachings feed the brain DIRECTLY (boss directive Jul 22: "listen
+# to Baker"). Baker is the desk's test/training account. Teachings from any OTHER client are
+# still captured but only as a review ticket (for_ai=FALSE) — a random client must never be able
+# to inject the bot's operating instructions. Staff teachings always feed directly.
+TEACH_TRUSTED_LOGINS = {335003312}
+
+
+def _maybe_teach(db: Session, reply: str, user_type: str, login, client_question: str) -> str:
+    """The user TAUGHT the assistant something (a clear instruction/correction/policy about how it
+    should answer, or a fact to remember). Store it as a for_ai=TRUE operator note so it feeds the
+    bot's brain DIRECTLY (ai_operator_notes) AND is trackable as a Chatbot ticket. Strip the marker.
+    The lesson text is what the bot will follow, so keep the ticket `note` = the clean instruction."""
+    m = _TEACH_RE.search(reply or "")
+    if not m:
+        return reply
+    lesson = m.group(1).strip()[:1000]
+    cleaned = _TEACH_RE.sub("", reply).strip()
+    if not lesson:
+        return cleaned
+    try:
+        name, cid = None, None
+        if login:
+            row = db.execute(text("SELECT name, id FROM clients WHERE login=:l LIMIT 1"), {"l": int(login)}).fetchone()
+            if row:
+                name, cid = row[0], row[1]
+        ct = user_type if user_type in ("client", "staff") else "client"
+        trusted = (user_type == "staff") or (login and int(login) in TEACH_TRUSTED_LOGINS)
         db.execute(text("""
             INSERT INTO tickets (source, creator_type, creator_id, creator_name, section, note,
                                  critical, route, for_ai, status, admin_unread)
-            VALUES ('chat','client',:cid,:cname,'AI assistant — escalation',:note,'medium','fix',FALSE,'under_review',TRUE)
-        """), {"cid": cid, "cname": (name or "Live chat client"), "note": note})
+            VALUES ('chat',:ct,:cid,:cname,'AI assistant — teaching',:note,'medium','review',:fai,'under_review',TRUE)
+        """), {"ct": ct, "cid": cid, "cname": (name or "Live chat"), "note": lesson,
+               "fai": bool(trusted)})
         db.commit()
     except Exception:
         db.rollback()
@@ -1188,8 +1267,32 @@ def chat_message(req: ChatRequest, token: str = Depends(oauth2_scheme),
     reply = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
     if not reply:
         reply = "Sorry, I couldn't generate a reply just now. Please try again."
+    reply = _maybe_teach(db, reply, user_type, login, last_user_text)     # teach the bot's brain if the user taught it
     reply = _maybe_escalate(db, reply, user_type, login, last_user_text)  # open a ticket if flagged (ticket #29)
     reply = _strip_md(reply)   # chat UI shows raw text — remove markdown (**bold**, #, bullets) (ticket #19)
+
+    # ── ANSWER DELIVERY (Jul 22, Baker's complaint): staff answers on this client's escalated
+    # questions are queued in chat_pending_answers — deliver them as the FIRST part of the next
+    # reply, so the client actually hears back ("the team came back to you"). Best-effort.
+    if user_type == "client" and login:
+        try:
+            pend = db.execute(text("""
+                SELECT p.id, p.question, p.answer FROM chat_pending_answers p
+                WHERE p.client_id = (SELECT id FROM clients WHERE login = :l LIMIT 1)
+                  AND p.delivered_at IS NULL
+                ORDER BY p.id LIMIT 3"""), {"l": int(login)}).fetchall()
+            if pend:
+                blocks = []
+                for _pid, _q, _a in pend:
+                    qtxt = f" «{_q[:120]}»" if _q else ""
+                    blocks.append(f"📩 رجعلك الفريق بخصوص سؤالك السابق{qtxt}:\n{_a}")
+                db.execute(text("UPDATE chat_pending_answers SET delivered_at=NOW() WHERE id = ANY(:ids)"),
+                           {"ids": [p[0] for p in pend]})
+                db.commit()
+                reply = "\n\n".join(blocks) + "\n\n" + reply
+        except Exception:
+            db.rollback()
+
     return {"reply": reply, "parts": _split_parts(reply)}
 
 

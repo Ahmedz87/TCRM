@@ -18,7 +18,10 @@ from starlette.responses import Response
 TTL_DEFAULT = 45
 MAX_ENTRIES = 5000
 # never cache these (real-time, auth, docs) and their writes don't trigger a flush
-SKIP = ("/dialer", "/auth", "/register", "/docs", "/openapi", "/redoc", "/favicon", "/ws")
+SKIP = ("/dialer", "/auth", "/register", "/docs", "/openapi", "/redoc", "/favicon", "/ws",
+        # read-only POSTs (bulk lookups) — must NOT bust the app-wide response cache;
+        # /abuse/flags fires on every Clients render and was leaving the cache permanently empty
+        "/abuse/flags", "/notifications")
 
 _store = {}                 # key -> (payload, expiry_epoch)
 _lock = threading.Lock()

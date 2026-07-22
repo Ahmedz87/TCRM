@@ -365,6 +365,28 @@ def audience_preview(payload: dict, db: Session = Depends(get_db), user=Depends(
             "note": "Emails/phones are SHA-256 hashed before they ever leave the CRM. Preview uploads nothing."}
 
 
+@router.get("/audiences/export")
+def audience_export(segment_key: str = "", kind: str = "email",
+                    db: Session = Depends(get_db), user=Depends(get_current_user)):
+    """Download a segment as a SHA-256-hashed list for MANUAL upload in an ad platform's
+    Ads Manager (TikTok: Assets→Audiences→Customer File; Snap: Audiences→Customer List;
+    Meta: Audiences→Customer List). Bypasses the developer-app/OAuth requirement entirely —
+    same hashing the API sync uses, so raw PII still never leaves the CRM. kind=email|phone."""
+    from fastapi.responses import PlainTextResponse
+    seg = SEG_BY_KEY.get(segment_key)
+    if not seg:
+        return {"error": "unknown segment_key"}
+    if kind not in ("email", "phone"):
+        return {"error": "kind must be email or phone"}
+    recs, stats = _resolve_recipients(db, seg)
+    values = sorted({r[kind] for r in recs if kind in r})
+    body = "\n".join(values)
+    fname = f"audience_{seg['key']}_{kind}_sha256.csv"
+    return PlainTextResponse(body, media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{fname}"',
+                                      "X-Matched": str(stats["matched"]), "X-Rows": str(len(values))})
+
+
 @router.post("/audiences/sync")
 def audience_sync(payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
     platform = payload.get("platform")

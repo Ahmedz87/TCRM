@@ -13,10 +13,56 @@ from datetime import datetime, date, timedelta
 router = APIRouter(prefix="/leads", tags=["Leads"])
 
 
+# ---------------------------------------------------------------------------
+# Stage canonicalization (ticket #180 — "filter by CONTACTED shows empty list")
+# The leads LIST shows a lead's stage via the frontend stageOf(): it prefers the
+# `stage` column but falls back to mapping the legacy lowercase `status` onto a
+# stage label (contacted->Contacted, callback->Contacted, converted->Won, ...).
+# The Stage FILTER must match that SAME canonical label, case-insensitively, or a
+# lead shown as "Contacted" won't come back when you filter by "Contacted" (the
+# old exact, case-sensitive `stage=:v OR status=:v` missed legacy/lowercase rows).
+# ---------------------------------------------------------------------------
+
+# any incoming filter value (any case / legacy code) -> canonical stage label
+_STAGE_CANON = {
+    "new": "New Lead", "new lead": "New Lead",
+    "contacted": "Contacted", "callback": "Contacted",
+    "converted": "Won", "won": "Won",
+    "dead": "Not Interested", "not interested": "Not Interested",
+    "no_answer": "No Answer", "no answer": "No Answer",
+    "interested": "Interested in Training",
+    "interested in training": "Interested in Training",
+}
+
+
+def _canon_stage_req(v: str) -> str:
+    """Canonicalize a requested Stage filter value to its display label, so old
+    lowercase links (?status=contacted) and the dropdown label both resolve the
+    same way."""
+    v = (v or "").strip()
+    return _STAGE_CANON.get(v.lower(), v)
+
+
+# SQL expression reproducing the frontend stageOf() for a leads row aliased `l`:
+# the canonical stage label actually shown in the list.
+_CANON_STAGE_SQL = """CASE lower(COALESCE(NULLIF(btrim(l.stage), ''), l.status, 'new'))
+    WHEN 'new'        THEN 'New Lead'
+    WHEN 'new lead'   THEN 'New Lead'
+    WHEN 'contacted'  THEN 'Contacted'
+    WHEN 'callback'   THEN 'Contacted'
+    WHEN 'converted'  THEN 'Won'
+    WHEN 'won'        THEN 'Won'
+    WHEN 'dead'       THEN 'Not Interested'
+    WHEN 'no_answer'  THEN 'No Answer'
+    WHEN 'interested' THEN 'Interested in Training'
+    ELSE COALESCE(NULLIF(btrim(l.stage), ''), 'New Lead')
+END"""
+
+
 @router.get("")
 def get_leads(
     page:      int   = Query(1, ge=1),
-    page_size: int   = Query(20, ge=1, le=100000),
+    page_size: int   = Query(20, ge=1, le=500),
     search:    str   = Query(""),
     status:    str   = Query(""),
     source:    str   = Query(""),
@@ -33,11 +79,21 @@ def get_leads(
     archived:  str   = Query(""),    # ''/'active' = active only, 'archived' = archived, 'all' = both (#57)
     date_from: str   = Query(""),    # created_at >= (YYYY-MM-DD) (#62)
     date_to:   str   = Query(""),    # created_at <= (YYYY-MM-DD) (#62)
+    own:       int   = Query(0),     # 1 = team leader's "My own data" toggle (self only, not team)
+    connected: int   = Query(0),     # 1 = "Connected (last 7d)" tab: only leads contacted in the last week
+    lead_id:   int   = Query(0),     # deep-link: fetch ONE lead by id (right-click open-in-tab)
+    include_converted: int = Query(0),  # #215: 1 = also show leads that already deposited (became clients)
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     where = ["1=1"]
     params: dict = {}
+
+    # Deep-link fetch of a single lead (?lead_id=) — bypasses paging/filters so a URL like
+    # ?lead=<id> always resolves the profile regardless of which list page it's on.
+    if lead_id:
+        where.append("l.id = :lead_id")
+        params["lead_id"] = lead_id
 
     # Archive filter (#57) — default view = active (is_archived=false)
     if archived == "archived":
@@ -46,6 +102,15 @@ def get_leads(
         pass
     else:
         where.append("COALESCE(l.is_archived, FALSE) = FALSE")
+
+    # #215: a lead that made an APPROVED DEPOSIT has become a client — it now lives on the Clients
+    # page, so drop it from the active Leads list by default (its owner is moved sales->retention in
+    # TradeSoft; the CRM fetches that change). A single deep-link fetch (lead_id) and the explicit
+    # include_converted=1 / archived views bypass this so the record is still reachable.
+    if not include_converted and not lead_id and archived not in ("archived", "all"):
+        where.append("""NOT EXISTS (SELECT 1 FROM clients cc
+            WHERE cc.login IN (l.converted_login, l.matched_login)
+              AND COALESCE(cc.total_deposits, 0) > 0)""")
 
     # Date-range on created_at (#62). Index-friendly: compare the RAW column to date
     # strings (no ::date cast). 'to' stays day-INCLUSIVE via a < (date_to + 1 day) bound.
@@ -62,8 +127,13 @@ def get_leads(
         where.append("(l.full_name ILIKE :s OR l.phone ILIKE :s OR l.email ILIKE :s OR l.country ILIKE :s OR l.city ILIKE :s OR l.campaign_name ILIKE :s)")
         params["s"] = f"%{search}%"
     if status:
-        where.append("l.status = :status")
-        params["status"] = status
+        # 'status' filter carries a STAGE name (New Lead / Contacted / ...). Match the
+        # CANONICAL displayed stage (mirrors frontend stageOf) so filtering by e.g.
+        # "Contacted" returns every lead the list shows as Contacted — including legacy
+        # rows that only carry a lowercase `status` (contacted/callback). Case-insensitive;
+        # old lowercase links (?status=contacted) still resolve via _canon_stage_req. (#180)
+        where.append(f"({_CANON_STAGE_SQL}) = :stage_label")
+        params["stage_label"] = _canon_stage_req(status)
     if source:
         where.append("l.source ILIKE :source")
         params["source"] = f"%{source}%"
@@ -94,6 +164,10 @@ def get_leads(
         if au:
             where.append("l.assigned_agent_id = :aid")
             params["aid"] = au[0]
+        else:
+            # not a current staff member — treat as a TradeSoft legacy sales-agent name
+            where.append("l.legacy_sales_agent ILIKE :legacy_agent")
+            params["legacy_agent"] = f"%{agent}%"
     if ib:
         # a lead's IB = the IB of the client it matched to (matched_login -> clients.agent -> ibs)
         where.append("""l.matched_login IN (
@@ -115,28 +189,41 @@ def get_leads(
     elif verified == 'repeated_cid':
         where.append("l.cid_count > 0")
 
-    # Period filter
+    # Period filter — bound on the IRAQI (Baghdad, UTC+3) calendar so the buckets match the dates
+    # the list actually shows (the frontend renders created_at in the viewer's local Iraq time).
+    # Ticket 193: with UTC bounds a lead created e.g. 19/7 23:49 UTC (= 20/7 02:49 Baghdad) fell in
+    # "last week" by SQL yet displayed as 20/7, so "last week" leaked this-week rows. Comparing the
+    # lead's Baghdad wall-clock against Baghdad-anchored week/day/month bounds keeps the two in sync.
     if period != 'all_time':
+        L = "(l.created_at AT TIME ZONE 'Asia/Baghdad')"          # lead time as Baghdad wall-clock
+        N = "(NOW() AT TIME ZONE 'Asia/Baghdad')"                 # 'now' as Baghdad wall-clock
         period_sql = {
-            'today':      "l.created_at >= CURRENT_DATE AND l.created_at < CURRENT_DATE + 1",
-            'this_week':  "l.created_at >= date_trunc('week', NOW())",
-            'last_week':  "l.created_at >= date_trunc('week', NOW()) - interval '1 week' AND l.created_at < date_trunc('week', NOW())",
-            'this_month': "l.created_at >= date_trunc('month', NOW())",
-            'last_month': "l.created_at >= date_trunc('month', NOW()) - interval '1 month' AND l.created_at < date_trunc('month', NOW())",
-            'this_year':  "l.created_at >= date_trunc('year', NOW())",
-            'last_year':  "l.created_at >= date_trunc('year', NOW()) - interval '1 year' AND l.created_at < date_trunc('year', NOW())",
+            'today':      f"{L} >= date_trunc('day', {N}) AND {L} < date_trunc('day', {N}) + interval '1 day'",
+            'yesterday':  f"{L} >= date_trunc('day', {N}) - interval '1 day' AND {L} < date_trunc('day', {N})",
+            'this_week':  f"{L} >= date_trunc('week', {N})",
+            'last_week':  f"{L} >= date_trunc('week', {N}) - interval '1 week' AND {L} < date_trunc('week', {N})",
+            'this_month': f"{L} >= date_trunc('month', {N})",
+            'last_month': f"{L} >= date_trunc('month', {N}) - interval '1 month' AND {L} < date_trunc('month', {N})",
+            'this_year':  f"{L} >= date_trunc('year', {N})",
+            'last_year':  f"{L} >= date_trunc('year', {N}) - interval '1 year' AND {L} < date_trunc('year', {N})",
         }
         if period in period_sql:
             where.append(period_sql[period])
 
-    # Role-based visibility: agent -> own leads; manager -> own + team; director/admin -> all
-    _scope = rbac.scope_agent_ids(db, current_user)
+    # Role-based visibility: agent -> own leads; manager -> own + team; director/admin -> all.
+    # section='leads' honors a restricted leader; own=1 = the "My own data" toggle.
+    _scope = rbac.scope_agent_ids(db, current_user, section="leads", own=bool(own))
     if _scope is not None:
         if _scope:
             where.append("l.assigned_agent_id = ANY(:rbac_agent_ids)")
             params["rbac_agent_ids"] = _scope
         else:
             where.append("FALSE")
+
+    # "Connected (last 7d)" tab: only leads this scope contacted in the last week, newest contact first.
+    # last_call_at is stamped by /leads/{id}/log-call, so this is exactly "who we connected with".
+    if connected:
+        where.append("l.last_call_at IS NOT NULL AND l.last_call_at >= NOW() - INTERVAL '7 days'")
 
     wc = " AND ".join(where)
     sort_map = {
@@ -146,8 +233,12 @@ def get_leads(
         'country':    'l.country ASC',
     }
     sort_map['score'] = 'l.score DESC NULLS LAST'
-    sort_map['network'] = '(COALESCE(l.ip_count,0)*35 + COALESCE(l.cid_count,0)*50) DESC, l.created_at DESC'
-    order = sort_map.get(sort, 'l.created_at DESC')
+    sort_map['network'] = 'COALESCE(l.network_score,0) DESC, l.created_at DESC'
+    # Last login (opt-in sort only): correlated on the lead's own account so the common paths pay nothing.
+    sort_map['last_login'] = ("(SELECT MAX(ai.last_seen) FROM account_identifiers ai "
+                              "WHERE ai.login = COALESCE(l.converted_login, l.matched_login)) DESC NULLS LAST")
+    # in the Connected tab, ALWAYS sort by most-recent contact (the user's spec: "sorted by last action")
+    order = 'l.last_call_at DESC NULLS LAST' if connected else sort_map.get(sort, 'l.created_at DESC')
     # No pinning - pure sort. Recaptures rise on Priority via their +50 score.
 
     total = db.execute(text(f"SELECT COUNT(*) FROM leads l WHERE {wc}"), params).scalar() or 0
@@ -167,18 +258,51 @@ def get_leads(
                l.bonus_eligible, l.bonus_claimed, l.bonus_blocked_reason,
                l.kyc_id_uploaded, l.kyc_id_verified,
                l.kyc_address_uploaded, l.kyc_address_verified, l.kyc_notes,
-               ibx.name AS ib_name, l.meta_created, l.last_call_outcome,
+               -- IB column: the referring IB. customers.ib (text, e.g. 'Iraq-MQL5') is the
+               -- authoritative referrer; fall back to the IB resolved via a matched client's agent.
+               COALESCE(NULLIF(TRIM(cust.ib),''), ibx.name) AS ib_name, l.meta_created, l.last_call_outcome,
                COALESCE(l.is_archived, FALSE) AS is_archived,
                (l.password_hash IS NOT NULL) AS has_password,
-               l.date_of_birth, l.customer_no, l.legacy_sales_agent
+               l.date_of_birth, l.customer_no, l.legacy_sales_agent, l.stage,
+               -- OLD record (the client this recapture lead matched): show its ORIGINAL reg date,
+               -- name and deposits so the desk can SEE who this really is (58,59,60)
+               mc.name, mc.reg_date, mc.total_deposits,
+               l.training_need, tr.stage AS training_stage
         FROM leads l
         LEFT JOIN users u ON u.id = l.assigned_agent_id
         LEFT JOIN clients mc ON mc.login = l.matched_login
+        LEFT JOIN training_requests tr ON tr.lead_id = l.id
         LEFT JOIN ibs ibx ON ibx.agent_id = mc.agent
+        LEFT JOIN customers cust ON cust.customer_no = l.customer_no
         WHERE {wc}
         ORDER BY {order}
         LIMIT :limit OFFSET :offset
     """), {**params, "limit": page_size, "offset": (page-1)*page_size}).fetchall()
+
+    # canonical network score (0-10) — the SAME column every page reads (build_network_scores.py).
+    # fetched separately to avoid disturbing this query's positional row indexing.
+    _lids = [r[0] for r in rows]
+    netmap = {}
+    if _lids:
+        netmap = {x[0]: int(x[1] or 0) for x in db.execute(text(
+            "SELECT id, COALESCE(network_score,0) FROM leads WHERE id = ANY(:l)"),
+            {"l": _lids}).fetchall()}
+
+    # #183: last login (last time seen online by the MT5 bridge) for verified leads that already
+    # have a matched/converted trading account. Lets the desk spot verified accounts that still
+    # log in — the ones worth a deposit call — vs. verified-years-ago accounts that went cold.
+    _llmap = {}
+    _login_by_lead = {r[0]: (r[19] or r[32]) for r in rows if (r[19] or r[32])}
+    if _login_by_lead:
+        _logins = list({v for v in _login_by_lead.values() if v})
+        _ls = {x[0]: x[1] for x in db.execute(text(
+            "SELECT login, MAX(last_seen) FROM account_identifiers "
+            "WHERE login = ANY(:l) AND last_seen IS NOT NULL GROUP BY login"),
+            {"l": _logins}).fetchall()}
+        for _lid, _lg in _login_by_lead.items():
+            _v = _ls.get(_lg)
+            if _v:
+                _llmap[_lid] = _v
 
     # KPIs
     kpis = db.execute(text(f"""
@@ -189,10 +313,10 @@ def get_leads(
             COUNT(*) FILTER (WHERE status='callback') as callback,
             COUNT(*) FILTER (WHERE status='converted') as converted,
             COUNT(*) FILTER (WHERE status='dead') as dead,
-            COUNT(*) FILTER (WHERE source IN ('facebook','Facebook')) as from_facebook,
-            COUNT(*) FILTER (WHERE source IN ('instagram','Instagram')) as from_instagram,
-            COUNT(*) FILTER (WHERE source IN ('messenger','audience_network')) as from_meta_other,
-            COUNT(*) FILTER (WHERE source='Google') as from_google
+            COUNT(*) FILTER (WHERE lower(source)='facebook') as from_facebook,
+            COUNT(*) FILTER (WHERE lower(source)='instagram') as from_instagram,
+            COUNT(*) FILTER (WHERE lower(source) IN ('messenger','audience_network')) as from_meta_other,
+            COUNT(*) FILTER (WHERE lower(source)='google') as from_google
         FROM leads l WHERE {wc}
     """), params).fetchone()
 
@@ -208,9 +332,10 @@ def get_leads(
             "kyc_status": r[15] or "pending", "notes": r[16] or "",
             "call_attempts": r[17] or 0,
             "last_call_at": str(r[18]) if r[18] else "",
-            "last_call_outcome": (r[-5] or ""),
+            "last_call_outcome": (r[51] or ""),
             "converted_login": r[19],
             "converted_at": str(r[20]) if r[20] else "",
+            "last_login": (_llmap.get(r[0]).isoformat() if _llmap.get(r[0]) else ""),  # #183
             "utm_source": r[21] or "", "utm_medium": r[22] or "",
             "utm_campaign": r[23] or "",
             "created_at": str(r[24]) if r[24] else "",
@@ -219,7 +344,7 @@ def get_leads(
             "meta_stage": r[28] or "", "meta_platform": r[29] or "",
             "meta_stage_status": r[30] or "", "meta_quality": r[30] or "",
             "match_badge": r[31] or "", "matched_login": r[32], "score": r[33] or 0,
-            "network_score": min(100, (r[38] or 0)*35 + (r[40] or 0)*50),
+            "network_score": netmap.get(r[0], 0),   # 0-10 canonical (build_network_scores.py)
             "phone_verified": r[34] or False, "email_verified": r[35] or False,
             "is_verified": r[36] or False,
             "ip_address": r[37] or "", "ip_count": r[38] or 0,
@@ -233,11 +358,22 @@ def get_leads(
             "kyc_notes": r[48] or "",
             "ib_name": r[49] or "",
             "meta_created": str(r[50]) if r[50] else "",
-            "is_archived": bool(r[-4]),
-            "has_password": bool(r[-3]),
-            "date_of_birth": str(r[-3]) if r[-3] else "",
-            "customer_no": (r[-2] or ""),
-            "legacy_sales_agent": (r[-1] or ""),
+            # tail columns by EXPLICIT index (51..57) — negative indexing drifted twice
+            # when columns were appended; SELECT order: ...ib_name(49), meta_created(50),
+            # last_call_outcome(51), is_archived(52), has_password(53), date_of_birth(54),
+            # customer_no(55), legacy_sales_agent(56), stage(57)
+            "is_archived": bool(r[52]),
+            "has_password": bool(r[53]),
+            "date_of_birth": str(r[54]) if r[54] else "",
+            "customer_no": (r[55] or ""),
+            "legacy_sales_agent": (r[56] or ""),
+            "stage": (r[57] or "New Lead"),
+            # the matched OLD record (recapture): original registration date + who they already are
+            "matched_name": (r[58] or ""),
+            "matched_reg_date": str(r[59]) if r[59] else "",
+            "matched_deposits": float(r[60]) if r[60] is not None else 0.0,
+            "training_need": (r[61] or ""),          # sales-chosen level (beginner / needs_improvement / …)
+            "training_stage": (r[62] or ""),         # training team's current stage on the board
         } for r in rows],
         "total": total,
         "kpis": {
@@ -251,19 +387,61 @@ def get_leads(
 
 @router.post("")
 def create_lead(data: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    import re as _re2
+    email = (data.get("email") or "").strip().lower()
+    phone = (data.get("phone") or "").strip()
+    p9 = _re2.sub(r"\D", "", phone)[-9:] if len(_re2.sub(r"\D", "", phone)) >= 9 else ""
+
+    # RULE 1: a lead must be reachable — at least one of phone / email.
+    if not email and not phone:
+        raise HTTPException(status_code=400, detail="At least a phone number or an email is required")
+
+    # RULE 2: uniqueness across ALL of TNFX (leads + clients). Whoever first registered this
+    # person keeps them — sales can't create a duplicate lead to grab an existing contact.
+    def _agent_name(uid):
+        if not uid:
+            return None
+        r = db.execute(text("SELECT full_name FROM users WHERE id=:i"), {"i": uid}).fetchone()
+        return r[0] if r else None
+
+    dup = db.execute(text("""
+        SELECT id, full_name, assigned_agent_id, legacy_sales_agent FROM leads
+        WHERE (:em <> '' AND lower(TRIM(email)) = :em)
+           OR (:p9 <> '' AND right(regexp_replace(COALESCE(phone,''),'[^0-9]','','g'),9) = :p9)
+        LIMIT 1"""), {"em": email, "p9": p9}).fetchone()
+    if dup:
+        owner = _agent_name(dup[2]) or (dup[3] or "unassigned")
+        raise HTTPException(status_code=409,
+            detail=f"Already exists in TNFX as lead #{dup[0]} ({dup[1] or 'no name'}) — sales agent: {owner}")
+
+    dupc = db.execute(text("""
+        SELECT login, name, assigned_agent_id, legacy_sales_agent FROM clients
+        WHERE (:em <> '' AND lower(TRIM(email)) = :em)
+           OR (:p9 <> '' AND right(regexp_replace(COALESCE(phone,''),'[^0-9]','','g'),9) = :p9)
+        LIMIT 1"""), {"em": email, "p9": p9}).fetchone()
+    if dupc:
+        owner = _agent_name(dupc[2]) or (dupc[3] or "unassigned")
+        raise HTTPException(status_code=409,
+            detail=f"Already a TNFX client — account #{dupc[0]} ({dupc[1] or 'no name'}) — sales agent: {owner}")
+
+    # RULE 3: a sales agent can only create leads for THEMSELVES (managers/admins may assign).
+    agent_id = data.get("assigned_agent_id") or None
+    if getattr(current_user, "role", "") == "sales_agent":
+        agent_id = current_user.id
+
     result = db.execute(text("""
         INSERT INTO leads (full_name, phone, email, country, city, language,
-                           source, platform, campaign_name, status, assigned_agent_id, notes, created_at, updated_at)
+                           source, platform, campaign_name, status, stage, assigned_agent_id, notes, created_at, updated_at)
         VALUES (:name, :phone, :email, :country, :city, :lang,
-                :source, :platform, :campaign, :status, :agent, :notes, NOW(), NOW())
+                :source, :platform, :campaign, :status, 'New Lead', :agent, :notes, NOW(), NOW())
         RETURNING id
     """), {
-        "name": data.get("full_name",""), "phone": data.get("phone",""),
-        "email": data.get("email",""), "country": data.get("country",""),
+        "name": data.get("full_name",""), "phone": phone,
+        "email": email, "country": data.get("country",""),
         "city": data.get("city",""), "lang": data.get("language","ar"),
         "source": data.get("source","manual"), "platform": data.get("platform","manual"),
         "campaign": data.get("campaign_name",""), "status": data.get("status","new"),
-        "agent": data.get("assigned_agent_id"), "notes": data.get("notes",""),
+        "agent": agent_id, "notes": data.get("notes",""),
     })
     db.commit()
     return {"id": result.fetchone()[0], "message": "Lead created"}
@@ -271,15 +449,47 @@ def create_lead(data: dict, db: Session = Depends(get_db), current_user: models.
 
 @router.patch("/{lead_id}")
 def update_lead(lead_id: int, data: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    allowed = ["full_name","phone","email","country","city","status","assigned_agent_id","notes","kyc_status","call_attempts"]
+    allowed = ["full_name","phone","email","country","city","status","stage","assigned_agent_id","notes","kyc_status","call_attempts","training_need"]
     updates = {k: v for k, v in data.items() if k in allowed}
     if not updates:
         return {"message": "Nothing to update"}
+    # RBAC (go-live hardening): a scoped agent may only edit their OWN leads, and only
+    # managers/admins may (re)assign a lead to an agent — otherwise any agent could
+    # silently steal leads by PATCHing assigned_agent_id.
+    import rbac
+    # Changing a lead's sales agent is restricted to admins and Rahaf ONLY (desk rule Jul 2026).
+    if "assigned_agent_id" in updates and not rbac.may_reassign_agent(current_user):
+        raise HTTPException(status_code=403, detail="Only admins can change a lead's sales agent")
+    # A lead's IDENTITY/CONTACT info (name/phone/email/country/city/KYC) may only be edited by
+    # supervisory/ops roles — a plain agent may still change stage/notes/calls but NOT the lead's
+    # core data (ticket #191, critical security). Workflow fields stay editable by the scoped agent.
+    _LEAD_INFO_FIELDS = {"full_name", "phone", "email", "country", "city", "kyc_status"}
+    if (_LEAD_INFO_FIELDS & updates.keys()) and not rbac.may_edit_lead_info(db, current_user):
+        raise HTTPException(status_code=403, detail="You are not permitted to edit lead information")
+    scope = rbac.scope_agent_ids(db, current_user)
+    if scope is not None:
+        owner = db.execute(text("SELECT assigned_agent_id FROM leads WHERE id=:id"),
+                           {"id": lead_id}).scalar()
+        if owner is not None and owner not in scope:
+            raise HTTPException(status_code=403, detail="Not your lead")
     set_clause = ", ".join([f"{k}=:{k}" for k in updates])
     updates["id"] = lead_id
     updates["updated_at"] = datetime.utcnow()
     db.execute(text(f"UPDATE leads SET {set_clause}, updated_at=:updated_at WHERE id=:id"), updates)
     db.commit()
+    # When sales set a training need, mirror it onto the Training board so the training team picks it up.
+    if updates.get("training_need"):
+        lr = db.execute(text("SELECT full_name, phone, country, customer_no FROM leads WHERE id=:i"), {"i": lead_id}).fetchone()
+        if lr:
+            db.execute(text("""INSERT INTO training_requests
+                (lead_id, customer_no, subject_name, phone, country, source, stage, level, requested_by, requested_by_name)
+                VALUES (:lid,:cn,:nm,:ph,:co,'lead','requested',:lv,:by,:byn)
+                ON CONFLICT (lead_id) WHERE lead_id IS NOT NULL
+                DO UPDATE SET level=EXCLUDED.level, updated_at=NOW(), updated_by_name=EXCLUDED.requested_by_name"""),
+                {"lid": lead_id, "cn": lr[3], "nm": lr[0], "ph": lr[1], "co": lr[2],
+                 "lv": updates["training_need"], "by": current_user.id,
+                 "byn": (getattr(current_user, "full_name", None) or getattr(current_user, "email", None) or "Staff")})
+            db.commit()
     return {"message": "Updated"}
 
 
@@ -300,6 +510,18 @@ def update_lead_contact(lead_id: int, data: dict, db: Session = Depends(get_db),
     - password (if a non-empty string) is bcrypt-hashed into leads.password_hash
       (column added additively this session). Min length 6.
     """
+    # Editing a lead's contact details (incl. portal password) is lead-information editing —
+    # restricted to supervisory/ops roles, not plain sales agents (ticket #191, critical security).
+    import rbac
+    if not rbac.may_edit_lead_info(db, current_user):
+        raise HTTPException(status_code=403, detail="You are not permitted to edit lead information")
+    # a scoped supervisor may still only touch leads within their own team book
+    _scope = rbac.scope_agent_ids(db, current_user)
+    if _scope is not None:
+        _owner = db.execute(text("SELECT assigned_agent_id FROM leads WHERE id=:id"),
+                            {"id": lead_id}).scalar()
+        if _owner is not None and _owner not in _scope:
+            raise HTTPException(status_code=403, detail="Not your lead")
     updates: dict = {}
 
     # Date of birth — accept YYYY-MM-DD (blank clears). Validate the format/range.
@@ -358,20 +580,43 @@ def update_lead_contact(lead_id: int, data: dict, db: Session = Depends(get_db),
             "has_password": "password_hash" in changed}
 
 
+_CALL_COLS_OK = False
+
+
 @router.post("/{lead_id}/call")
 def log_call(lead_id: int, data: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     note = data.get("note","Called")
+    # Notes are stored one-per-line (entries joined by \n) and the UI splits on \n to list them.
+    # So a pasted MULTI-LINE note would be split into several rows (the 2nd+ losing its timestamp).
+    # Collapse any newlines inside a single note into " / " so each note stays ONE entry (#162).
+    import re
+    note = re.sub(r'\s*[\r\n]+\s*', ' / ', str(note)).strip()
     # Format comment with agent name, timestamp, action
     from datetime import datetime
     timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
     formatted_note = f"[{timestamp}] {current_user.full_name}: {note}"
     
+    # last_call_by / last_call_at were referenced but MISSING → every note post 500'd.
+    # Add them ONCE per process (catalog-check first — never take the ACCESS EXCLUSIVE lock on the
+    # hot `leads` table on a no-op ALTER; that's the documented outage foot-gun).
+    global _CALL_COLS_OK
+    if not _CALL_COLS_OK:
+        try:
+            miss = db.execute(text("""SELECT 2 - COUNT(*) FROM information_schema.columns
+                WHERE table_name='leads' AND column_name IN ('last_call_by','last_call_at')""")).scalar()
+            if miss:
+                db.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_call_by INTEGER"))
+                db.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_call_at TIMESTAMPTZ"))
+                db.commit()
+            _CALL_COLS_OK = True
+        except Exception:
+            db.rollback()
     db.execute(text("""
         UPDATE leads SET
-            call_attempts = call_attempts + 1,
+            call_attempts = COALESCE(call_attempts, 0) + 1,
             last_call_at = NOW(),
             last_call_by = :uid,
-            notes = CASE 
+            notes = CASE
                 WHEN notes IS NULL OR notes = '' THEN :note
                 ELSE notes || E'\n' || :note
             END,
@@ -379,6 +624,12 @@ def log_call(lead_id: int, data: dict, db: Session = Depends(get_db), current_us
         WHERE id = :id
     """), {"uid": current_user.id, "note": formatted_note, "id": lead_id})
     db.commit()
+    # #222: if someone OTHER than the lead's assigned agent adds a comment, email the assigned agent.
+    try:
+        import comment_notify
+        comment_notify.notify_cross_agent_comment(db, "lead", lead_id, current_user, note)
+    except Exception:
+        pass
     # the desk working an archived lead = re-engagement -> bring it back to the active list
     try:
         import reactivation
@@ -386,6 +637,72 @@ def log_call(lead_id: int, data: dict, db: Session = Depends(get_db), current_us
     except Exception:
         db.rollback()
     return {"message": "Call logged", "note": formatted_note}
+
+
+@router.post("/{lead_id}/send-verification-email")
+def send_lead_verification_email(lead_id: int, db: Session = Depends(get_db),
+                                 current_user: models.User = Depends(get_current_user)):
+    """#294: send a lead a TNFX-branded 'confirm your email' request straight from the new CRM
+    (the desk had to fall back to the old CRM for this). Mirrors the KYC console's verification
+    email but keys off leads.email instead of a registration."""
+    row = db.execute(text("SELECT full_name, email FROM leads WHERE id=:l"), {"l": lead_id}).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    name, email = row[0], (row[1] or "").strip()
+    if not email or "@" not in email:
+        return {"ok": False, "error": "No email address on file for this lead."}
+    import email_send
+    if not email_send.configured():
+        return {"ok": False, "error": "Email is not configured on the server yet."}
+    ok = email_send.send(
+        email, "Confirm your TNFX email address",
+        "Please confirm your email address by logging in at https://my1.tnfx.co",
+        body_html=email_send.verify_email_html(name, verify_url="https://my1.tnfx.co/portal/"))
+    return {"ok": bool(ok), "sent_to": email}
+
+
+# A lead note is editable/deletable by its AUTHOR for 60 minutes; then it freezes (#242 —
+# parity with client comments). Lead notes are stored as "[YYYY-MM-DD HH:MM] Name: text" lines.
+LEAD_NOTE_EDIT_WINDOW_MIN = 60
+_NOTE_LINE_RE = None  # compiled lazily
+
+
+@router.post("/{lead_id}/note-edit")
+def edit_lead_note(lead_id: int, data: dict, db: Session = Depends(get_db),
+                   current_user: models.User = Depends(get_current_user)):
+    """Edit or delete ONE of the caller's OWN note lines within 60 min of posting (#242).
+    Body: {original: <the exact stored line>, note: <new text, or empty to DELETE>}."""
+    import re
+    original = str(data.get("original") or "").strip()
+    new_text = re.sub(r'\s*[\r\n]+\s*', ' / ', str(data.get("note") or "")).strip()
+    m = re.match(r"^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]\s*(.+?):\s(.*)$", original, re.S)
+    if not m:
+        raise HTTPException(status_code=400, detail="Note not found")
+    ts_s, author = m.group(1), m.group(2).strip()
+    if author != (current_user.full_name or "").strip():
+        raise HTTPException(status_code=403, detail="You can only edit your own notes")
+    try:
+        ts = datetime.strptime(ts_s, "%Y-%m-%d %H:%M")     # stored in UTC (log_call uses utcnow)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Note not found")
+    if (datetime.utcnow() - ts).total_seconds() > LEAD_NOTE_EDIT_WINDOW_MIN * 60:
+        raise HTTPException(status_code=403, detail="This note can no longer be edited (60-minute window)")
+    notes = db.execute(text("SELECT notes FROM leads WHERE id=:id"), {"id": lead_id}).scalar()
+    lines = [ln for ln in str(notes or "").split("\n")]
+    try:
+        idx = next(i for i, ln in enumerate(lines) if ln.strip() == original)
+    except StopIteration:
+        raise HTTPException(status_code=404, detail="Note not found")
+    if new_text:
+        lines[idx] = f"[{ts_s}] {author}: {new_text}"
+        action = "edited"
+    else:
+        lines.pop(idx)
+        action = "deleted"
+    db.execute(text("UPDATE leads SET notes=:n, updated_at=NOW() WHERE id=:id"),
+               {"n": "\n".join(lines), "id": lead_id})
+    db.commit()
+    return {"message": f"Note {action}", "notes": "\n".join(lines)}
 
 
 @router.post("/{lead_id}/convert")
@@ -399,11 +716,56 @@ def convert_lead(lead_id: int, data: dict, db: Session = Depends(get_db), curren
     return {"message": "Lead converted"}
 
 
+@router.get("/{lead_id}/trading-accounts")
+def lead_trading_accounts(lead_id: int, db: Session = Depends(get_db),
+                          current_user: models.User = Depends(get_current_user)):
+    """Trading account(s) belonging to a VERIFIED/matched lead. READ-ONLY.
+
+    A lead links to a client by matched_login (leads.matched_login -> clients.login) or,
+    failing that, by phone. A person's accounts are the clients rows sharing the same phone
+    (same aggregation the Clients list uses). Returns up to 10 accounts, richest first.
+    Empty list when the lead has no match / no accounts.
+    """
+    import re as _re_ta
+    accounts: list = []
+    try:
+        row = db.execute(text(
+            "SELECT matched_login, converted_login, phone FROM leads WHERE id = :id"),
+            {"id": lead_id}).fetchone()
+        if not row:
+            return {"trading_accounts": []}
+        matched_login = row[0] or row[1]           # matched client login (may be None)
+        phone = row[2] or ""
+        p9 = _re_ta.sub(r"\D", "", phone)[-9:] if phone else ""
+        if matched_login is None and not p9:
+            return {"trading_accounts": []}
+
+        rows = db.execute(text("""
+            SELECT c.login, c.platform, c.group_name, c.balance
+            FROM clients c
+            WHERE (:ml IS NOT NULL AND c.login = :ml)
+               OR (:p9 <> '' AND right(regexp_replace(COALESCE(c.phone,''),'[^0-9]','','g'),9) = :p9)
+            ORDER BY c.balance DESC NULLS LAST
+            LIMIT 10
+        """), {"ml": matched_login, "p9": p9}).fetchall()
+        accounts = [{
+            "login": r[0],
+            "platform": r[1] or "MT5",
+            "group_name": r[2] or "",
+            "balance": float(r[3]) if r[3] is not None else 0.0,
+        } for r in rows]
+    except Exception:
+        db.rollback()
+        return {"trading_accounts": []}
+    return {"trading_accounts": accounts}
+
+
 @router.delete("/{lead_id}")
 def delete_lead(lead_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    # Permanent delete — keep it above the front-line sales_agent role (they can archive instead).
-    if (current_user.role or "").lower() == "sales_agent":
-        raise HTTPException(status_code=403, detail="Sales agents can archive leads, not delete them.")
+    # Permanent delete — management only; everyone else archives (go-live hardening:
+    # was only blocking sales_agent, letting any other role hard-delete leads).
+    if (current_user.role or "").lower() not in ("super_admin", "admin", "director", "sales_manager"):
+        raise HTTPException(status_code=403, detail="Only managers/admins can delete leads — archive instead.")
     db.execute(text("DELETE FROM leads WHERE id=:id"), {"id": lead_id})
     db.commit()
     return {"message": "Deleted"}
@@ -727,7 +1089,7 @@ def check_welcome_bonus(login: int, data: dict, db: Session = Depends(get_db),
 @router.get("/verified")
 def get_verified_accounts(
     page:      int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=100000),
+    page_size: int = Query(50, ge=1, le=500),
     search:    str = Query(""),
     country:   str = Query(""),
     sort:      str = Query("date"),  # date | name | country | login
@@ -747,6 +1109,11 @@ def get_verified_accounts(
     """
     where = ["c.kyc_status = 'verified'", "c.login IS NOT NULL"]
     params: dict = {}
+    # go-live hardening: scope to the caller's book (agents were seeing the whole base)
+    _scope = rbac.scope_agent_ids(db, current_user)
+    if _scope is not None:
+        where.append("c.assigned_agent_id = ANY(:rbac_ids)")
+        params["rbac_ids"] = _scope or [-1]
 
     if search:
         where.append("(c.name ILIKE :s OR CAST(c.login AS TEXT) ILIKE :s OR c.email ILIKE :s OR c.phone ILIKE :s)")
@@ -796,7 +1163,7 @@ def get_verified_accounts(
 @router.get("/funded")
 def get_funded_accounts(
     page:      int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=100000),
+    page_size: int = Query(50, ge=1, le=500),
     search:    str = Query(""),
     country:   str = Query(""),
     approved_only: str = Query("1"),   # '1' = require KYC-approved; '' = any deposited account
@@ -815,6 +1182,11 @@ def get_funded_accounts(
     """
     where = ["EXISTS (SELECT 1 FROM transactions t WHERE t.login = c.login AND t.tx_type='deposit')"]
     params: dict = {}
+    # go-live hardening: scope to the caller's book (agents were seeing the whole base)
+    _scope = rbac.scope_agent_ids(db, current_user)
+    if _scope is not None:
+        where.append("c.assigned_agent_id = ANY(:rbac_ids)")
+        params["rbac_ids"] = _scope or [-1]
 
     if approved_only == "1":
         where.append("c.kyc_status = 'verified'")

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { apiGet } from './api';
+import { CT } from './crmTable';
 
 // Searchable dropdown (combobox): type to search, pick a result, or clear.
 function SearchSelect({ placeholder, selected, onPick, onClear, fetcher, renderItem, width = 200 }: {
@@ -81,7 +82,7 @@ const fmtT = (s: string | null) => s ? s.replace('T', ' ').slice(0, 16) : '—';
 export default function IBTradesTab({ endpoint, period, dateFrom, dateTo }:
   { endpoint: string; period: string; dateFrom?: string; dateTo?: string }) {
   const [view, setView] = useState('eligible');
-  const [f, setF] = useState<any>({ country: '', city: '', platform: '', account_type: '' });
+  const [f, setF] = useState<any>({ country: '', city: '', platform: '', account_type: '', ticket: '' });
   const [selIB, setSelIB] = useState<any>(null);          // {id,label} selected IB filter
   const [selClient, setSelClient] = useState<any>(null);  // {login,label} selected client filter
   const [page, setPage] = useState(1);
@@ -110,8 +111,6 @@ export default function IBTradesTab({ endpoint, period, dateFrom, dateTo }:
   const opts = data?.filters || { countries: [], cities: [], account_types: [], platforms: [] };
   const t = data?.totals || { trades: 0, lots: 0, commission: 0, profit: 0 };
   const sel: React.CSSProperties = { padding: '5px 8px', background: '#373f4d', border: '1px solid #626d80', borderRadius: 7, color: '#e0e0e0', fontSize: 11, outline: 'none' };
-  const th: React.CSSProperties = { padding: '8px 10px', fontSize: 10, color: '#667', textTransform: 'uppercase', textAlign: 'left', whiteSpace: 'nowrap' };
-  const td: React.CSSProperties = { padding: '8px 10px', fontSize: 12, borderTop: '1px solid #373f4d', whiteSpace: 'nowrap' };
 
   return (
     <div style={{ background: '#2c333e', border: '1px solid #4f596b', borderRadius: 12, overflow: 'hidden' }}>
@@ -125,7 +124,7 @@ export default function IBTradesTab({ endpoint, period, dateFrom, dateTo }:
           </button>
         ))}
         <div style={{ marginLeft: 'auto', fontSize: 11.5, color: '#9aa3b3' }}>
-          {t.trades.toLocaleString()} trades · {Math.round(t.lots).toLocaleString()} lots ·
+          {t.trades.toLocaleString('en-GB')} trades · {Math.round(t.lots).toLocaleString('en-GB')} lots ·
           {view === 'eligible'
             ? <b style={{ color: '#00e5a0' }}> {fmtUSD(t.commission)} paid</b>
             : <b style={{ color: '#ff8800' }}> {fmtUSD(t.potential || 0)} saved (not paid)</b>}
@@ -150,6 +149,8 @@ export default function IBTradesTab({ endpoint, period, dateFrom, dateTo }:
             )}
           />
         )}
+        <input value={f.ticket} onChange={e => setF({ ...f, ticket: e.target.value.replace(/\D/g, '') })}
+          placeholder="Trade ID…" style={{ ...sel, width: 110 }} title="Exact trade / ticket number" />
         <SearchSelect
           placeholder="Search client (name, email, phone, account)…"
           width={250}
@@ -176,40 +177,39 @@ export default function IBTradesTab({ endpoint, period, dateFrom, dateTo }:
         <select value={f.city} onChange={e => setF({ ...f, city: e.target.value })} style={sel}>
           <option value="">All cities</option>{(opts.cities || []).map((x: string) => <option key={x} value={x}>{x}</option>)}
         </select>
-        {(selIB || selClient || f.country || f.city || f.platform || f.account_type) &&
-          <button onClick={() => { setF({ country: '', city: '', platform: '', account_type: '' }); setSelIB(null); setSelClient(null); }}
+        {(selIB || selClient || f.country || f.city || f.platform || f.account_type || f.ticket) &&
+          <button onClick={() => { setF({ country: '', city: '', platform: '', account_type: '', ticket: '' }); setSelIB(null); setSelClient(null); }}
             style={{ ...sel, color: '#ff5d6c', borderColor: '#ff4d4d', cursor: 'pointer' }}>✕ Clear</button>}
       </div>
 
       {/* table */}
-      <div style={{ overflowX: 'auto', maxHeight: 540, overflowY: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 1100 }}>
-          <thead style={{ position: 'sticky', top: 0, background: '#373f4d' }}>
-            <tr>{['IB', 'Trade ID', 'Account', 'Client', 'Country', 'City', 'Platform', 'Type', 'Symbol', 'Dir', 'Open', 'Close', 'Hold', 'Lots', 'Profit', 'Commission'].map(h =>
-              <th key={h} style={th}>{h}</th>)}</tr>
+      <div style={{ ...CT.scroll, maxHeight: 540 }}>
+        <table style={{ ...CT.table, minWidth: 1100 }}>
+          <thead>
+            <tr style={CT.theadTr}>{[...(isAllIBs ? ['IB'] : []), 'Trade ID', 'Account', 'Client', 'Address', 'Platform', 'Type', 'Symbol', 'Dir', 'Open', 'Close', 'Lots', 'Profit', 'Commission'].map(h =>
+              <th key={h} style={CT.th(false, ['Lots', 'Profit', 'Commission'].includes(h) ? 'right' : 'left')}>{h}</th>)}</tr>
           </thead>
           <tbody>
-            {loading && <tr><td style={td} colSpan={16}>Loading…</td></tr>}
-            {!loading && (data?.trades || []).length === 0 && <tr><td style={{ ...td, color: '#666' }} colSpan={16}>No trades for this filter/period.</td></tr>}
+            {loading && <tr><td style={CT.td} colSpan={14}>Loading…</td></tr>}
+            {!loading && (data?.trades || []).length === 0 && <tr><td style={{ ...CT.td, color: '#666' }} colSpan={14}>No trades for this filter/period.</td></tr>}
             {!loading && (data?.trades || []).map((r: any, i: number) => (
-              <tr key={i} style={{ background: !r.eligible ? 'rgba(255,136,0,0.05)' : 'transparent' }}>
-                <td style={{ ...td, color: '#00aaff', fontWeight: 600 }} title={r.ib_name ? `${r.ib_name} · ${r.ib_code}` : (r.ib_code || '')}>{(r.ib_code || '').replace(/^IB/i, '') || '—'}</td>
-                <td style={{ ...td, color: '#8a93a3', fontFamily: 'monospace' }}>{r.deal_id}</td>
-                <td style={{ ...td, color: '#4d9fff', fontFamily: 'monospace' }}>{r.login}</td>
-                <td style={td}>{r.client}</td>
-                <td style={{ ...td, color: '#9aa3b3' }}>{r.country || '—'}</td>
-                <td style={{ ...td, color: '#9aa3b3' }}>{r.city || '—'}</td>
-                <td style={td}>{r.platform}</td>
-                <td style={{ ...td, color: '#9aa3b3' }}>{r.account_type}</td>
-                <td style={{ ...td, fontWeight: 600 }}>{r.symbol}</td>
-                <td style={{ ...td, color: r.direction === 'buy' ? '#00e5a0' : '#ff5d6c' }}>{r.direction}</td>
-                <td style={{ ...td, color: '#9aa3b3' }}>{fmtT(r.open_time)}</td>
-                <td style={{ ...td, color: '#9aa3b3' }}>{fmtT(r.close_time)}</td>
-                <td style={{ ...td, color: r.hold_min != null && r.hold_min < 5 ? '#ff8800' : '#9aa3b3' }}>{r.hold_min != null ? `${r.hold_min}m` : '—'}</td>
-                <td style={{ ...td, textAlign: 'right' }}>{(r.lots || 0).toFixed(2)}</td>
-                <td style={{ ...td, textAlign: 'right', color: r.profit >= 0 ? '#00e5a0' : '#ff5d6c' }}>{fmtUSD(r.profit)}</td>
-                <td style={{ ...td, textAlign: 'right', fontWeight: 600, color: r.commission > 0 ? '#00e5a0' : '#667' }}>
-                  {r.commission > 0 ? fmtUSD(r.commission) : <span title={r.reason} style={{ color: '#ff8800' }}>{r.reason === 'short(<5min)' ? '✗ <5min' : r.reason === 'credit' ? '✗ credit' : '$0'}</span>}
+              <tr key={i} style={{ ...CT.row(), background: !r.eligible ? 'rgba(255,136,0,0.05)' : 'transparent' }}>
+                {isAllIBs && <td style={{ ...CT.td, color: '#00aaff', fontWeight: 600 }} title={r.ib_name ? `${r.ib_name} · ${r.ib_code}` : (r.ib_code || '')}>{(r.ib_code || '').replace(/^IB/i, '') || '—'}</td>}
+                <td style={{ ...CT.td, color: '#8a93a3', fontFamily: 'monospace' }}>{r.deal_id}</td>
+                <td style={{ ...CT.td, color: '#4d9fff', fontFamily: 'monospace' }}>{r.login}</td>
+                <td style={CT.td}>{r.client}</td>
+                <td style={{ ...CT.td, color: '#9aa3b3' }}>{r.country || '—'}{r.city ? <span style={{ color: '#667' }}> · {r.city}</span> : ''}</td>
+                <td style={CT.td}>{r.platform}</td>
+                <td style={{ ...CT.td, color: '#9aa3b3' }}>{r.account_type}</td>
+                <td style={{ ...CT.td, fontWeight: 600 }}>{r.symbol}</td>
+                <td style={{ ...CT.td, color: r.direction === 'buy' ? '#00e5a0' : '#ff5d6c' }}>{r.direction}</td>
+                <td style={{ ...CT.td, color: '#9aa3b3' }}>{fmtT(r.open_time)}</td>
+                <td style={{ ...CT.td, color: '#9aa3b3' }}>{fmtT(r.close_time)}</td>
+                <td style={{ ...CT.td, textAlign: 'right' }}>{(r.lots || 0).toFixed(2)}</td>
+                <td style={{ ...CT.td, textAlign: 'right', color: r.profit >= 0 ? '#00e5a0' : '#ff5d6c' }}>{fmtUSD(r.profit)}</td>
+                <td style={{ ...CT.td, textAlign: 'right', fontWeight: 600, color: r.commission > 0 ? '#00e5a0' : '#667' }}>
+                  {/* per-trade commission is often cents — always show 2 decimals so it never reads $0 */}
+                  {r.commission > 0 ? '$' + (r.commission).toFixed(2) : <span title={r.reason} style={{ color: '#ff8800' }}>{r.reason === 'short(<5min)' ? '✗ <5min' : r.reason === 'credit' ? '✗ credit' : '$0'}</span>}
                 </td>
               </tr>
             ))}

@@ -49,6 +49,12 @@ def _ensure_tx_agg():
             )
         """))
         db.execute(text("CREATE TABLE IF NOT EXISTS client_tx_agg_meta (id INT PRIMARY KEY, refreshed_at TIMESTAMPTZ)"))
+        # last DEPOSIT date per login (#157 inactive-deposit filter). Added additively; existing
+        # rows carry NULL until the next rebuild (which we force below when the column is new).
+        _had_last = db.execute(text("SELECT 1 FROM information_schema.columns WHERE table_name='client_tx_agg' AND column_name='last_dep_date'")).fetchone()
+        if not _had_last:
+            db.execute(text("ALTER TABLE client_tx_agg ADD COLUMN last_dep_date TEXT"))
+            db.execute(text("DELETE FROM client_tx_agg_meta WHERE id=1"))   # force a rebuild to fill it
         db.commit()
     except Exception:
         db.rollback()
@@ -73,12 +79,13 @@ def _refresh_tx_agg(db):
             db.execute(text("SET LOCAL idle_in_transaction_session_timeout=0"))
             db.execute(text("DELETE FROM client_tx_agg"))
             db.execute(text("""
-                INSERT INTO client_tx_agg (login, dep_sum, wd_sum, dep_cnt, first_tx_date)
+                INSERT INTO client_tx_agg (login, dep_sum, wd_sum, dep_cnt, first_tx_date, last_dep_date)
                 SELECT login,
                        SUM(CASE WHEN tx_type='deposit'    THEN amount ELSE 0 END),
                        SUM(CASE WHEN tx_type='withdrawal' AND COALESCE(status,'')<>'rejected' THEN amount ELSE 0 END),
                        COUNT(*) FILTER (WHERE tx_type='deposit'),
-                       MIN(tx_date) FILTER (WHERE tx_type='deposit')
+                       MIN(tx_date) FILTER (WHERE tx_type='deposit'),
+                       MAX(tx_date) FILTER (WHERE tx_type='deposit')
                 FROM transactions GROUP BY login
             """))
             db.execute(text("INSERT INTO client_tx_agg_meta (id, refreshed_at) VALUES (1, NOW()) "
@@ -167,7 +174,11 @@ def score_breakdown(c: dict, settings: dict) -> list:
 
     total_dep = float(c.get("total_deposit", 0) or 0)
     balance = float(c.get("balance", 0) or 0)
-    if balance > 0 and total_dep == 0:
+    _dep_n = int(c.get("dep_count") or c.get("deposit_count") or 0)
+    # #290: only claim "never deposited" when NO deposit exists by ANY signal (total, count,
+    # first-deposit date) — a lagging totals aggregate was branding real depositors as
+    # never-deposited right next to a "re-deposited" recapture flag.
+    if balance > 0 and total_dep == 0 and _dep_n == 0 and not c.get("first_deposit_date"):
         out.append({"label": "Has balance, never deposited", "points": settings.get("no_deposit_ever", 25)})
     if total_dep > 0 and c.get("last_activity_type") in ("deposit",):
         d2 = _days(c.get("last_activity_date", ""))
@@ -306,10 +317,14 @@ async def get_clients(
     sources:   str = Query(""),
     archived:  str = Query(""),    # ''/'active' = active only, 'archived' = archived only, 'all' = both
     deposits:  str = Query(""),    # deposit-count filter: 'D1','D2','D3','D4','D5+' (#60)
+    no_deposit_months: int = Query(0),  # #157: depositors whose LAST deposit is older than N months (0=off)
     birthday:  str = Query(""),    # '' = off, 'week' = birthday-window clients, 'unclaimed' = window & not claimed
     date_from: str = Query(""),    # reg_date >= (YYYY-MM-DD) (#62)
     date_to:   str = Query(""),    # reg_date <= (YYYY-MM-DD) (#62)
     period:    str = Query("all_time"),  # scopes the deposit/withdrawal/net KPIs to a period
+    kpi:       str = Query(""),          # KPI drill-down: 'new_clients' | 'active_clients' (uses `period`)
+    own:       int = Query(0),           # 1 = a team leader's "My own data" toggle (self only, not team)
+    connected: int = Query(0),           # 1 = "Connected (last 7d)" tab: clients contacted/commented in the last week
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -319,19 +334,28 @@ async def get_clients(
     # those just get an Archived account tag. But a USER-archived person (admin/TradeSoft decision:
     # not interested / a problem) is removed from this page entirely — they live on Settings -> Archive
     # and return here automatically on any re-engagement. So the Clients page = active client people.
-    base_where = ("cu.kind = 'client' AND COALESCE(c.user_archived, FALSE) = FALSE"
-                  " AND (c.login IS NULL OR (c.group_name NOT ILIKE '%retail%' AND c.group_name NOT ILIKE '%demo%'))")
+    # NULL-safe group filter: `NOT ILIKE` on a NULL group_name evaluates to NULL (row dropped),
+    # which silently hid ~4k clients whose accounts have no MT group yet (TradeSoft-only/ECN
+    # imports). A NULL group is NOT retail/demo — include it.
+    base_where = ("cu.kind = 'client'"
+                  " AND (c.login IS NULL OR c.group_name IS NULL"
+                  "      OR (c.group_name NOT ILIKE '%retail%' AND c.group_name NOT ILIKE '%demo%'))")
     params: dict = {}
     extra_where = ""
-    # A CLIENT stays a client even if their MT accounts are archived (gone from MT / low balance) —
-    # TradeSoft still counts them as a client, so the DEFAULT shows the full client base (~the legacy
-    # 27k). is_archived is a per-account, view-only detail (no deposit/transfer on that account), NOT a
-    # reason to hide the person. The chips still narrow: 'active' = live accounts only, 'archived' =
-    # archived accounts only, '' / 'all' (default) = both.
+    # TWO archive levels (desk model, Jul 2026):
+    #  • ACCOUNT archive (clients.is_archived / archived_at) — a single MT/TradeSoft account is
+    #    dead. That lives on the TRADING ACCOUNTS page, NOT here. A client can be active with
+    #    some archived accounts.
+    #  • CLIENT archive (clients.user_archived, person-level — set by the team's Archive button
+    #    or imported from TradeSoft's archived-clients page, ~150 people) — the WHOLE profile
+    #    moves to this page's Archived tab.
+    # Tabs here are PERSON-level: active = not client-archived; archived = client-archived.
     if archived == "archived":
-        extra_where += " AND COALESCE(c.is_archived, FALSE) = TRUE"
+        extra_where += (" AND cu.customer_no IN (SELECT customer_no FROM clients"
+                        " WHERE COALESCE(user_archived,FALSE) AND customer_no IS NOT NULL)")
     elif archived == "active":
-        extra_where += " AND COALESCE(c.is_archived, FALSE) = FALSE"
+        extra_where += (" AND cu.customer_no NOT IN (SELECT customer_no FROM clients"
+                        " WHERE COALESCE(user_archived,FALSE) AND customer_no IS NOT NULL)")
     # Date-range on registration date (#62). reg_date is stored as text (YYYY-MM-DD...),
     # so a lexical comparison on the date prefix is correct and index-friendly.
     if date_from:
@@ -397,20 +421,75 @@ async def get_clients(
         else:
             extra_where += " AND FALSE"   # no birthdays in window -> empty result
 
-    # Role-based visibility: agent -> own clients; manager -> own + team; director/admin -> all
-    rbac_sql, rbac_params = rbac.agent_filter(rbac.scope_agent_ids(db, current_user),
-                                              col="COALESCE(c.assigned_agent_id, cu.assigned_agent_id)")
+    # KPI drill-down: clicking a KPI card narrows the list to that segment (people, in `period`).
+    if kpi in ("new_clients", "active_clients"):
+        from ib_router import period_dates as _pd
+        _kf, _kt = _pd(period if period and period != "all_time" else "all_time", date_from, date_to)
+        from datetime import date as _kd, timedelta as _ktd
+        try:
+            _ktnext = (_kd.fromisoformat(_kt) + _ktd(days=1)).isoformat()
+        except Exception:
+            _ktnext = _kt
+        params["kf"], params["ktnext"] = _kf, _ktnext
+        if kpi == "new_clients":
+            # people whose EARLIEST first-deposit falls in the period
+            extra_where += (" AND cu.customer_no IN (SELECT customer_no FROM clients"
+                            " WHERE customer_no IS NOT NULL AND COALESCE(first_deposit_at,'')<>''"
+                            " GROUP BY customer_no"
+                            " HAVING MIN(first_deposit_at) >= :kf AND MIN(first_deposit_at) < :ktnext)")
+        else:
+            # people with ANY activity in the period: money movement or a trade
+            extra_where += (" AND cu.customer_no IN ("
+                            " SELECT c2.customer_no FROM transactions t JOIN clients c2 ON c2.login=t.login"
+                            " WHERE c2.customer_no IS NOT NULL AND t.tx_date >= :kf AND t.tx_date < :ktnext"
+                            "   AND t.tx_type IN ('deposit','withdrawal','internal_transfer','bonus_deposit','bonus_withdrawal')"
+                            " UNION"
+                            " SELECT c3.customer_no FROM deals d JOIN clients c3 ON c3.login=d.login"
+                            " WHERE c3.customer_no IS NOT NULL AND d.action IN (0,1)"
+                            "   AND d.deal_date >= :kf AND d.deal_date < :ktnext)")
+
+    # Role-based visibility: agent -> own clients; manager -> own + team; director/admin -> all.
+    # Ticket 213: when the user is SEARCHING, span their FULL legitimate scope (self + ALL reports,
+    # recursively) regardless of the own / "My team" toggle — so a search finds any client on the
+    # team without having to flip the toggle first. Still bounded by RBAC: a plain agent's subtree is
+    # just themselves (no leak), a leader searches their whole team, all-access users stay all.
+    if search:
+        _scope = rbac.scope_agent_ids(db, current_user, section="clients", own=False, recursive=True)
+    else:
+        _scope = rbac.scope_agent_ids(db, current_user, section="clients", own=bool(own))
+    rbac_sql, rbac_params = rbac.agent_filter(_scope, col="COALESCE(c.assigned_agent_id, cu.assigned_agent_id)")
     extra_where += rbac_sql
     params.update(rbac_params)
+    # PERF (Jul 15): the cache key must key on the DATA SCOPE, not the user id. Every all-access
+    # user (admin/backoffice/customer_care/director/... ~44 people) sees the IDENTICAL all-clients
+    # result, but keying by user id gave each their own entry = 44x the same 2.5s compute and 44x
+    # cache misses. Scope token: 'all' (shared) for full-access, else the sorted agent-id set.
+    _scope_tok = "all" if _scope is None else ("none" if not _scope else "a" + "_".join(map(str, sorted(_scope))))
+
+    # "Connected (last 7d)" tab: restrict to clients this scope logged a call-action/comment on in the
+    # last week (call_actions is keyed by login). Pre-resolve the recent logins so the shared
+    # count/stats/list all filter to the SAME set; the list additionally joins for the recency sort.
+    if connected:
+        _cl = db.execute(text("SELECT DISTINCT login FROM call_actions WHERE created_at >= NOW() - INTERVAL '7 days'")).fetchall()
+        params["connected_logins"] = [int(r[0]) for r in _cl] or [-1]
+        extra_where += " AND c.login = ANY(:connected_logins)"
     where = f"WHERE {base_where}{extra_where}"
 
-    # Deposit-count filter (#60) — count of deposit transactions across ALL of the person's
-    # logins, applied as a HAVING on the aggregated (phone+platform) row. D5+ = 5 or more.
-    having = ""
+    # HAVING conditions on the aggregated (phone+platform) row.
+    having_conds = []
+    # Deposit-count filter (#60) — count of deposit transactions across ALL of the person's logins.
     dep_cnt_expr = "SUM(COALESCE(td.dep_cnt,0))"
     dep_map = {"D1": "= 1", "D2": "= 2", "D3": "= 3", "D4": "= 4", "D5+": ">= 5"}
     if deposits in dep_map:
-        having = f" HAVING {dep_cnt_expr} {dep_map[deposits]}"
+        having_conds.append(f"{dep_cnt_expr} {dep_map[deposits]}")
+    # Inactive-deposit filter (#157) — a real depositor whose MOST RECENT deposit across all their
+    # accounts is older than N months. Source = client_tx_agg.last_dep_date (MAX deposit tx_date
+    # from `transactions`; the clients.last_deposit_at column is ~empty). tx_date is ISO text so a
+    # ::timestamptz cast compares correctly; never-depositors (NULL) are naturally excluded.
+    if no_deposit_months and no_deposit_months > 0:
+        having_conds.append("MAX(NULLIF(td.last_dep_date,'')::timestamptz) < NOW() - make_interval(months => :nd_months)")
+        params["nd_months"] = int(no_deposit_months)
+    having = (" HAVING " + " AND ".join(having_conds)) if having_conds else ""
 
     # sort balance/equity by the SAME sanitized values shown (exclude demo/seed accounts with no
     # deposit/withdrawal), so the top rows aren't fake $100M demo accounts displaying $0.
@@ -426,7 +505,20 @@ async def get_clients(
     sort_col = f"{_real_bal} DESC"
     if sort == "name":         sort_col = "MIN(c.name) ASC"
     elif sort == "login":      sort_col = "MIN(c.login) DESC"
+    # Newest = most-recently-registered PERSON (reg_date, text 'YYYY-MM-DD…'); distinct from
+    # "1st Deposit" (first_dep) which orders by first-deposit DATE. #225: these two were both
+    # first_tx_date so they returned identical results — now they mean different things.
+    # "Newest" = who most recently BECAME a client. A person becomes a client on their FIRST-EVER
+    # deposit, so aggregate with MIN across their accounts (their earliest FTD) — NOT MAX, which
+    # floated OLD clients to the top the moment they opened another account / got a $0 FTD stamp
+    # (e.g. Waqar Ali: client since 2022 but a new $0 account today made MAX=today).
+    # Use td.first_tx_date (the LIVE client_tx_agg, fresh to today) NOT c.first_deposit_at (a stored
+    # column that lagged ~2 days, so Jul-21/22 depositors never surfaced). Boss directive Jul 21-22.
     elif sort == "new":        sort_col = "MIN(td.first_tx_date) DESC NULLS LAST"
+    elif sort == "first_dep":  sort_col = "MIN(td.first_tx_date) DESC NULLS LAST"
+    # Network = canonical 0-10 network-risk score; distinct from Priority (score). #225: the
+    # Network column used to fall through to the Priority sort.
+    elif sort == "network":    sort_col = f"MAX(COALESCE(c.network_score,0)) DESC, {_real_bal} DESC"
     elif sort == "score":      sort_col = (f"(COALESCE(MAX(c.call_score),0) + CASE WHEN MAX(c.lead_badge)='recapture' THEN 50 ELSE 0 END"
                                            f" + MAX(CASE WHEN c.login = ANY(:bday_boost_logins) THEN 100 ELSE 0 END)) DESC, {_real_bal} DESC")
     elif sort == "deposits":   sort_col = "SUM(COALESCE(td.dep_sum,0)) DESC"
@@ -436,6 +528,10 @@ async def get_clients(
     elif sort == "country":    sort_col = "MIN(c.country) ASC"
     elif sort == "city":       sort_col = "MIN(c.city) ASC"
     # (no recapture pin — Priority sorts purely by score, Newest by date)
+    # Connected tab: ALWAYS order by the person's most-recent action (user spec: "sorted by last action")
+    if connected:             sort_col = "MAX(ca.la) DESC NULLS LAST"
+    conn_join = ("LEFT JOIN (SELECT login, MAX(created_at) AS la FROM call_actions "
+                 "WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY login) ca ON ca.login = c.login") if connected else ""
 
     # Count unique clients by phone. When a deposit-count filter is active we must join the
     # per-login deposit counts and apply the same HAVING so the total reflects the filtered set.
@@ -449,7 +545,17 @@ async def get_clients(
             GROUP BY ck{having}
         ) x
     """
-    total = db.execute(text(count_sql), params).scalar() or 0
+    # PERF (Jul 2026): count + stats are two full GROUP-BY passes over the 180k-row set and
+    # depend only on the FILTERS (not page/sort) — cache 30s per filter combo, same pattern
+    # as the transactions aggregates, so paging/sorting doesn't re-aggregate every click.
+    from perf_cache import cached as _pc_cached
+    _agg_key = "clients:agg:" + "|".join(map(str, [
+        search, country, city, ib, agent, kyc, risk, sources, archived, deposits,
+        no_deposit_months, birthday, date_from, date_to, period, kpi, connected,
+        _scope_tok,   # DATA scope, not user id — all-access users share one entry
+    ]))
+    total = _pc_cached(_agg_key + ":count", 330,
+                       lambda: db.execute(text(count_sql), params).scalar() or 0)
 
     # Summary statistics over the FULL filtered set (#60). The KPI bar must reflect the
     # SAME filters as the list — including the deposit-count filter — not just the visible
@@ -474,7 +580,8 @@ async def get_clients(
             GROUP BY ck{having}
         ) s
     """
-    srow = db.execute(text(stats_sql), params).fetchone()
+    srow = _pc_cached(_agg_key + ":stats", 330,
+                      lambda: db.execute(text(stats_sql), params).fetchone())
     stats = {
         "clients":      int(srow[0] or 0),
         "deposits":     float(srow[1] or 0),
@@ -488,10 +595,11 @@ async def get_clients(
     # so picking "This month" + an agent shows that agent's clients' deposits/withdrawals THIS MONTH.
     if period and period != "all_time":
         from ib_router import period_dates
-        from datetime import date as _date, timedelta as _td
         mp_from, mp_to = period_dates(period, date_from, date_to)
+        # Iraqi-day boundaries in UTC (crm_tz): day D = [D-1 21:00, D 21:00) UTC
         try:
-            mp_to_next = (_date.fromisoformat(mp_to) + _td(days=1)).isoformat()
+            from crm_tz import day_lo as _dlo, day_hi as _dhi
+            mp_from, mp_to_next = _dlo(mp_from), _dhi(mp_to)
         except Exception:
             mp_to_next = mp_to
         pm = {**params, "mp_from": mp_from, "mp_to_next": mp_to_next}
@@ -561,11 +669,14 @@ async def get_clients(
             BOOL_AND(COALESCE(c.is_archived, FALSE)) as all_archived,
             COUNT(*) FILTER (WHERE COALESCE(c.is_archived, FALSE)) as archived_count,
             COALESCE(MIN(c.legacy_sales_agent), MIN(cu.sales_agent)) as sales_agent,
-            MIN(cu.ib)                as customer_ib
+            MIN(cu.ib)                as customer_ib,
+            MAX(c.ts_stage_id)        as ts_stage_id,
+            MAX(c.ts_stage)           as ts_stage
         FROM customers cu
         LEFT JOIN clients c ON c.customer_no = cu.customer_no
         LEFT JOIN client_tx_agg td ON td.login = c.login
         LEFT JOIN leads ml ON ml.id = c.matched_lead_id
+        {conn_join}
         {where}
         GROUP BY ck{having}
         ORDER BY {sort_col}
@@ -573,7 +684,11 @@ async def get_clients(
     """
     params["limit"]  = page_size
     params["offset"] = (page - 1) * page_size
-    rows = db.execute(text(query_sql), params).fetchall()
+    # PERF: the page rows are a full GROUP-BY over ~180k customers (~0.9s). Cache 20s per
+    # (filters+sort+page) so back-and-forth browsing doesn't re-aggregate; 20s staleness is
+    # fine for a list view (details are always live).
+    rows = _pc_cached(_agg_key + f":rows:{sort}:{page}:{page_size}", 330,
+                      lambda: db.execute(text(query_sql), params).fetchall())
 
     if not rows:
         return {"clients": [], "total": total, "page": page, "page_size": page_size, "stats": stats}
@@ -594,9 +709,11 @@ async def get_clients(
     # IB names in batch
     agent_ids = list({r[15] for r in rows if r[15]})
     ib_map = {}
+    ib_id_map = {}   # #230: agent_id -> ibs.id, so a list-row IB click opens IB Admin directly
     if agent_ids:
         ibs = db.query(models.IB).filter(models.IB.agent_id.in_(agent_ids)).all()
         ib_map = {ib.agent_id: ib.name for ib in ibs}
+        ib_id_map = {ib.agent_id: ib.id for ib in ibs}
 
     # Deposits / withdrawals / last-activity aggregated across ALL of each person's logins
     last_tx_map = {}
@@ -667,8 +784,8 @@ async def get_clients(
                 last_activity_map[rep] = {"type": a[1], "date": str(a[2]) if a[2] else ""}
             elif a[2] and str(a[2]) > last_activity_map[rep].get("date", ""):
                 last_activity_map[rep] = {"type": a[1], "date": str(a[2]) if a[2] else ""}
-    except:
-        pass
+    except Exception:
+        db.rollback()          # keep the session usable for the rest of the request
 
     # Last sales action (call_actions)
     last_action_map = {}
@@ -687,67 +804,39 @@ async def get_clients(
                 "date":          str(a[3]) if a[3] else "",
                 "call_later_at": str(a[4]) if a[4] else "",
             }
-    except:
-        pass
+    except Exception:
+        db.rollback()          # keep the session usable for the rest of the request
 
-    # Network scores (IP/CID + City + IB + Phone prefix). net_breakdown keeps the per-component
-    # contribution + count so the hover can EXPLAIN how the number was reached (not a static legend).
-    net_scores = {}
-    net_breakdown = {}
-    def _add_net(lg, label, pts, cnt):
-        if pts <= 0:
-            return
-        net_scores[lg] = net_scores.get(lg, 0) + pts
-        net_breakdown.setdefault(lg, []).append({"label": label, "points": pts, "count": cnt})
+    # Canonical network score (0-10) — the SINGLE source every page reads (build_network_scores.py).
+    # This used to be a live edge + city + IB + phone recompute here (heavy, AND a different 0-100
+    # scale than the other pages — the root cause of "same client, different x/10"). Now we just read
+    # the stored column so the badge is identical on Clients / Leads / IB / Transactions / the popup.
+    net_scores, net_levels, net_reasons = {}, {}, {}
     try:
-        nets = db.execute(text("""
-            SELECT login_a as login, COUNT(*) as cnt FROM network_edges
-            WHERE login_a = ANY(:logins) GROUP BY login_a
-            UNION ALL
-            SELECT login_b as login, COUNT(*) as cnt FROM network_edges
-            WHERE login_b = ANY(:logins) GROUP BY login_b
-        """), {"logins": logins_list}).fetchall()
-        for r in nets:
-            _add_net(r[0], "Shared device / IP link", r[1], r[1])
-
-        # Same city
-        city_counts = db.execute(text("""
-            SELECT c1.login, COUNT(c2.login) as cnt
-            FROM clients c1
-            JOIN clients c2 ON c2.city = c1.city AND c2.login != c1.login
-                AND c1.city IS NOT NULL AND c1.city != ''
-            WHERE c1.login = ANY(:logins)
-            GROUP BY c1.login
-        """), {"logins": logins_list}).fetchall()
-        for r in city_counts:
-            _add_net(r[0], "Same city", min(r[1], 10), r[1])
-
-        # Same IB
-        ib_counts = db.execute(text("""
-            SELECT c1.login, COUNT(c2.login) as cnt
-            FROM clients c1
-            JOIN clients c2 ON c2.agent = c1.agent AND c2.login != c1.login
-                AND c1.agent IS NOT NULL AND c1.agent != 0
-            WHERE c1.login = ANY(:logins)
-            GROUP BY c1.login
-        """), {"logins": logins_list}).fetchall()
-        for r in ib_counts:
-            _add_net(r[0], "Same IB", min(r[1], 5), r[1])
-
-        # Same phone prefix (family)
-        phone_counts = db.execute(text("""
-            SELECT c1.login, COUNT(c2.login) as cnt
-            FROM clients c1
-            JOIN clients c2 ON LEFT(c2.phone, 7) = LEFT(c1.phone, 7)
-                AND c2.login != c1.login
-                AND c1.phone IS NOT NULL AND LENGTH(c1.phone) >= 7
-            WHERE c1.login = ANY(:logins)
-            GROUP BY c1.login
-        """), {"logins": logins_list}).fetchall()
-        for r in phone_counts:
-            _add_net(r[0], "Same phone prefix (family)", min(r[1] * 3, 15), r[1])
-    except:
+        for lg, ns, lvl, rsn in db.execute(text(
+            "SELECT login, COALESCE(network_score,0), COALESCE(network_level,'none'), "
+            "COALESCE(network_reason,'') FROM clients WHERE login = ANY(:logins)"),
+            {"logins": logins_list}).fetchall():
+            net_scores[lg] = int(ns or 0); net_levels[lg] = lvl; net_reasons[lg] = rsn
+    except Exception:
         pass
+
+    # #183: last login = the most recent time ANY of the person's logins was seen online by the
+    # MT5 bridge (account_identifiers.last_seen). A real "is this client still active" signal —
+    # sales use it to judge who's worth a deposit call after verification.
+    last_login_map = {}
+    if all_logins_flat:
+        try:
+            for lg, ls in db.execute(text(
+                "SELECT login, MAX(last_seen) FROM account_identifiers "
+                "WHERE login = ANY(:logins) AND last_seen IS NOT NULL GROUP BY login"),
+                {"logins": all_logins_flat}).fetchall():
+                rep = login_to_rep.get(lg, lg)
+                prev = last_login_map.get(rep)
+                if ls and (prev is None or ls > prev):
+                    last_login_map[rep] = ls
+        except Exception:
+            db.rollback()
 
     # Score settings
     settings = get_score_settings(db)
@@ -798,11 +887,15 @@ async def get_clients(
             # prefer a NAME: account-agent IB name (ibs) -> customer's referrer IB name -> #number
             "ib_display":          (ib_map.get(agent) or (r[41] if len(r) > 41 and r[41] else None)
                                     or (f"#{agent}" if agent else "")),
+            "ib_id":               ib_id_map.get(agent),   # #230: real ibs.id -> click opens IB Admin
             "reg_date":            r[16] or "",
+            "last_login":          (last_login_map.get(login).isoformat() if last_login_map.get(login) else ""),  # #183
             "kyc":                 "verified",   # RULE: clients are always approved KYC
             "email_verified":      True,
             "phone_verified":      True,
             "risk":                r[22] or "low",
+            "stage_id":            r[-2],
+            "stage":               (r[-1] or (str(r[-2]) if r[-2] is not None else "")),
             "account_count":       r[23] or 1,
             "first_deposit_date":  dep_stats_map.get(login, {}).get("first_dep_date", "") or (str(r[17]) if len(r) > 17 and r[17] else ""),
             "first_deposit_amount": first_dep_amount_map.get(login, 0) or (float(r[18] or 0) if len(r) > 18 and r[18] else 0),
@@ -816,7 +909,8 @@ async def get_clients(
             "last_action_date":    la.get("date", ""),
             "last_action":         la,
             "network_score":       net_scores.get(login, 0),
-            "network_breakdown":   net_breakdown.get(login, []),
+            "network_level":       net_levels.get(login, "none"),
+            "network_reason":      net_reasons.get(login, ""),
             "flags":               [],
             "agent_name":          agent_name_map.get(r[25] if len(r)>25 else None, ""),
             "all_logins":          list(r[26]) if len(r)>26 and r[26] else [r[0]],
@@ -960,6 +1054,48 @@ async def create_additional_account(
             "investor_password": res.get("investor"), "group": group, "credit": credit_res}
 
 
+@router.get("/logins-only")
+def get_client_logins(
+    search:  str = Query(""),
+    sort:    str = Query("balance"),
+    country: str = Query(""),
+    city:    str = Query(""),
+    kyc:     str = Query(""),
+    agent:   str = Query(""),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Fast endpoint for the Power Dialer — client logins (with a phone) matching the basic
+    list filters, rbac-scoped. (The Clients page called this for months; it never existed.)
+    NOTE: declared BEFORE /{login} so the literal path isn't swallowed by the int converter."""
+    where = ["c.phone IS NOT NULL", "c.phone NOT IN ('', '0')",
+             "NOT COALESCE(c.is_archived, FALSE)", "NOT COALESCE(c.user_archived, FALSE)"]
+    params: dict = {}
+    if search:
+        where.append("(c.name ILIKE :s OR CAST(c.login AS TEXT) ILIKE :s OR c.phone ILIKE :s OR c.email ILIKE :s)")
+        params["s"] = f"%{search}%"
+    if country:
+        where.append("c.country = :country"); params["country"] = country
+    if city:
+        where.append("c.city = :city"); params["city"] = city
+    if kyc:
+        where.append("c.kyc_status = :kyc"); params["kyc"] = kyc
+    if agent:
+        where.append("""c.assigned_agent_id IN (SELECT id FROM users WHERE full_name ILIKE :agent)""")
+        params["agent"] = f"%{agent}%"
+    _scope = rbac.scope_agent_ids(db, current_user)
+    if _scope is not None:
+        where.append("c.assigned_agent_id = ANY(:rbac_ids)")
+        params["rbac_ids"] = _scope or [-1]
+    order = {"name": "c.name ASC", "new": "c.reg_date DESC"}.get(sort, "c.call_score DESC NULLS LAST")
+    rows = db.execute(text(f"""
+        SELECT DISTINCT ON (c.phone) c.login FROM clients c
+        WHERE {' AND '.join(where)}
+        ORDER BY c.phone, {order.split(',')[0]}
+        LIMIT 2000"""), params).fetchall()
+    return {"logins": [r[0] for r in rows], "total": len(rows)}
+
+
 @router.get("/{login}")
 async def get_client(
     login: int,
@@ -985,12 +1121,18 @@ async def get_client(
 
     all_logins = [a.login for a in accounts]
 
-    # IB info
+    # IB info — the referring IB. Prefer the agent-resolved IB; fall back to the customer
+    # master's ib text (e.g. 'Iraq-MQL5'), which covers referrals the MT agent link misses.
     ib_display = ""
     if c.agent:
         ib = db.query(models.IB).filter(models.IB.agent_id == c.agent).first()
         if ib:
-            ib_display = f"{ib.name} ({ib.ib_code})"
+            ib_display = ib.name or (ib.ib_code or "")   # name only (code was too long)
+    if not ib_display and getattr(c, "customer_no", None):
+        _cib = db.execute(text("SELECT ib FROM customers WHERE customer_no=:cn AND COALESCE(TRIM(ib),'')<>'' LIMIT 1"),
+                          {"cn": c.customer_no}).scalar()
+        if _cib:
+            ib_display = _cib
 
     # Transactions
     deposits = db.query(models.Transaction).filter(
@@ -1037,6 +1179,14 @@ async def get_client(
         m = _XFER_RE.search(blob)
         me = str(login) if login is not None else ""
         if not m:
+            # TradeSoft-imported transfers carry NO counterparty (method is just
+            # 'transfer_from' / 'transfer_to_client' / 'ld_transfer') — show at least
+            # the direction relative to this account instead of two blanks.
+            ml = (method or "").lower()
+            if "transfer_from" in ml or ml == "ld_transfer":
+                return ("other account", me)          # money came IN to this account
+            if "transfer_to" in ml:
+                return (me, "other account")          # money went OUT of this account
             return ("", "")
         direction, other = m.group(1).lower(), m.group(2)
         return (other, me) if direction == "from" else (me, other)
@@ -1061,13 +1211,28 @@ async def get_client(
                 "value":   e.value or "",
                 "risk":    other_c.risk_score if other_c else "low",
             })
-    except:
-        pass
+    except Exception:
+        db.rollback()          # keep the session usable for the rest of the request
 
-    # Call actions
+    # Call actions — #301: strictly newest-first. created_at is nullable, so a bare DESC put NULLs
+    # FIRST (Postgres default) and same-timestamp rows came back in arbitrary heap order, making the
+    # call/activity history look jumbled. NULLS LAST + id DESC tiebreaker fixes the ordering.
     actions = db.query(models.CallAction).filter(
         models.CallAction.login == login
-    ).order_by(models.CallAction.created_at.desc()).all()
+    ).order_by(models.CallAction.created_at.desc().nullslast(), models.CallAction.id.desc()).all()
+    # #249 — resolve each comment author's name / title / department so the feed shows WHO
+    # wrote it (it used to expose only agent_id, which rendered as a bare number).
+    _author_map = {}
+    _aids = [a.agent_id for a in actions if a.agent_id]
+    if _aids:
+        try:
+            for _uid, _nm, _ttl, _dept, _role in db.execute(text(
+                    "SELECT id, full_name, COALESCE(title,''), COALESCE(department,''), COALESCE(role,'') "
+                    "FROM users WHERE id = ANY(:ids)"), {"ids": list(set(_aids))}).fetchall():
+                _author_map[_uid] = {"name": _nm or "", "title": _ttl,
+                                     "dept": _dept or _role.replace("_", " ").title()}
+        except Exception:
+            db.rollback()
 
     # Timeline — merge all activities
     timeline = []
@@ -1181,10 +1346,18 @@ async def get_client(
         "network_connections": connections,
         "timeline": timeline,
         "actions_history": [{
+            "id":         a.id,
             "action":     a.action,
             "note":       a.note or "",
             "created_at": a.created_at.isoformat() if a.created_at else "",
             "agent_id":   a.agent_id,
+            # #249 — author identity (name / job title / department) for the comment feed
+            "agent_name":  _author_map.get(a.agent_id, {}).get("name", ""),
+            "agent_title": _author_map.get(a.agent_id, {}).get("title", ""),
+            "dept":        _author_map.get(a.agent_id, {}).get("dept", ""),
+            # the author may edit/delete their OWN comment inside the window; then it freezes
+            "can_edit":   bool(a.action == "comment" and a.agent_id == current_user.id and a.created_at
+                               and (datetime.utcnow() - a.created_at.replace(tzinfo=None)).total_seconds() <= COMMENT_EDIT_WINDOW_MIN * 60),
         } for a in actions],
         "flags":      [],
         "call_score": 0,
@@ -1206,6 +1379,12 @@ async def update_client_contact(
     c = db.query(models.Client).filter(models.Client.login == login).first()
     if not c:
         raise HTTPException(status_code=404, detail="Client not found")
+    # #241 / desk policy (Jul 21): client INFORMATION may only be edited by the Admin team —
+    # sales/retention view but never modify. (Nuha is role=admin, so covered.)
+    if (getattr(current_user, "role", "") or "").lower() not in ("super_admin", "admin", "director"):
+        raise HTTPException(status_code=403,
+                            detail="Editing client information is restricted to the Admin team. "
+                                   "Please send your change request to Admin (Nuha).")
     if not rbac.can_see_agent(db, current_user, c.assigned_agent_id):
         raise HTTPException(status_code=403, detail="Not authorized to edit this client")
 
@@ -1366,6 +1545,11 @@ def assign_client(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    # Reassigning a client's sales agent is restricted to admins and Rahaf ONLY (desk rule
+    # Jul 2026). The sanctioned flow is agent_assign_router; this legacy path enforces the same.
+    import rbac
+    if not rbac.may_reassign_agent(current_user):
+        raise HTTPException(status_code=403, detail="Only admins can change the sales agent")
     existing = db.query(models.ClientAssignment).filter(
         models.ClientAssignment.login == login
     ).first()
@@ -1391,13 +1575,20 @@ def archive_clients(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    # go-live hardening: archiving hides the whole person from the floor — management only.
+    if (getattr(current_user, "role", "") or "").lower() not in (
+            "super_admin", "admin", "director", "backoffice", "sales_manager"):
+        raise HTTPException(status_code=403, detail="Managers/back-office only")
     if not data.logins:
         raise HTTPException(status_code=400, detail="No logins provided")
-    # Expand each login to its phone+platform siblings so the aggregated row toggles together.
+    # Expand each login to the WHOLE PERSON (customer_no golden record + phone siblings) —
+    # a client archive always covers the entire profile, every account.
     rows = db.execute(text("""
         SELECT login FROM clients
         WHERE phone IN (SELECT phone FROM clients WHERE login = ANY(:lg)
                         AND phone IS NOT NULL AND phone NOT IN ('', '0'))
+           OR customer_no IN (SELECT customer_no FROM clients WHERE login = ANY(:lg)
+                              AND customer_no IS NOT NULL)
            OR login = ANY(:lg)
     """), {"lg": data.logins}).fetchall()
     targets = list({r[0] for r in rows} | set(data.logins))
@@ -1429,6 +1620,10 @@ def archive_client(
     if c.phone and c.phone not in ("", "0"):
         sib = db.execute(text("SELECT login FROM clients WHERE phone=:p"), {"p": c.phone}).fetchall()
         targets = list({login, *[r[0] for r in sib]})
+    # whole person: include every account under the same customer_no golden record
+    if getattr(c, "customer_no", None):
+        sib2 = db.execute(text("SELECT login FROM clients WHERE customer_no=:cn"), {"cn": c.customer_no}).fetchall()
+        targets = list({*targets, *[r[0] for r in sib2]})
     # Admin archive = USER-wise (removes the person from the Clients page). Unarchive clears it.
     if archived:
         db.execute(text("UPDATE clients SET user_archived=TRUE, user_archived_at=NOW(), updated_at=NOW() WHERE login = ANY(:lg)"),
@@ -1468,4 +1663,55 @@ async def post_comment(
     )
     db.add(action)
     db.commit()
-    return {"message": "Comment posted"}
+    db.refresh(action)
+    # #222: if someone OTHER than the account manager comments, email the account manager.
+    try:
+        import comment_notify
+        comment_notify.notify_cross_agent_comment(db, "client", login, current_user, data.get("note", ""))
+    except Exception:
+        pass
+    return {"message": "Comment posted", "id": action.id,
+            "created_at": action.created_at.isoformat() if action.created_at else ""}
+
+
+# A comment can be edited/deleted by its AUTHOR for 10 minutes; after that it freezes.
+COMMENT_EDIT_WINDOW_MIN = 60
+
+
+def _editable_comment(db, login: int, comment_id: int, user):
+    """Fetch a comment row and assert the caller may still edit it, else raise 403/404."""
+    from models import CallAction
+    c = db.query(CallAction).filter(CallAction.id == comment_id, CallAction.login == login).first()
+    if not c or c.action != "comment":
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if c.agent_id != user.id:
+        raise HTTPException(status_code=403, detail="You can only edit your own comments")
+    created = c.created_at
+    if created is not None:
+        # created_at is stored naive-UTC (datetime.utcnow); compare in UTC
+        age_min = (datetime.utcnow() - created.replace(tzinfo=None)).total_seconds() / 60.0
+        if age_min > COMMENT_EDIT_WINDOW_MIN:
+            raise HTTPException(status_code=403,
+                detail=f"This comment is locked — it can only be edited within {COMMENT_EDIT_WINDOW_MIN} minutes of posting")
+    return c
+
+
+@router.patch("/{login}/comment/{comment_id}")
+async def edit_comment(login: int, comment_id: int, data: dict,
+                       db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    c = _editable_comment(db, login, comment_id, current_user)
+    note = (data.get("note") or "").strip()
+    if not note:
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+    c.note = note
+    db.commit()
+    return {"message": "Comment updated", "note": note}
+
+
+@router.delete("/{login}/comment/{comment_id}")
+async def delete_comment(login: int, comment_id: int,
+                         db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    c = _editable_comment(db, login, comment_id, current_user)
+    db.delete(c)
+    db.commit()
+    return {"message": "Comment deleted"}

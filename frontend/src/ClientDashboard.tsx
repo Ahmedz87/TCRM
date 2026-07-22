@@ -46,10 +46,10 @@ export default function ClientDashboard({ user }: any) {
       {/* KPI grid */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:24 }}>
         {[
-          { icon:'💰', label:'Balance',      value:`$${(kpis?.balance||0).toLocaleString()}`,        color:'#00e5a0' },
-          { icon:'📊', label:'Equity',       value:`$${(kpis?.equity||0).toLocaleString()}`,         color:'#00aaff' },
-          { icon:'📥', label:'Total Deposit',value:`$${(kpis?.total_deposits||0).toLocaleString()}`, color:'#ffaa00' },
-          { icon:'📤', label:'Withdrawn',    value:`$${(kpis?.total_withdrawals||0).toLocaleString()}`, color:'#ff8888' },
+          { icon:'💰', label:'Balance',      value:`$${(kpis?.balance||0).toLocaleString('en-GB')}`,        color:'#00e5a0' },
+          { icon:'📊', label:'Equity',       value:`$${(kpis?.equity||0).toLocaleString('en-GB')}`,         color:'#00aaff' },
+          { icon:'📥', label:'Total Deposit',value:`$${(kpis?.total_deposits||0).toLocaleString('en-GB')}`, color:'#ffaa00' },
+          { icon:'📤', label:'Withdrawn',    value:`$${(kpis?.total_withdrawals||0).toLocaleString('en-GB')}`, color:'#ff8888' },
           { icon:'📈', label:'Open Positions',value:(kpis?.open_positions||0).toString(),            color:'#00e5a0' },
           { icon:'🔄', label:'Monthly Trades',value:(kpis?.monthly_trades||0).toString(),            color:'#cc88ff' },
         ].map((k,i)=>(
@@ -137,7 +137,7 @@ export default function ClientDashboard({ user }: any) {
           <div>
             <div style={{ fontSize:10, color:'#555', marginBottom:4 }}>MONTHLY P&L</div>
             <div style={{ fontSize:24, fontWeight:700, color:(kpis?.monthly_pnl||0)>=0?'#00e5a0':'#ff4d4d' }}>
-              {(kpis?.monthly_pnl||0)>=0?'+':''}${(kpis?.monthly_pnl||0).toLocaleString()}
+              {(kpis?.monthly_pnl||0)>=0?'+':''}${(kpis?.monthly_pnl||0).toLocaleString('en-GB')}
             </div>
           </div>
         </div>

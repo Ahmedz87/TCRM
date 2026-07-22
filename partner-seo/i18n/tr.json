@@ -1,0 +1,331 @@
+{
+ "ui": {
+  "partners": "Ortaklar",
+  "nav_commission": "Komisyon",
+  "nav_challenges": "Challenge'lar",
+  "nav_payments": "Ödemeler",
+  "nav_about": "TNFX Hakkında",
+  "login": "Giriş yap",
+  "become_partner": "Ortak ol",
+  "cta_primary": "Ortak ol",
+  "cta_secondary": "Nasıl çalıştığını gör",
+  "per_lot": "/ lot",
+  "up_to": "$10'a kadar",
+  "lang_pick": "Dil",
+  "suggest_prefix": "Bu sayfayı şu dilde görüntüle:",
+  "suggest_yes": "Geç",
+  "suggest_no": "Hayır, teşekkürler",
+  "start_earning": "Bugün kazanmaya başla",
+  "ib_partner": "IB / Affiliate Ortağı",
+  "ib_sub": "Lot başına $10'a kadar kazan",
+  "client_area": "İşlem Hesabı Aç",
+  "client_sub": "MT4 ve MT5'te işlem yap",
+  "sign_up": "Kayıt ol",
+  "open_account": "Hesap aç",
+  "on_this_page": "Bu sayfada",
+  "key_facts": "Önemli bilgiler",
+  "other_pages": "Diğer ortak sayfaları",
+  "read_time": "dk okuma",
+  "earnings": "Ortak kazancı",
+  "this_mo": "Bu ay",
+  "last30": "Son 30 gün",
+  "clients": "Müşteriler",
+  "funded": "Yatırım yapan müşteriler",
+  "lots": "İşlem gören lot",
+  "active_mission": "Aktif görev",
+  "claim": "Talep et",
+  "live": "CANLI"
+ },
+ "s": {
+  "commission_kicker": "Asıl önemli olan rakam",
+  "commission_h2": "Müşterilerinizin işlem yaptığı her lot için $10'a kadar",
+  "commission_lead": "Komisyonunuz, yönlendirdiğiniz müşterilerin işlem yaptığı her bir lot üzerinden ödenir — altında ve major paritelerde — dolarına kadar canlı takip edilir ve istediğiniz an çekilebilir. Her ortak lot başına $5 ile başlar ve portföyünüz büyüdükçe $10'a çıkar. Pazarlık yok, kayırma yok: yayınlanan eşikleri geçin, oranınız otomatik olarak artsın.",
+  "commission_tiers_note": "Altı kademe. Sadece yükselen tek bir rakam.",
+  "commission_rate_word": "lot başına",
+  "challenges_kicker": "Challenge Arena",
+  "challenges_h2": "Büyüdükçe kazanın — komisyonunuzun üstüne gerçek nakit",
+  "challenges_lead": "TNFX ortakları sadece lot başına kazanmaz. Görevleri kabul edin, hedefi tutturun, gerçek nakdi alın — doğrudan ortak cüzdanınıza, her dolar komisyonun üstüne.",
+  "career_h3": "Kariyer görevleri — $4,000'a kadar",
+  "career_lead": "Altı kariyer görevi, tek bir destansı yol. Fethettiğiniz her biri nakit ödül kazandırır ve sizi lot başına $10'a doğru kademe merdiveninde yukarı taşır.",
+  "weekly_h3": "Haftalık görevler — her Pazar sıfırlanır",
+  "weekly_lead": "Her hafta taptaze nakit hedefleri. Yatırım yapan müşteriler getirin, hacim yaratın ve ödülü alın — sonra tablo Pazar günü sıfırlanır ve baştan başlarsınız. Her hafta yeni bir kazanç fırsatı.",
+  "weekly_reward_line": "Her hafta $400'a kadar nakit ödül — lot başına $10 komisyonunuzun da üstüne.",
+  "payments_kicker": "Müşterileriniz nasıl yatırım yapar",
+  "payments_h2": "Müşterileriniz için yatırma ve çekmede 13 farklı yöntem",
+  "payments_lead": "Yönlendirilen yatırımcıların gerçekten aktif olmasının 1 numaralı sebebi kolay para yatırmadır. TNFX, hedef kitlenizin zaten kullandığı yerel ve global yöntemleri destekler — anında yerel yatırımlar, kartlar ve kripto — böylece gönderdiğiniz müşteriler kasada takılıp kaybolmak yerine dönüşüme geçer.",
+  "about_kicker": "TNFX Hakkında",
+  "about_h2": "Adınızı arkasında rahatça durabileceğiniz broker",
+  "about_para1": "TNFX, Orta Doğu ve ötesindeki yatırımcılar için kurulmuş, FSA lisanslı bir forex ve CFD brokeridir. Müşterileriniz, zaten bildikleri MetaTrader 4 ve MetaTrader 5 platformlarında, dar spreadler ve hızlı işlem gerçekleştirmeyle 1,000+ enstrümanda işlem yapar — altın, FX majorleri, endeksler ve daha fazlası.",
+  "about_para2": "Komisyon ancak müşterileriniz işlem yapmaya devam ettikçe katlanır — ve TNFX onları elde tutmak için kurulmuştur: yerel dilde destek, anında yerel yatırımlar ve bu bölge için tasarlanmış bir işlem deneyimi. İşte bu yüzden buradaki ortak portföyleri kalıcıdır.",
+  "how_kicker": "Nasıl başlanır",
+  "how_h2": "Başvurudan ilk komisyona",
+  "dash_kicker": "Ortak paneliniz",
+  "dash_h2": "Tüm portföyünüz, canlı ve dolarına kadar",
+  "dash_lead": "Her müşteri, her lot, her dolar komisyon — bir işlem gerçekleştiği anda güncellenir. Aylık ekstre yok, tahmin yok. Huninizi, challenge ilerlemenizi ve çekilebilir bakiyenizi tek bir gerçek zamanlı ortak portalinde takip edin.",
+  "dash_caption": "TNFX ortak paneli — canlı komisyon, huni ve challenge ilerlemesi. (Temsili görsel.)",
+  "dash_caption_ch": "Challenge Arena — görevleri kabul edin, hedefleri tutturun, gerçek nakdi alın. (Temsili görsel.)",
+  "finalcta_h2": "İlk müşteriniz daha bu hafta işlem yapıyor olabilir",
+  "finalcta_lead": "Katılım ücretsiz. İlk günden itibaren lot başına $5 Bronze oranı, $10'a kadar yükselir. Her hafta nakit challenge'lar. 60 saniyede başvurun.",
+  "finalcta_btn": "TNFX ortağı ol",
+  "finalcta_assurance": "Katılım ücretsiz · İstediğiniz an çekim · Gerçek zamanlı raporlama",
+  "footer_disclaimer": "TNFX, Financial Services Authority (FSA) tarafından lisanslanmıştır. Foreks ve CFD işlemleri yüksek düzeyde risk taşır ve tüm yatırımcılar için uygun olmayabilir. Ortak komisyonları müşteri işlem faaliyetleri üzerinden ödenir; geçmiş kazançlar gelecekteki sonuçları garanti etmez.",
+  "footer_rights": "© 2026 TNFX. Tüm hakları saklıdır.",
+  "footer_login": "Ortak girişi",
+  "footer_home": "Ortaklık programı"
+ },
+ "about_trust": [
+  {
+   "k": "FSA",
+   "v": "Lisanslı ve düzenlemeye tabi broker"
+  },
+  {
+   "k": "MT4 & MT5",
+   "v": "İki platform, tek giriş"
+  },
+  {
+   "k": "1000+",
+   "v": "Enstrüman — altın, FX, endeksler"
+  },
+  {
+   "k": "Instant",
+   "v": "Anında yerel yatırımlar ve hızlı çekimler"
+  }
+ ],
+ "how_steps": [
+  {
+   "t": "60 saniyede başvurun",
+   "d": "Adınız, iletişim bilginiz ve müşterileri nasıl tanıştırdığınız. Formun tamamı bu kadar."
+  },
+  {
+   "t": "Masa onayı",
+   "d": "Ortak masamız her başvuruyu inceler ve hesabınızı aktive eder — genellikle aynı gün."
+  },
+  {
+   "t": "Linkinizi paylaşın",
+   "d": "Referans linkinizi ve linki zaten üzerinde taşıyan hazır reklam bannerlarını alın. Hedef kitlenizin olduğu her yerde paylaşın."
+  },
+  {
+   "t": "Lot başına kazanın",
+   "d": "Komisyon, müşterilerinizin yaptığı her işlemde hesabınıza düşer — panelinizde canlı. İstediğiniz an çekin."
+  }
+ ],
+ "weekly": [
+  {
+   "name": "First Blood",
+   "desc": "Bu hafta 1 yatırım yapan müşteri getirin"
+  },
+  {
+   "name": "Hat Trick",
+   "desc": "Bu hafta 3 yatırım yapan müşteri getirin"
+  },
+  {
+   "name": "Volume Hunter",
+   "desc": "Müşterileriniz 50 lot işlem yapsın"
+  },
+  {
+   "name": "Whale Hunter",
+   "desc": "Müşterileriniz $50,000 yatırsın"
+  }
+ ],
+ "faq": [
+  {
+   "q": "TNFX ortağı olarak ne kadar kazanırım?",
+   "a": "Yönlendirdiğiniz müşterilerin altın ve major paritelerde işlem yaptığı her lot için $10'a kadar. Lot başına $5 ile başlarsınız ve portföyünüz büyüdükçe oranınız $10'a yükselir — üstüne haftalık ve kariyer challenge'larından nakit ödüller."
+  },
+  {
+   "q": "Kazanmak için işlem yapmam veya yatırım yapmam gerekir mi?",
+   "a": "Hayır. Siz işlem yaparak değil, müşteri tanıştırarak kazanırsınız. Katılım ücretsizdir ve sermaye gerekmez — müşterilerinizin işlem faaliyeti üzerinden ödeme alırsınız."
+  },
+  {
+   "q": "Ödememi ne zaman ve nasıl alırım?",
+   "a": "Komisyon her işlemde canlı olarak birikir ve istediğiniz an çekilebilir — kilitlenme yok, minimum periyot yok. Anında yerel seçenekler dahil TNFX'in desteklediği 13 yöntemden herhangi biriyle çekim yapın."
+  },
+  {
+   "q": "TNFX düzenlemeye tabi mi?",
+   "a": "Evet. TNFX, Financial Services Authority (FSA) tarafından lisanslanmış ve düzenlemeye tabidir; 1,000+ enstrümanla MetaTrader 4 ve MetaTrader 5 üzerinde faaliyet gösterir."
+  },
+  {
+   "q": "Nasıl ortak olurum?",
+   "a": "Adınız ve iletişim bilginizle yaklaşık 60 saniyede başvurun. Ortak masamız hesabınızı inceler ve aktive eder — genellikle aynı gün — ve referans linkinizi anında alırsınız."
+  },
+  {
+   "q": "IB, affiliate ve referral partner arasındaki fark nedir?",
+   "a": "Üçü de TNFX'e müşteri getirdiğiniz için size komisyon kazandırır. Affiliate, linkler ve bannerlarla trafik yönlendirir; introducing broker (IB) ise bir müşteri portföyünü aktif olarak yönetir ve destekler, çoğu zaman bir ekiple birlikte; referral partner ise sadece arkadaşlarıyla bir link paylaşır. TNFX ile aynı hesaptan bunların herhangi biri olarak başlayabilir ve zamanla tam bir IB masasına dönüşebilirsiniz — lot başına 10$'a kadar çıkan komisyon hepsinde aynıdır."
+  },
+  {
+   "q": "Referral linkimi ve pazarlama bannerlarımı nasıl alırım?",
+   "a": "Hesabınız onaylandığı anda partner panelinizde size özel bir referral link ile linkinizi zaten içeren hazır reklam bannerlarından oluşan bir kütüphaneye kavuşursunuz. Bunları kitlenizin kullandığı her kanalda paylaşabilirsiniz."
+  },
+  {
+   "q": "Müşterilerim linkimi kullandığı için daha fazla mı öder veya daha kötü spread mi alır?",
+   "a": "Hayır. Müşterileriniz herkesle tamamen aynı dar spreadler ve koşullarda işlem yapar — komisyonunuz müşterilerinizden değil, TNFX'ten gelir. Sizin üzerinizden gelmeleri onlara hiçbir şeye mal olmaz."
+  },
+  {
+   "q": "Lot başına komisyonum nasıl hesaplanır?",
+   "a": "Yönlendirdiğiniz müşterilerin altın ve major paritelerde işlem yaptığı her standart lot için sabit bir tutar kazanırsınız — Bronze'da lot başına 5$'dan Prime'da lot başına 10$'a kadar. Oranınızı müşterilerinizin aylık lot miktarıyla çarparak gelirinizi tahmin edebilirsiniz; kazancınız her işlemde canlı olarak birikir."
+  },
+  {
+   "q": "Haftalık challenge'lar ve kariyer görevleri nasıl çalışır?",
+   "a": "Lot başına komisyonun üstüne görevleri kabul edip gerçek nakit kazanabilirsiniz. Haftalık görevler her Pazar sıfırlanır ve 400$'a kadar öder; kariyer görevleri altı aşamada bir kez ilerler ve 4,000$'a kadar öder. Ödüller, hedefi tutturduğunuz anda partner cüzdanınıza düşer."
+  },
+  {
+   "q": "Komisyonumu hangi yöntemlerle çekebilirim?",
+   "a": "Anlık yerel seçenekler ve kripto dahil, TNFX'in desteklediği herhangi bir yöntemle çekim yapabilirsiniz — Ovadot, Qi Card, ZainCash, USDT ve Perfect Money gibi. Herhangi bir kilitleme süresi veya minimum ödeme döngüsü yoktur."
+  },
+  {
+   "q": "TNFX'i sosyal medyada, Telegram'da veya YouTube'da tanıtabilir miyim?",
+   "a": "Evet. Linkinizi ve bannerlarınızı kitlenizin bulunduğu her yerde paylaşın — sosyal medya, mesajlaşma grupları, bir web sitesi ya da video — partner koşullarına ve yerel reklam kurallarına uyduğunuz sürece. Hazır kreatifler işinizi hızlandırır."
+  },
+  {
+   "q": "Katılım ücreti veya minimum müşteri sayısı var mı?",
+   "a": "Hayır. Katılım tamamen ücretsizdir, minimum müşteri sayısı yoktur ve sermaye gerekmez. İlk müşterinizin ilk lotundan itibaren kazanmaya başlarsınız."
+  },
+  {
+   "q": "Bir müşteri işlem yapmayı bırakırsa komisyonuma ne olur?",
+   "a": "Komisyonunuz gerçek işlem hacmi üzerinden ödenir, dolayısıyla bir müşteri işlem yapmadığında durur ve geri döndüğünde yeniden başlar. Ömür boyu gelir paylaşımı olduğu için, o müşteri her işlem yaptığında kazanmaya devam edersiniz."
+  },
+  {
+   "q": "Kendi altımda bir ekip kurabilir veya alt partnerler getirebilir miyim?",
+   "a": "Evet. TNFX, ağ kuran ve bir alt partner ekibini yöneten introducing brokerları destekler, böylece kendi doğrudan referanslarınızın çok ötesinde büyüyebilirsiniz. Operasyonunuza uygun yapı için partner masamızla görüşün."
+  },
+  {
+   "q": "Lot başına 5$'dan 10$'a nasıl yükselirim?",
+   "a": "Portföyünüz büyüdükçe ve yayınlanan eşikleri tutturdukça oranınız otomatik olarak artar — daha fazla bakiyeli müşteri ve daha fazla aylık hacim sizi Bronze'dan Prime'a kademe merdiveninde yukarı taşır. Pazarlık yok, kayırma yok: rakamları tuttur, oranın artsın."
+  },
+  {
+   "q": "Müşterilerimi, lotlarımı ve kazançlarımı nasıl takip ederim?",
+   "a": "Her şey gerçek zamanlı partner panelinizde — her kayıt, yatırım, işlem gören lot ve komisyon dolarınız, gerçekleştiği anda güncellenir; challenge ilerlemeniz ve çekilebilir bakiyeniz de dahil. Aylık ekstre yok, tahmin yürütmek yok."
+  }
+ ],
+ "topics": {
+  "introducing-broker": {
+   "title": "Forex Introducing Broker (IB) Ol — Lot Başına $10'a Kadar Kazan | TNFX Ortakları",
+   "meta": "TNFX forex introducing broker olun ve müşterilerinizin yaptığı her işlemde lot başına $10'a kadar kazanın. Katılım ücretsiz, haftalık nakit challenge, 13 ödeme yöntemi, FSA lisanslı.",
+   "h1": "Forex Introducing Broker Ol",
+   "subhead": "Yatırımcıları FSA lisanslı bir broker ile tanıştırın ve işlem yaptıkları her lot için $10'a kadar kazanın — üstüne haftalık nakit challenge'lar ve her doları takip eden canlı bir panel.",
+   "lead_h2": "Introducing broker nedir — ve ne kadar kazanabilirsiniz?",
+   "lead_p": "Introducing broker (IB), yatırımcıları bir brokere yönlendirir ve onların işlemleri üzerinden komisyon kazanır — kendiniz işlem yapmadan, sermaye gerektirmeden. Bir TNFX IB'si olarak lot başına $10'a kadar kazanırsınız; müşterilerinizin yaptığı her işlemde canlı ödenir ve istediğiniz an çekilir. Tek bir pozisyon almadan forekste gerçek bir gelir inşa etmenin en net yollarından biridir."
+  },
+  "affiliate-program": {
+   "title": "Forex Affiliate Programı — Lot Başına $10'a Kadar | TNFX Ortakları",
+   "meta": "TNFX forex affiliate programına katılın; lot başına $10'a kadar artı haftalık nakit challenge kazanın. MENA bölgesi için en yüksek ödemeli CFD affiliate programı — ücretsiz, FSA lisanslı, 13 ödeme yöntemi.",
+   "h1": "Forex Affiliate Programı",
+   "subhead": "Kitlenizin güvenebileceği FSA lisanslı bir brokeri tanıtın ve lot başına $10'a kadar kazanın — üstüne haftalık nakit ödüller, hazır bannerlar ve her referansın gerçek zamanlı takibi.",
+   "lead_h2": "Gerçekten ödeme yapan forex affiliate programı",
+   "lead_p": "Forekste affiliate pazarlama, ödeme gerçek olduğunda ve broker dönüşüm sağladığında işe yarar. TNFX, yönlendirdiğiniz müşterilerin yaptığı her işlemde lot başına $10'a kadar öder — tek seferlik bir prim değil — üstüne her hafta nakit challenge. Linkinizi ve hazır kreatifleri dakikalar içinde alın ve kazanmaya başlayın."
+  },
+  "partnership": {
+   "title": "Forex Ortaklık Programı — TNFX ile Ortak Ol | Lot Başına $10'a Kadar Kazan",
+   "meta": "FSA lisanslı forex brokeri TNFX ile ortak olun ve lot başına $10'a kadar kazanın. Introducing broker, affiliate ve referans ortaklıkları — haftalık nakit challenge, 13 ödeme yöntemi, canlı panel.",
+   "h1": "TNFX Ortağı Ol",
+   "subhead": "Tek bir ortaklık, lot başına $10'a kadar. İster müşteri tanıştırın, ister affiliate kampanyaları yürütün, ister arkadaş yönlendirin — TNFX, yaptıkları her lot için size öder, üstüne her hafta nakit challenge.",
+   "lead_h2": "Hem ödeyen hem de kalıcı olan bir broker ile ortak olun",
+   "lead_p": "Bir ortaklık ancak arkasındaki broker kadar iyidir. TNFX FSA lisanslıdır, 1,000+ enstrümanla MT4 ve MT5 üzerinde çalışır ve gönderdiğiniz müşterileri elde tutmak için kurulmuştur — böylece komisyonunuz katlanmaya devam eder. Lot başına $10'a kadar, haftalık nakit challenge'lar ve canlı bir ortak paneli."
+  },
+  "cpa": {
+   "title": "Forex CPA & Ortaklık Ödemeleri — Lot Başına $10'a Kadar veya CPA | TNFX",
+   "meta": "TNFX forex ortak ödemeleri: lot başına $10'a kadar gelir paylaşımı, artı CPA seçenekleri kazanın. Şeffaf, yayınlanmış oranlar, FSA lisanslı, haftalık nakit challenge. Size uyan ödeme modelini seçin.",
+   "h1": "Forex CPA & Ortak Ödemeleri",
+   "subhead": "Trafiğinize uyan ödeme modelini seçin. Ömür boyu gelir paylaşımında lot başına $10'a kadar kazanın veya CPA için masamızla konuşun — şeffaf, yayınlanmış oranlar ve haftalık nakit challenge'larla.",
+   "lead_h2": "CPA, gelir paylaşımı ya da hibrit — seçim sizin",
+   "lead_p": "Ciddi affiliate'ler ödeme modelini kendisi seçer. TNFX'in temel modeli ömür boyu gelir paylaşımı olarak lot başına $10'a kadar öder — müşteriniz işlem yaptığı sürece kazanırsınız, sadece bir kez değil. Edinme başına ödemeyi (CPA) mi tercih edersiniz? Ortak masamız, gizli hak ediş tuzakları olmayan net ve yayınlanmış koşullarla sizinle CPA ve hibrit anlaşmalar üzerinde çalışır."
+  },
+  "cashback-rebate": {
+   "title": "Forex Cashback & Rebate — Her Lotta Para İadesi | TNFX",
+   "meta": "TNFX ile her lotta forex cashback ve rebate kazanın. Altın ve majorlerde lot başına para iadesi, canlı ödenir, 13 yöntemle istediğiniz an çekilir. FSA lisanslı. MENA yatırımcıları için en büyük rebate.",
+   "h1": "Forex Cashback & Rebate",
+   "subhead": "İşlem yapılan her lotta para iadesi kazanın — sizin ya da müşterilerinizin — canlı ödenir ve 13 para yatırma yöntemiyle istediğiniz an çekilir. Bölgedeki en net cashback fırsatı.",
+   "lead_h2": "Her bir lotta cashback ve rebate",
+   "lead_p": "Rebate (ya da cashback), her işlem hacmi lotu için gerçek para iadesi demektir — altın ve majorlerde lot başına $10'a kadar. Bir TNFX ortağı olarak bunu, yönlendirdiğiniz müşterilerin ürettiği hacim üzerinden kazanırsınız; cüzdanınıza canlı ödenir ve istediğiniz an çekilir. Üst limit oyunları yok, muğlak hak ediş yok."
+  },
+  "commission-per-lot": {
+   "title": "Forex Lot Başına Komisyon — $10'a Kadar | TNFX Ortak Kazançları",
+   "meta": "Forex IB'leri ne kadar kazanır? TNFX ile lot başına $10'a kadar komisyon, her işlemde canlı ödenir. $5'ten $10'a lot başına oran merdivenini ve haftalık nakit challenge'ları görün. FSA lisanslı.",
+   "h1": "Forex Komisyonu — Lot Başına $10'a Kadar",
+   "subhead": "Lot başına, hiçbir gizli detay olmadan tam olarak ne kazandığınız. Bronze'da $5'ten Prime'da $10'a — müşterilerinizin yaptığı her işlemde canlı ödenir, üstüne her hafta nakit challenge.",
+   "lead_h2": "Forex IB'leri ve affiliate'leri gerçekte ne kadar kazanır?",
+   "lead_p": "Dürüst cevap şu: oranınıza ve müşterilerinizin hacmine bağlı. TNFX ikisini de yayınlar. Komisyonunuz altın ve major paritelerde Bronze'da lot başına $5'ten Prime'da lot başına $10'a kadar çıkar ve müşterilerinizin işlem yaptığı her lot üzerinden ödenir. Oranınızı onların aylık lotlarıyla çarpın, gelirinizi bulun — sonra üstüne haftada $400'a kadar challenge nakdini ekleyin."
+  },
+  "referral": {
+   "title": "Bir Arkadaşını Forekse Yönlendir — Referans Programı | TNFX Ortakları",
+   "meta": "Arkadaşlarınızı TNFX'e yönlendirin ve yaptıkları her lotta kazanın. Referans linkinizi anında alın, lot başına $10'a kadar kazanın ve istediğiniz an çekin. Katılım ücretsiz, FSA lisanslı, 13 ödeme yöntemi.",
+   "h1": "Bir Arkadaşını Yönlendir — Forex Referans Programı",
+   "subhead": "Linkinizi paylaşın ve arkadaşlarınızın yaptığı her lotta kazanın — lot başına $10'a kadar, canlı ödenir. Başlamanın en basit yolu: referans linkinizi 60 saniyede alın ve istediğiniz yerde paylaşın.",
+   "lead_h2": "Yönlendirin, paylaşın ve kazanın — masaya gerek yok",
+   "lead_p": "Tam bir IB operasyonuna hazır değil misiniz? Sadece yönlendirin. Kaydolduğunuz anda kişisel referans linkinizi alın, arkadaşlarınızla ve kitlenizle paylaşın ve yaptıkları her lotta $10'a kadar kazanın — canlı ve istediğiniz an çekilebilir. Ölçeklenmeye hazır olduğunuzda aynı hesap tam kapsamlı IB ve affiliate masanıza dönüşür."
+  },
+  "earn-without-trading": {
+   "title": "Forekste İşlem Yapmadan Nasıl Para Kazanılır | TNFX Ortakları",
+   "meta": "İşlem yapmadan ve sermaye olmadan forekste para kazanın — TNFX ortağı olun ve müşteri yönlendirerek lot başına $10'a kadar kazanın. Yasal mı? Evet — FSA lisanslı. Nasıl çalıştığını öğrenin.",
+   "h1": "Forekste İşlem Yapmadan Nasıl Para Kazanılır",
+   "subhead": "Tek bir işlemi riske atmak zorunda değilsiniz. FSA lisanslı bir brokere müşteri tanıştırarak lot başına $10'a kadar kazanın — sermaye yok, pozisyon yok, sadece ağınız ve linkiniz.",
+   "lead_h2": "Forekstan kazanın — işlem yapmadan ve sermaye olmadan",
+   "lead_p": "İnsanların çoğu forekste para kaybeder. Ortaklar işlem yapmaz — başkalarının yaptığı hacimden kazanır. Bir TNFX ortağı olarak müşteri yönlendirir ve onların işlem yaptığı her şeyde lot başına $10'a kadar toplarsınız, sıfır sermaye riskiyle. Yasaldır, şeffaftır ve TNFX'in FSA lisansı, gelirinizin arkasındaki brokerin düzenlemeye tabi olduğu anlamına gelir. İşte tam olarak nasıl çalıştığı."
+  },
+  "compare": {
+   "title": "2026 En İyi Forex IB & Affiliate Ortaklık Programı — Lot Başına $10 | TNFX",
+   "meta": "Forex ortaklık programlarını mı karşılaştırıyorsunuz? Asıl önemli olanı görün — lot başına ödeme, ne kadar hızlı ödendiğiniz ve brokerin dönüşüm sağlayıp sağlamadığı. TNFX: lot başına $10'a kadar, haftalık nakit challenge'lar, hızlı yerel çekimler, FSA lisanslı.",
+   "h1": "2026'nın En İyi Forex Ortaklık Programı",
+   "subhead": "Her program trafiğinize değmez. En iyi forex IB ve affiliate programlarını ayıran şeyi ve TNFX'in nasıl öne çıktığını görün: lot başına $10'a kadar, haftalık nakit challenge'lar, hızlı yerel çekimler ve size özel bir MENA partner masası.",
+   "lead_h2": "Bir forex IB / affiliate programında nelere dikkat etmeli",
+   "lead_p": "Ciddi her ortaklık programı lot başına ya da edinim başına öder — asıl fark, ne kadar ödediği, gerçekten ne kadar hızlı ödendiğiniz ve brokerin gönderdiğiniz trafiği dönüşüme çevirip çevirmediğidir. Bir programı dört şeye göre değerlendirin: lot başına oran (ve ne kadar yükselebildiği), ödeme hızı ve yöntemleri, brokerin müşterilerinizi ne kadar iyi elinde tuttuğu ve arkasında gerçek bir yerel destek olup olmadığı. TNFX lot başına $10'a kadar öder, haftada $400'a kadar challenge nakiti ekler, 13 yerel ve global yöntemle para yatırma ve çekme sunar ve tüm bunları bir FSA lisansı ve gerçek bir MENA partner masasıyla destekler — partnerlerin defterlerini TNFX'e taşımasının nedeni de budur."
+  },
+  "what-is-introducing-broker": {
+   "title": "Forex Introducing Broker (IB) Nedir? Anlamı, Kazancı ve Nasıl Olunur | TNFX",
+   "meta": "Forex introducing broker (IB) nedir? IB'lerin nasıl çalıştığını, lot başına nasıl kazandıklarını, IB ile affiliate farkını ve TNFX ile nasıl IB olacağınızı anlatan net bir rehber — lot başına $10'a kadar, trade yok, sermaye yok.",
+   "h1": "Forex Introducing Broker Nedir?",
+   "subhead": "Bir introducing broker, trader'ları bir brokere yönlendirir ve onların trade'lerinden komisyon kazanır — kendi trade'iniz yok, sermaye yok. İşte tam olarak nasıl çalıştığı ve TNFX ile lot başına $10'a kadar nasıl IB olacağınız.",
+   "lead_h2": "Introducing broker, sade bir dille",
+   "lead_p": "Bir forex introducing broker (IB), trader'ları bir brokerle buluşturan ve o trader'ların yaptığı hacim üzerinden komisyon kazanan bir partnerdir — komisyonu müşteri değil, broker öder. Kendiniz trade yapmazsınız ve sermayeye ihtiyacınız olmaz; başkalarının trade aktivitesinden kazanırsınız. Bir TNFX IB'si olarak, yönlendirdiğiniz müşterilerin trade ettiği her standart lot için $10'a kadar kazanırsınız — her trade'de canlı olarak işler ve dilediğiniz zaman çekebilirsiniz. Forex'ten gerçek bir gelir oluşturmanın en net, en düşük riskli yolu budur."
+  },
+  "how-much-do-ibs-make": {
+   "title": "Forex IB'ler Ne Kadar Kazanır? Gerçek Lot Başına Kazanç | TNFX",
+   "meta": "Forex introducing broker'lar ne kadar kazanır? Oranınıza ve müşterilerinizin hacmine bağlı — ikisi de açık. TNFX ile her trade'de canlı olarak lot başına $5 ile $10 kazanın, ayrıca challenge'larda haftada $400'a kadar.",
+   "h1": "Forex Introducing Broker'lar Ne Kadar Kazanır?",
+   "subhead": "Dürüst cevap: lot başına oranınıza ve müşterilerinizin aylık hacmine bağlı — ve TNFX ikisini de yayınlıyor. Her trade'de canlı olarak lot başına $5 ile $10 kazanın, ayrıca haftada $400'a kadar challenge nakiti.",
+   "lead_h2": "Geliriniz = oranınız × müşterilerinizin hacmi",
+   "lead_p": "Tek bir rakam yok ama matematik basit ve herkese açık. Oranınız Bronze'da lot başına $5'ten Prime'da lot başına $10'a kadar çıkar; bunu müşterilerinizin her ay trade ettiği lotla çarpın, komisyonunuz çıkar. Ayda birkaç yüz lot trade eden aktif müşteriler yönlendirin, ciddi bir aylık gelir kazanmaya başlarsınız — üstüne haftalık challenge'larda haftada $400'a kadar ve kariyer görevlerinde $4,000'a kadar eklemeden önce. Her trade'de canlı olarak birikir ve dilediğiniz zaman çekebilirsiniz."
+  },
+  "islamic-halal-ib": {
+   "title": "İslami (Helal) Forex Ortaklık Programı — Swap-Free IB Komisyonu | TNFX",
+   "meta": "İslami forex ortaklık programı: swap-free (helal) trader'ları yönlendirin ve lot başına $10'a kadar kazanın. Faiz değil, trade aktivitesi üzerinden komisyon — Orta Doğu için tasarlandı. Katılım ücretsiz, FSA lisanslı.",
+   "h1": "İslami (Helal) Forex Ortaklık Programı",
+   "subhead": "Swap-free (İslami) hesap kullanan trader'ları yönlendirin ve lot başına $10'a kadar kazanın — gerçek trade aktivitesi üzerinden komisyon, hiçbir faiz söz konusu olmadan. Orta Doğu pazarı için tasarlandı.",
+   "lead_h2": "Swap-free trader'lar için tasarlanmış bir ortaklık programı",
+   "lead_p": "Bölgedeki birçok trader swap-free (İslami) hesap ister ve TNFX bunu sunar. Bir partner olarak bu trader'ları yönlendirir ve trade ettikleri hacim üzerinden lot başına $10'a kadar kazanırsınız — komisyonunuz, herhangi bir faiz ya da borç verme işleminden değil, brokerin trade aktivitesindeki spread'inden gelir. Trader'ları kendilerine uygun hesaplarla tanıştırırken kazanmanın temiz, aktiviteye dayalı bir yoludur."
+  },
+  "gold-xau-ib": {
+   "title": "Altın (XAU/USD) Forex Ortaklık Programı — Lot Başına $10 | TNFX",
+   "meta": "Altın, bölgenin en çok trade edilen piyasası. Altın (XAU/USD) trader'larını yönlendirin ve TNFX ile lot başına $10'a kadar kazanın — canlı ödenir, dilediğiniz zaman çekilir. Katılım ücretsiz, FSA lisanslı, haftalık nakit challenge'lar.",
+   "h1": "Altın Trading Ortaklık Programı",
+   "subhead": "Altın, bu bölgedeki trader'lar için bir numaralı enstrüman. Altın (XAU/USD) trader'larını yönlendirin ve hacimleri üzerinden lot başına $10'a kadar kazanın — TNFX komisyon merdiveninin en üst basamağı.",
+   "lead_h2": "Bölgenin favori piyasasından kazanın — altın",
+   "lead_p": "Altın (XAU/USD), Orta Doğu'daki trade hacminin büyük bir bölümünün gerçekleştiği yerdir ve TNFX komisyon merdiveninin en tepesinde durur — lot başına $10'a kadar. Kitleniz altın trade ediyorsa, onları zaten sevdikleri piyasaya yönlendiriyor ve trade ettikleri her lottan canlı olarak kazanıyorsunuz — üstelik dilediğiniz zaman çekilebilir. Üstüne haftalık nakit challenge'ları da ekleyin, rakamlar hızla toplanır."
+  },
+  "mt4-mt5-ib": {
+   "title": "MT4 & MT5 Introducing Broker Programı — Lot Başına $10 | TNFX",
+   "meta": "TNFX ile MT4 & MT5 introducing broker olun. MetaTrader 4 ve MetaTrader 5 üzerindeki trader'ları yönlendirin ve lot başına $10'a kadar kazanın, canlı takip edilir. Katılım ücretsiz, FSA lisanslı, haftalık nakit challenge'lar.",
+   "h1": "MT4 & MT5 Introducing Broker Programı",
+   "subhead": "Trader'ları zaten kullandıkları MetaTrader 4 ve MetaTrader 5 platformlarında yönlendirin ve hacimleri üzerinden lot başına $10'a kadar kazanın — partner panelinizde canlı olarak takip edilir.",
+   "lead_h2": "Her iki MetaTrader platformundan kazanın",
+   "lead_p": "Neredeyse her forex trader'ı MetaTrader'ı bilir — ve TNFX, tek bir partner hesabından hem MT4 hem MT5 üzerinde çalışır. İster kitleniz klasik MT4'ü ister daha yeni MT5'i tercih etsin, onları zaten güvendikleri platforma yönlendirir ve trade ettikleri her şeyden lot başına $10'a kadar kazanırsınız. Öğrenilecek yeni bir araç yok, dar spread'ler ve hızlı execution var, ve her lot dolarına kadar canlı olarak takip edilir."
+  },
+  "sub-ib-master-ib": {
+   "title": "Sub-IB & Master IB — Forex Partner Ekibi Kurun | TNFX",
+   "meta": "Kendi yönlendirmelerinizin ötesine geçin: master IB olun, altınıza sub-partner'lar getirin ve tüm ağınızın hacminden kazanın — lot başına $10'a kadar. TNFX'ten çok kademeli forex ortaklık programı.",
+   "h1": "Ekip Kurun: Master IB & Sub-IB Programı",
+   "subhead": "Kendinizi kendi yönlendirmelerinizle sınırlamayın. Altınıza sub-partner'lar getirin ve tüm ağınızın trade hacminden kazanın — lot başına $10'a kadar, her partner ve müşteriyi canlı görerek.",
+   "lead_h2": "Sadece bir yönlendirme listesi değil, bir ağ büyütün",
+   "lead_p": "En büyük partnerler yalnızca müşteri yönlendirmez — ekipler kurar. TNFX, altına sub-partner'lar getiren master IB'leri destekler, böylece yalnızca kendi doğrudan yönlendirmelerinizden değil, tüm ağınızın ürettiği hacimden kazanırsınız. Tek başına bir affiliate'in gerçek bir IB işine dönüşme yolu budur: partner toplayın, sub-partner'larınızı destekleyin ve kazancınızı ekip genelinde lot başına $10'a kadar ölçekleyin. Operasyonunuza uygun çok kademeli yapı için partner masamızla konuşun."
+  }
+ },
+ "review_flags": [
+  "'panelaniz' typo in s.how_kicker area — check s.dash_kicker value 'Ortak panelaniz' should read 'Ortak paneliniz'",
+  "Product/challenge names (First Blood, Hat Trick, Volume Hunter, Whale Hunter, Challenge Arena) kept in English per instructions — confirm this reads well to Turkish traders vs. localized names",
+  "Regulatory disclaimer phrasing (FSA / Financial Services Authority, CFD risk warning) should be checked against Turkish financial-marketing norms",
+  "'introducing broker', 'affiliate', 'rebate', 'cashback', 'CPA', 'IB' kept as English loanwords — verify these match what Turkish forex audience actually types",
+  "'komisyon katlanır / katlanmaya devam eder' used for 'compounds' — confirm it conveys recurring/growing earnings rather than literal folding",
+  "'Temsili görsel' used for '(Illustration.)' — confirm preferred over 'Örnek görsel'",
+  "Bronze/Prime tier names left in English — verify intended vs 'Bronz'"
+ ]
+}

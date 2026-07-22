@@ -429,7 +429,7 @@ def ib_trades(
         SELECT ib.id FROM ibs ib JOIN clients c ON c.login = ib.agent_id WHERE c.id = :cid
     """), {"cid": client_id}).scalar()
     if not ib_id:
-        return {"totals": {"trades": 0, "lots": 0, "commission": 0, "profit": 0},
+        return {"totals": {"trades": 0, "lots": 0, "commission": 0},
                 "filters": {"countries": [], "cities": [], "account_types": [], "platforms": []},
                 "trades": [], "page": page}
     p_from, p_to = period_dates(period, date_from, date_to)
@@ -460,8 +460,10 @@ def ib_trades(
         ARRAY(SELECT DISTINCT platform FROM ib_trades WHERE ib_id=:ib ORDER BY 1)
     """), {"ib": ib_id}).fetchone()
     return {
+        # IB portal must NOT expose client P&L — IBs should not see whether their clients win or
+        # lose. Profit is intentionally omitted from both the totals and the per-trade rows below.
         "totals": {"trades": tot[0], "lots": float(tot[1] or 0), "commission": float(tot[2] or 0),
-                   "profit": float(tot[3] or 0), "potential": float(tot[4] or 0)},
+                   "potential": float(tot[4] or 0)},
         "filters": {"countries": list(opts[0] or []), "cities": list(opts[1] or []),
                     "account_types": list(opts[2] or []), "platforms": list(opts[3] or [])},
         "page": page,
@@ -471,8 +473,8 @@ def ib_trades(
             "account_type": r[5], "symbol": r[6], "direction": r[7],
             "open_time": str(r[8]) if r[8] else None, "close_time": str(r[9]) if r[9] else None,
             "hold_min": round(r[10] / 60.0, 1) if r[10] is not None else None,
-            "lots": float(r[11] or 0), "open_price": r[12], "close_price": r[13],
-            "profit": float(r[14] or 0), "commission": float(r[15] or 0),
+            "lots": float(r[11] or 0),
+            "commission": float(r[15] or 0),
             "eligible": r[16], "reason": r[17],
         } for r in rows],
     }
@@ -1405,8 +1407,10 @@ def create_account(payload: dict, client_id: int = Depends(get_current_client), 
     try:
         import mt_provision
         group = mt_provision.real_group(acc_type, islamic)
-        res = mt_provision.create_account(group, first, last, leverage=leverage, email=email,
-                                          phone=phone, country=country, city=city, agent=agent)
+        # idempotent per portal request row: a double-click / retry can't open two real accounts.
+        res = mt_provision.create_account_idempotent(
+            db, f"portal_req_{req_id}", group, first, last, leverage=leverage, email=email,
+            phone=phone, country=country, city=city, agent=agent)
     except Exception as e:
         res = {"ok": False, "error": str(e)}
     if not res.get("ok"):
@@ -1757,4 +1761,10 @@ def portal_chat(payload: dict, client_id: int = Depends(get_current_client),
     reply = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
     if not reply:
         reply = "Sorry, I couldn't generate a reply just now. Please try again."
+    # Process the bot's hidden [[ESCALATE]] flag: opens a Chatbot ticket (source='chat') for any
+    # client note / request / feedback the team should see, and strips the marker before the client
+    # sees it. Portal chat was missing this, so live-chat notes were never captured (fix Jul 2026).
+    _esc_login = logins[0] if logins else None
+    reply = _chat._maybe_teach(db, reply, "client", _esc_login, _last_user)      # teach the brain directly
+    reply = _chat._maybe_escalate(db, reply, "client", _esc_login, _last_user)   # + open a ticket for team issues
     return {"reply": reply, "parts": _chat._split_parts(reply)}

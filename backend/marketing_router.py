@@ -26,6 +26,14 @@ from auth import get_current_user
 
 router = APIRouter(prefix="/marketing", tags=["marketing"])
 
+
+# go-live hardening: campaign create/delete + drafts are for marketing/management.
+def _require_marketing(current_user):
+    if (getattr(current_user, "role", "") or "").lower() not in (
+            "super_admin", "admin", "director", "marketing"):
+        from fastapi import HTTPException as _H
+        raise _H(status_code=403, detail="Marketing/management only")
+
 # Deposit truth lives in `transactions` (clients.last_deposit_at/total_deposits are unpopulated).
 # tx_date is varchar 'YYYY-MM-DD HH:MM:SS' -> safe-cast to a date for recency math.
 HAS_DEP = "EXISTS (SELECT 1 FROM transactions t WHERE t.login=c.login AND t.tx_type='deposit')"
@@ -105,6 +113,31 @@ def _base(audience):
 
 
 def _counts(db, seg):
+    if seg["audience"] == "clients":
+        # person-level (see _segments_compute): clients rows are ACCOUNTS, not people
+        wj = (seg["where"].replace(HAS_DEP, "has_dep").replace(LAST_DEP, "last_dep")
+                          .replace("COALESCE(c.balance,0)", "COALESCE(balance,0)")
+                          .replace("COALESCE(c.kyc_status,'') <> 'verified'", "NOT kyc_ok"))
+        r = db.execute(text(f"""
+            WITH dep AS (
+                SELECT login, MAX(CASE WHEN tx_date ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}'
+                                       THEN substring(tx_date,1,10)::date END) AS last_dep
+                FROM transactions WHERE tx_type='deposit' GROUP BY login
+            ),
+            p AS (
+                SELECT c.customer_no, BOOL_OR(d.login IS NOT NULL) AS has_dep, MAX(d.last_dep) AS last_dep,
+                       SUM(COALESCE(c.balance,0)) AS balance,
+                       BOOL_OR(COALESCE(c.kyc_status,'')='verified') AS kyc_ok,
+                       MAX(lower(NULLIF(c.email,''))) AS email,
+                       MAX(NULLIF(regexp_replace(c.phone,'[^0-9]','','g'),'')) AS phone
+                FROM clients c LEFT JOIN dep d ON d.login = c.login
+                GROUP BY c.customer_no
+            )
+            SELECT COUNT(*), COUNT(DISTINCT email) FILTER (WHERE email IS NOT NULL),
+                   COUNT(DISTINCT phone) FILTER (WHERE phone IS NOT NULL)
+            FROM p WHERE {wj}
+        """)).fetchone()
+        return {"total": int(r[0] or 0), "reach_email": int(r[1] or 0), "reach_whatsapp": int(r[2] or 0)}
     frm, _alias, em, ph = _base(seg["audience"])
     sql = f"""
         SELECT COUNT(*) AS total,
@@ -187,23 +220,30 @@ def _overview_compute(db):
     leads_total = scalar("SELECT COUNT(*) FROM leads")
     leads_email = scalar("SELECT COUNT(*) FROM leads WHERE email IS NOT NULL AND email<>''")
     leads_phone = scalar("SELECT COUNT(*) FROM leads WHERE phone IS NOT NULL AND phone<>''")
-    cl_total = scalar("SELECT COUNT(*) FROM clients c")
-    cl_email = scalar("SELECT COUNT(*) FROM clients c WHERE email IS NOT NULL AND email<>''")
-    cl_phone = scalar("SELECT COUNT(*) FROM clients c WHERE phone IS NOT NULL AND phone<>''")
-    # depositors + lapsed in ONE pass via a deposit CTE (no per-row correlated subquery)
+    # PERSON-level (clients has one row per ACCOUNT incl. archived; a person = customer_no).
+    # One pass: persons, distinct emails/phones, depositor persons, lapsed persons.
     drow = db.execute(text("""
         WITH dep AS (
             SELECT login, MAX(CASE WHEN tx_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
                                    THEN substring(tx_date,1,10)::date END) AS last_dep
             FROM transactions WHERE tx_type='deposit' GROUP BY login
+        ),
+        p AS (
+            SELECT c.customer_no, BOOL_OR(d.login IS NOT NULL) AS has_dep, MAX(d.last_dep) AS last_dep,
+                   MAX(lower(NULLIF(c.email,''))) AS email,
+                   MAX(NULLIF(regexp_replace(c.phone,'[^0-9]','','g'),'')) AS phone
+            FROM clients c LEFT JOIN dep d ON d.login = c.login
+            GROUP BY c.customer_no
         )
-        SELECT COUNT(*) FILTER (WHERE d.login IS NOT NULL),
-               COUNT(*) FILTER (WHERE d.last_dep < (CURRENT_DATE-90))
-        FROM clients c LEFT JOIN dep d ON d.login = c.login
+        SELECT COUNT(*), COUNT(DISTINCT email), COUNT(DISTINCT phone),
+               COUNT(*) FILTER (WHERE has_dep),
+               COUNT(*) FILTER (WHERE last_dep < (CURRENT_DATE-90))
+        FROM p
     """)).fetchone()
-    depositors = int(drow[0] or 0)
+    cl_total, cl_email, cl_phone = int(drow[0] or 0), int(drow[1] or 0), int(drow[2] or 0)
+    depositors = int(drow[3] or 0)
     never_dep = cl_total - depositors
-    lapsed90 = int(drow[1] or 0)
+    lapsed90 = int(drow[4] or 0)
     return {
         "reach": {
             "leads": leads_total, "leads_email": leads_email, "leads_whatsapp": leads_phone,
@@ -229,19 +269,38 @@ def _segments_compute(db):
     # the joined CTE so each segment's WHERE is a cheap expression over clients ⋈ dep.
     client_segs = [s for s in SEGMENTS if s["audience"] == "clients"]
     try:
+        # PERSON-level, not account-level: the clients table has one row per ACCOUNT/login
+        # (~179k rows incl. ~159k archived TradeSoft historicals) but only ~65k unique PERSONS
+        # (customer_no). Marketing counts must be people/inboxes, or "All clients" shows 174k
+        # while the desk knows there are ~26k real (funded) clients. Aggregate to one row per
+        # customer_no first (deposit truth = ANY of the person's logins), then count persons
+        # and DISTINCT emails/phones.
         sel = []
         for i, s in enumerate(client_segs):
-            wj = s["where"].replace(HAS_DEP, "d.login IS NOT NULL").replace(LAST_DEP, "d.last_dep")
+            wj = (s["where"].replace(HAS_DEP, "has_dep").replace(LAST_DEP, "last_dep")
+                            .replace("COALESCE(c.balance,0)", "COALESCE(balance,0)")
+                            .replace("COALESCE(c.kyc_status,'') <> 'verified'", "NOT kyc_ok"))
             sel.append(f"COUNT(*) FILTER (WHERE {wj}) AS t{i}")
-            sel.append(f"COUNT(*) FILTER (WHERE ({wj}) AND c.email IS NOT NULL AND c.email<>'') AS e{i}")
-            sel.append(f"COUNT(*) FILTER (WHERE ({wj}) AND c.phone IS NOT NULL AND c.phone<>'') AS p{i}")
+            sel.append(f"COUNT(DISTINCT email) FILTER (WHERE ({wj}) AND email IS NOT NULL) AS e{i}")
+            sel.append(f"COUNT(DISTINCT phone) FILTER (WHERE ({wj}) AND phone IS NOT NULL) AS p{i}")
         q = f"""
             WITH dep AS (
                 SELECT login, MAX(CASE WHEN tx_date ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}'
                                        THEN substring(tx_date,1,10)::date END) AS last_dep
                 FROM transactions WHERE tx_type='deposit' GROUP BY login
+            ),
+            p AS (
+                SELECT c.customer_no,
+                       BOOL_OR(d.login IS NOT NULL)                          AS has_dep,
+                       MAX(d.last_dep)                                       AS last_dep,
+                       SUM(COALESCE(c.balance,0))                            AS balance,
+                       BOOL_OR(COALESCE(c.kyc_status,'')='verified')         AS kyc_ok,
+                       MAX(lower(NULLIF(c.email,'')))                        AS email,
+                       MAX(NULLIF(regexp_replace(c.phone,'[^0-9]','','g'),'')) AS phone
+                FROM clients c LEFT JOIN dep d ON d.login = c.login
+                GROUP BY c.customer_no
             )
-            SELECT {', '.join(sel)} FROM clients c LEFT JOIN dep d ON d.login = c.login
+            SELECT {', '.join(sel)} FROM p
         """
         row = db.execute(text(q)).fetchone()
         for i, s in enumerate(client_segs):
@@ -317,6 +376,7 @@ def _occasions_compute(db):
 
 @router.post("/draft")
 def draft(payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    _require_marketing(user)
     """AI-draft message copy. Generates text only — does NOT send anything."""
     seg = SEG_BY_KEY.get(payload.get("segment", ""))
     channel = (payload.get("channel") or "email").lower()
@@ -394,6 +454,7 @@ def list_campaigns(db: Session = Depends(get_db), user=Depends(get_current_user)
 
 @router.post("/campaigns")
 def save_campaign(payload: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    _require_marketing(user)
     _ensure_campaigns(db)
     seg = SEG_BY_KEY.get(payload.get("segment_key", ""))
     channel = (payload.get("channel") or "email").lower()
@@ -418,6 +479,7 @@ def save_campaign(payload: dict, db: Session = Depends(get_db), user=Depends(get
 
 @router.delete("/campaigns/{cid}")
 def delete_campaign(cid: int, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    _require_marketing(user)
     db.execute(text("DELETE FROM marketing_campaigns WHERE id=:i"), {"i": cid})
     db.commit()
     return {"ok": True}
@@ -488,7 +550,7 @@ def _client_sources_compute(db):
     # Only these are REAL acquisition channels. Everything else (the legacy import marker
     # 'tradesoft', 'none', 'registration', '(unknown)', stray tags) is a customer whose source
     # was never captured → roll them all into one "Unattributed" row so the real channels stand out.
-    CHANNELS = {"google", "facebook", "instagram", "affiliate", "direct"}
+    CHANNELS = {"google", "tiktok", "snapchat", "facebook", "instagram", "affiliate", "direct"}
     out, unattr = [], {"source": "Unattributed", "clients": 0, "depositors": 0, "revenue": 0.0}
     for r in rows:
         s = (r[0] or "").lower()
@@ -546,8 +608,10 @@ from datetime import datetime, timezone, date as _date, timedelta as _td
 
 
 def _period_range(period: str, date_from: str = "", date_to: str = ""):
-    """(start_date, end_date) ISO strings. Mirrors ib_router.period_dates."""
-    today = datetime.now(timezone.utc).date()
+    """(start_date, end_date) ISO strings. Mirrors ib_router.period_dates.
+    'today' is IRAQ's today (UTC+3) — see crm_tz."""
+    from crm_tz import today_local
+    today = today_local()
     p = (period or "all_time").lower()
     if p == "today":            s = e = today
     elif p == "yesterday":      s = e = today - _td(days=1)

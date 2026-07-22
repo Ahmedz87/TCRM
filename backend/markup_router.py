@@ -40,15 +40,21 @@ def get_markups(db: Session = Depends(get_db), current_user: models.User = Depen
 def others(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """Symbols that have been TRADED but are not in any markup sheet — so you can spot
     and configure the uncovered ones. Base symbol = part before the '.suffix'."""
+    # PERF (Jul 2026): reads the precomputed deals_symbol_agg (~434 rows) instead of a full
+    # 16.8M-row deals GROUP BY (~5s). Normalizes+re-groups the tiny rollup — instant.
+    import markup_agg
+    if markup_agg.is_stale(db):
+        try: markup_agg.refresh()
+        except Exception: db.rollback()
     rows = db.execute(text("""
         WITH traded AS (
-            SELECT upper(regexp_replace(split_part(d.symbol,'.',1),'[^A-Za-z0-9]','','g')) AS sym_norm,
-                   MIN(d.symbol) AS sample,
-                   SUM(d.volume)/10000.0 AS lots,
-                   SUM(d.markup_profit)/10000.0 AS markup_usd,
-                   COUNT(*) AS trades
-            FROM deals d
-            WHERE d.action IN (0,1) AND d.volume > 0 AND COALESCE(d.symbol,'') <> ''
+            SELECT upper(regexp_replace(split_part(a.symbol,'.',1),'[^A-Za-z0-9]','','g')) AS sym_norm,
+                   MIN(a.symbol) AS sample,
+                   SUM(a.lots) AS lots,
+                   SUM(a.markup_usd) AS markup_usd,
+                   SUM(a.trades) AS trades
+            FROM deals_symbol_agg a
+            WHERE COALESCE(a.symbol,'') <> ''
             GROUP BY 1
         )
         SELECT sym_norm, sample, lots, markup_usd, trades
@@ -88,12 +94,15 @@ def crosscheck(period: str = "all_time", db: Session = Depends(get_db),
                current_user: models.User = Depends(get_current_user)):
     """Realized: for every symbol, the markup we EARNED vs the IB commission we PAID.
     Flags rows where IB commission >= markup earned (we lose money on those trades)."""
+    # PERF: reads the precomputed rollup, not a full deals GROUP BY (was ~1.5s uncached).
+    import markup_agg
+    if markup_agg.is_stale(db):
+        try: markup_agg.refresh()
+        except Exception: db.rollback()
     rows = db.execute(text("""
         WITH mk AS (
-            SELECT d.symbol AS symbol,
-                   COALESCE(SUM(d.markup_profit),0)/10000.0 AS markup_usd,
-                   COALESCE(SUM(d.volume),0)/10000.0 AS lots
-            FROM deals d WHERE d.action IN (0,1) GROUP BY d.symbol
+            SELECT a.symbol AS symbol, a.markup_usd AS markup_usd, a.lots AS lots
+            FROM deals_symbol_agg a
         ),
         ibc AS (
             SELECT symbol, COALESCE(SUM(commission_usd),0) AS ib_usd

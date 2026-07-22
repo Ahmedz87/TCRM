@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiGet, apiPost, apiPut, apiDelete } from './api';
+import { CT } from './crmTable';
 
 const TYPES = [
   { v: 'qcard', l: 'Qi Card' }, { v: 'zaincash', l: 'Zain Cash' },
@@ -83,14 +84,14 @@ export default function PaymentCards() {
   const inp: any = { width: '100%', padding: '8px 10px', borderRadius: 8, background: '#262c36', border: '1px solid #2f3a48', color: '#e8edf2', fontSize: 13, outline: 'none', boxSizing: 'border-box' };
   return (
     <div style={{ padding: 24, maxWidth: 1240, margin: '0 auto' }}>
-      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>💳 Payment Cards</div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Payment Cards</div>
       <div style={{ fontSize: 12, color: '#8A93A3', marginBottom: 18 }}>Company Qi / Zain Cash / Fastpay / Sham Cash numbers held by back-office members. Clients are shown an <b>active</b> card based on the holder's working hours.</div>
       {msg && <div style={{ background: 'rgba(58,210,159,0.1)', border: '1px solid #2bb88a55', color: '#3ad29f', borderRadius: 8, padding: '8px 12px', fontSize: 12.5, marginBottom: 14 }}>{msg}</div>}
 
       {/* FX rates — local-currency deposits convert to USD at these (back-office editable) */}
       <div style={{ background: '#161c24', border: '1px solid #2f3a48', borderRadius: 12, padding: 16, marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>💱 Exchange rates</div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>Exchange rates</div>
           {ratesSaved && <span style={{ fontSize: 11.5, color: ratesSaved.includes('fail') ? '#F2667A' : '#3ad29f' }}>{ratesSaved}</span>}
         </div>
         <div style={{ fontSize: 11.5, color: '#8A93A3', marginBottom: 12 }}>Clients depositing with a local method enter the amount in local currency; the portal converts it to USD at these rates. Update whenever the market moves.</div>
@@ -147,59 +148,63 @@ export default function PaymentCards() {
       </div>
 
       {/* List */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-        <thead><tr>{['Type', 'Card number', 'Card name', 'Account #', 'Holder', 'Active hours', 'Daily', 'Monthly', 'Status', 'Now', ''].map(h => <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: '#cfd6e0', fontWeight: 600, borderBottom: '1px solid #2f3a48' }}>{h}</th>)}</tr></thead>
-        <tbody>
-          {cards.length === 0 ? <tr><td colSpan={11} style={{ padding: 24, color: '#8A93A3', textAlign: 'center' }}>No cards yet — add your Qi / Zain Cash / Fastpay / Sham Cash numbers above.</td></tr> :
-            cards.map(c => (
-              <tr key={c.id} style={{ borderBottom: '1px solid #232d3a' }}>
-                <td style={{ padding: '8px 10px', textTransform: 'capitalize' }}>{TYPES.find(t => t.v === c.card_type)?.l || c.card_type}</td>
-                <td style={{ padding: '8px 10px', fontFamily: 'monospace' }}>{c.number || '—'}</td>
-                <td style={{ padding: '8px 10px' }}>{c.card_name || '—'}</td>
-                <td style={{ padding: '8px 10px', fontFamily: 'monospace' }}>{c.account_number || '—'}</td>
-                <td style={{ padding: '8px 10px' }}>{c.holder_name || <span style={{ color: '#f0556a' }}>— unassigned</span>}</td>
-                <td style={{ padding: '8px 10px' }}>{minToHHMM(c.active_from)}–{minToHHMM(c.active_to)}</td>
-                <td style={{ padding: '8px 10px' }}>{c.daily_limit ? <span title={`used today $${(c.day_used || 0).toLocaleString()}`}>${c.daily_limit.toLocaleString()}</span> : '—'}</td>
-                <td style={{ padding: '8px 10px' }}>{c.monthly_limit ? <span title={`used this month $${(c.month_used || 0).toLocaleString()}`}>${c.monthly_limit.toLocaleString()}</span> : '—'}</td>
-                <td style={{ padding: '8px 10px' }}><span style={{ color: c.is_active ? '#3ad29f' : '#f0556a' }}>{c.is_active ? 'On' : 'Off'}</span></td>
-                <td style={{ padding: '8px 10px' }}>{c.available_now ? <span style={{ color: '#3ad29f', fontWeight: 700 }}>● live</span> : <span style={{ color: '#566' }}>—</span>}</td>
-                <td style={{ padding: '8px 10px' }}><button onClick={() => edit(c)} style={{ marginRight: 6, color: '#9bb4d4', background: 'none', border: '1px solid #2f3a48', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>Edit</button><button onClick={() => del(c.id)} style={{ color: '#f0556a', background: 'none', border: '1px solid #3a2530', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>Delete</button></td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
+      <div style={CT.scroll}>
+        <table style={CT.table}>
+          <thead><tr style={CT.theadTr}>{['Type', 'Card number', 'Card name', 'Account #', 'Holder', 'Active hours', 'Daily', 'Monthly', 'Status', 'Now', ''].map(h => <th key={h} style={CT.th()}>{h}</th>)}</tr></thead>
+          <tbody>
+            {cards.length === 0 ? <tr><td colSpan={11} style={{ padding: 24, color: '#8A93A3', textAlign: 'center' }}>No cards yet — add your Qi / Zain Cash / Fastpay / Sham Cash numbers above.</td></tr> :
+              cards.map(c => (
+                <tr key={c.id} style={CT.row()}>
+                  <td style={{ ...CT.td, textTransform: 'capitalize' }}>{TYPES.find(t => t.v === c.card_type)?.l || c.card_type}</td>
+                  <td style={{ ...CT.td, fontFamily: 'monospace' }}>{c.number || '—'}</td>
+                  <td style={CT.td}>{c.card_name || '—'}</td>
+                  <td style={{ ...CT.td, fontFamily: 'monospace' }}>{c.account_number || '—'}</td>
+                  <td style={CT.td}>{c.holder_name || <span style={{ color: '#f0556a' }}>— unassigned</span>}</td>
+                  <td style={CT.td}>{minToHHMM(c.active_from)}–{minToHHMM(c.active_to)}</td>
+                  <td style={CT.td}>{c.daily_limit ? <span title={`used today $${(c.day_used || 0).toLocaleString('en-GB')}`}>${c.daily_limit.toLocaleString('en-GB')}</span> : '—'}</td>
+                  <td style={CT.td}>{c.monthly_limit ? <span title={`used this month $${(c.month_used || 0).toLocaleString('en-GB')}`}>${c.monthly_limit.toLocaleString('en-GB')}</span> : '—'}</td>
+                  <td style={CT.td}><span style={{ color: c.is_active ? '#3ad29f' : '#f0556a' }}>{c.is_active ? 'On' : 'Off'}</span></td>
+                  <td style={CT.td}>{c.available_now ? <span style={{ color: '#3ad29f', fontWeight: 700 }}>● live</span> : <span style={{ color: '#566' }}>—</span>}</td>
+                  <td style={CT.td}><button onClick={() => edit(c)} style={{ marginRight: 6, color: '#9bb4d4', background: 'none', border: '1px solid #2f3a48', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>Edit</button><button onClick={() => del(c.id)} style={{ color: '#f0556a', background: 'none', border: '1px solid #3a2530', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>Delete</button></td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* Manual deposit review — AI flags fakes, a human approves */}
       <div style={{ background: '#161c24', border: '1px solid #232d3a', borderRadius: 12, padding: 16, marginTop: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>🧾 Manual deposit review</div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>Manual deposit review</div>
           <button onClick={loadDeposits} style={{ fontSize: 11.5, color: '#9bb4d4', background: 'none', border: '1px solid #2f3a48', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Refresh</button>
         </div>
         <div style={{ fontSize: 11.5, color: '#8A93A3', marginBottom: 12 }}>Client-uploaded transfer proofs. The AI OCRs the receipt and <b>only flags / rejects</b> fakes — a back-office member always makes the final approval.</div>
         {deposits.length === 0 ? <div style={{ color: '#8A93A3', fontSize: 12.5, padding: 8 }}>No manual deposits submitted yet.</div> : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead><tr>{['When', 'Client', 'Method', 'Amount', 'AI verdict', 'Status', ''].map(h => <th key={h} style={{ padding: '7px 8px', textAlign: 'left', color: '#cfd6e0', fontWeight: 600, borderBottom: '1px solid #2f3a48' }}>{h}</th>)}</tr></thead>
-            <tbody>
-              {deposits.map(d => {
-                const pending = d.status === 'pending_admin_review';
-                const vc = d.verdict === 'reject' ? '#f0556a' : d.verdict === 'approve' ? '#3ad29f' : '#E8B84B';
-                return (
-                  <tr key={d.id} style={{ borderBottom: '1px solid #232d3a',
-                    background: pending ? 'rgba(232,184,75,0.07)' : 'transparent', opacity: pending ? 1 : 0.7 }}>
-                    <td style={{ padding: '7px 8px', whiteSpace: 'nowrap' }}>{d.date}</td>
-                    <td style={{ padding: '7px 8px' }}>{d.name || '—'}<div style={{ color: '#8A93A3', fontSize: 10.5 }}>#{d.login}</div></td>
-                    <td style={{ padding: '7px 8px', textTransform: 'capitalize' }}>{d.method}</td>
-                    <td style={{ padding: '7px 8px', fontWeight: 700 }}>${(d.amount || 0).toLocaleString()}{d.ocr_amount != null && Math.abs(d.ocr_amount - d.amount) > 0.5 && <div style={{ color: '#f0556a', fontSize: 10 }}>OCR ${d.ocr_amount}</div>}</td>
-                    <td style={{ padding: '7px 8px' }}><span style={{ color: vc, fontWeight: 700, textTransform: 'capitalize' }}>{d.verdict === 'approve' ? 'approved' : d.verdict === 'reject' ? 'rejected' : 'review'}</span></td>
-                    <td style={{ padding: '7px 8px' }}>{pending ? <span style={{ color: '#E8B84B', fontWeight: 700 }}>● Pending</span> : <span style={{ color: d.status === 'approved' ? '#3ad29f' : '#f0556a', fontWeight: 700 }}>{d.status === 'approved' ? '✓ Approved' : '✕ Rejected'}</span>}</td>
-                    <td style={{ padding: '7px 8px' }}>
-                      <button onClick={() => openCase(d.id)} style={{ color: pending ? '#E8B84B' : '#9bb4d4', background: 'none', border: `1px solid ${pending ? '#E8B84B55' : '#2f3a48'}`, borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontWeight: 600 }}>Details</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div style={CT.scroll}>
+            <table style={CT.table}>
+              <thead><tr style={CT.theadTr}>{['When', 'Client', 'Method', 'Amount', 'AI verdict', 'Status', ''].map(h => <th key={h} style={CT.th()}>{h}</th>)}</tr></thead>
+              <tbody>
+                {deposits.map(d => {
+                  const pending = d.status === 'pending_admin_review';
+                  const vc = d.verdict === 'reject' ? '#f0556a' : d.verdict === 'approve' ? '#3ad29f' : '#E8B84B';
+                  return (
+                    <tr key={d.id} style={{ ...CT.row(),
+                      background: pending ? 'rgba(232,184,75,0.07)' : 'transparent', opacity: pending ? 1 : 0.7 }}>
+                      <td style={CT.td}>{d.date}</td>
+                      <td style={CT.td}>{d.name || '—'}<div style={{ color: '#8A93A3', fontSize: 10.5 }}>#{d.login}</div></td>
+                      <td style={{ ...CT.td, textTransform: 'capitalize' }}>{d.method}</td>
+                      <td style={{ ...CT.td, fontWeight: 700 }}>${(d.amount || 0).toLocaleString('en-GB')}{d.ocr_amount != null && Math.abs(d.ocr_amount - d.amount) > 0.5 && <div style={{ color: '#f0556a', fontSize: 10 }}>OCR ${d.ocr_amount}</div>}</td>
+                      <td style={CT.td}><span style={{ color: vc, fontWeight: 700, textTransform: 'capitalize' }}>{d.verdict === 'approve' ? 'approved' : d.verdict === 'reject' ? 'rejected' : 'review'}</span></td>
+                      <td style={CT.td}>{pending ? <span style={{ color: '#E8B84B', fontWeight: 700 }}>● Pending</span> : <span style={{ color: d.status === 'approved' ? '#3ad29f' : '#f0556a', fontWeight: 700 }}>{d.status === 'approved' ? '✓ Approved' : '✕ Rejected'}</span>}</td>
+                      <td style={CT.td}>
+                        <button onClick={() => openCase(d.id)} style={{ color: pending ? '#E8B84B' : '#9bb4d4', background: 'none', border: `1px solid ${pending ? '#E8B84B55' : '#2f3a48'}`, borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontWeight: 600 }}>Details</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -224,8 +229,8 @@ export default function PaymentCards() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
                 <div style={{ padding: 18, borderRight: '1px solid #232d3a' }}>
                   <div style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#8A93A3', fontWeight: 700, marginBottom: 8 }}>Payment details</div>
-                  {row('Amount', `$${(d.amount || 0).toLocaleString()}`)}
-                  {d.ocr_amount != null && Math.abs(d.ocr_amount - d.amount) > 0.5 && row('OCR amount', `$${d.ocr_amount.toLocaleString()}`, '#f0556a')}
+                  {row('Amount', `$${(d.amount || 0).toLocaleString('en-GB')}`)}
+                  {d.ocr_amount != null && Math.abs(d.ocr_amount - d.amount) > 0.5 && row('OCR amount', `$${d.ocr_amount.toLocaleString('en-GB')}`, '#f0556a')}
                   {row('Method', d.method)}
                   <div style={{ fontSize: 11, color: '#8A93A3', margin: '12px 0 4px', fontWeight: 700 }}>RECEIVER — company card</div>
                   {row('Card name', d.company_card_name)}
@@ -285,28 +290,30 @@ export default function PaymentCards() {
 
       {/* Online payment gateways — enabled ones show in the client portal */}
       <div style={{ background: '#161c24', border: '1px solid #232d3a', borderRadius: 12, padding: 16, marginTop: 24 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>🌐 Online payment gateways</div>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Online payment gateways</div>
         <div style={{ fontSize: 11.5, color: '#8A93A3', marginBottom: 12 }}>Configured in <code>backend/gateway_config.py</code>. Only <b>enabled</b> gateways appear in the client portal; disabled ones stay here for reference. (Flip a gateway on/off in that file, then restart the backend.)</div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
-          <thead><tr>{['Gateway', 'Currency', 'Credentials', 'Mode', 'In client portal'].map(h => <th key={h} style={{ padding: '7px 9px', textAlign: 'left', color: '#cfd6e0', fontWeight: 600, borderBottom: '1px solid #2f3a48' }}>{h}</th>)}</tr></thead>
-          <tbody>
-            {gateways.length === 0 ? <tr><td colSpan={5} style={{ padding: 16, color: '#8A93A3' }}>No gateways configured.</td></tr> :
-              gateways.map((g: any) => (
-                <tr key={g.gateway} style={{ borderBottom: '1px solid #232d3a' }}>
-                  <td style={{ padding: '7px 9px', fontWeight: 600 }}>{g.label}<div style={{ color: '#566', fontSize: 10, fontFamily: 'monospace' }}>{g.gateway}</div></td>
-                  <td style={{ padding: '7px 9px' }}>{g.currency}</td>
-                  <td style={{ padding: '7px 9px' }}><span style={{ color: g.has_credentials ? '#3ad29f' : '#f0556a' }}>{g.has_credentials ? '✓ set' : '— missing'}</span></td>
-                  <td style={{ padding: '7px 9px' }}>{g.sandbox ? <span style={{ color: '#E8B84B' }}>sandbox</span> : <span style={{ color: '#9bb4d4' }}>live</span>}</td>
-                  <td style={{ padding: '7px 9px' }}><span style={{ fontWeight: 700, color: g.enabled ? '#3ad29f' : '#8A93A3' }}>{g.enabled ? '● Shown (enabled)' : '○ Hidden (disabled)'}</span></td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+        <div style={CT.scroll}>
+          <table style={CT.table}>
+            <thead><tr style={CT.theadTr}>{['Gateway', 'Currency', 'Credentials', 'Mode', 'In client portal'].map(h => <th key={h} style={CT.th()}>{h}</th>)}</tr></thead>
+            <tbody>
+              {gateways.length === 0 ? <tr><td colSpan={5} style={{ padding: 16, color: '#8A93A3' }}>No gateways configured.</td></tr> :
+                gateways.map((g: any) => (
+                  <tr key={g.gateway} style={CT.row()}>
+                    <td style={{ ...CT.td, fontWeight: 600 }}>{g.label}<div style={{ color: '#566', fontSize: 10, fontFamily: 'monospace' }}>{g.gateway}</div></td>
+                    <td style={CT.td}>{g.currency}</td>
+                    <td style={CT.td}><span style={{ color: g.has_credentials ? '#3ad29f' : '#f0556a' }}>{g.has_credentials ? '✓ set' : '— missing'}</span></td>
+                    <td style={CT.td}>{g.sandbox ? <span style={{ color: '#E8B84B' }}>sandbox</span> : <span style={{ color: '#9bb4d4' }}>live</span>}</td>
+                    <td style={CT.td}><span style={{ fontWeight: 700, color: g.enabled ? '#3ad29f' : '#8A93A3' }}>{g.enabled ? '● Shown (enabled)' : '○ Hidden (disabled)'}</span></td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Train the txid series */}
       <div style={{ background: '#161c24', border: '1px solid #232d3a', borderRadius: 12, padding: 16, marginTop: 24 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>🤖 Train transaction-ID series (anti-fraud)</div>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Train transaction-ID series (anti-fraud)</div>
         <div style={{ fontSize: 11.5, color: '#8A93A3', marginBottom: 10 }}>Paste the last ~50 real transaction IDs for a method (one per line). The AI learns the fixed series so it can reject fakes that don't match.</div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <select value={series.method} onChange={e => setSeries({ ...series, method: e.target.value })} style={{ ...inp, width: 160 }}>{TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}</select>

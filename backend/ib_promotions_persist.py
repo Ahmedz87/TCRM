@@ -21,9 +21,11 @@ CREATE TABLE IF NOT EXISTS ib_promotions (
     from_level   INTEGER,
     to_level     INTEGER,
     note         TEXT,
+    direction    TEXT DEFAULT 'promotion',
     source       TEXT DEFAULT 'commission_report',
     created_at   TIMESTAMPTZ DEFAULT NOW()
 )""")
+cur.execute("ALTER TABLE ib_promotions ADD COLUMN IF NOT EXISTS direction TEXT DEFAULT 'promotion'")
 cur.execute("CREATE INDEX IF NOT EXISTS ix_ib_promotions_ib ON ib_promotions(ib_id)")
 cur.execute("ALTER TABLE ibs ADD COLUMN IF NOT EXISTS last_promotion_at DATE")
 cur.execute("ALTER TABLE ibs ADD COLUMN IF NOT EXISTS last_promotion_level INTEGER")
@@ -38,13 +40,15 @@ for p in promos:
     w = str(p["wallet"]); ibid = ext2id.get(w)
     if ibid is None:
         unlinked += 1
-    note = f"XAUUSD/major commission-per-lot rose (level {p['from_level']}→{p['to_level']}) in the broker Commission Report"
-    cur.execute("""INSERT INTO ib_promotions (ib_id, ext_ib_id, promo_date, from_level, to_level, note, source)
-                   VALUES (%s,%s,%s,%s,%s,%s,'commission_report')""",
-                (ibid, int(w) if w.isdigit() else None, p["date"], p["from_level"], p["to_level"], note))
+    direction = p.get("direction", "promotion")
+    verb = "rose" if direction == "promotion" else "fell"
+    note = f"XAUUSD/major commission-per-lot {verb} (level {p['from_level']}→{p['to_level']}) in the broker Commission Report"
+    cur.execute("""INSERT INTO ib_promotions (ib_id, ext_ib_id, promo_date, from_level, to_level, note, direction, source)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,'commission_report')""",
+                (ibid, int(w) if w.isdigit() else None, p["date"], p["from_level"], p["to_level"], note, direction))
     ins += 1
 
-# stamp latest promotion per IB
+# stamp the LATEST level change per IB (promotion or demotion)
 cur.execute("""
     UPDATE ibs SET last_promotion_at = t.d, last_promotion_level = t.lv
     FROM (SELECT DISTINCT ON (ib_id) ib_id, promo_date d, to_level lv
@@ -52,7 +56,7 @@ cur.execute("""
           ORDER BY ib_id, promo_date DESC) t
     WHERE ibs.id = t.ib_id""")
 con.commit()
-print(f"inserted {ins} promotions ({unlinked} had no matching IB); ibs stamped.")
+print(f"inserted {ins} level-change events ({unlinked} had no matching IB); ibs stamped.")
 cur.execute("SELECT COUNT(*), COUNT(DISTINCT ib_id) FROM ib_promotions WHERE ib_id IS NOT NULL")
 print("linked promotions / distinct IBs:", cur.fetchone())
 con.close()

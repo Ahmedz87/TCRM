@@ -470,6 +470,21 @@ def main():
             _reactivate_archived_meta(new_lead_ids)
         except Exception as e:
             print(f"  archive re-capture skipped ({type(e).__name__}: {str(e)[:120]})")
+        # LINK every recapture lead to its OLD client record (matched_login) so the desk can SEE
+        # who they already are + the ORIGINAL registration date. The recapture_archive path doesn't
+        # set matched_login on its own, so we resolve it here at capture time. GUARDED.
+        try:
+            from database import SessionLocal
+            import auto_match
+            _db = SessionLocal()
+            try:
+                n = auto_match.link_recaptures(_db)
+                if n:
+                    print(f"  recapture link: connected {n} recapture lead(s) to their old client record.")
+            finally:
+                _db.close()
+        except Exception as e:
+            print(f"  recapture link skipped ({type(e).__name__}: {str(e)[:120]})")
 
     # Derive country from the phone's calling code for any lead still missing it. Meta forms don't
     # capture country, but the phone carries it (+963 Syria, +964 Iraq, +90 Turkey, +20 Egypt …).

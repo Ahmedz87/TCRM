@@ -88,6 +88,34 @@ def enrich(db):
     db.commit()
     print("  leads campaign/created/kyc filled from fx_users_view")
 
+    # ---- CLIENTS: email/phone verification from fx_users_view (email_verified_at / mobile_verify).
+    # The CRM flags were never populated (only ~20 set) so nearly every client falsely showed
+    # "unverified"; backfilled Jul 2026 and kept fresh here. ADDITIVE — only turns verified ON.
+    # The WHERE keeps it to rows that actually need flipping, so it's cheap and low-lock each cycle.
+    db.execute(text(f"""UPDATE clients cl SET
+        email_verified = CASE WHEN u.email_verified_at IS NOT NULL AND u.email_verified_at::text NOT IN ('','NULL')
+                              THEN TRUE ELSE cl.email_verified END,
+        phone_verified = CASE WHEN u.mobile_verify::text='1' THEN TRUE ELSE cl.phone_verified END
+      FROM customers cu
+      JOIN {L}.fx_users_view u ON u.id = cu.legacy_user_id::text
+      WHERE cu.customer_no = cl.customer_no
+        AND ((u.email_verified_at IS NOT NULL AND u.email_verified_at::text NOT IN ('','NULL') AND NOT cl.email_verified)
+             OR (u.mobile_verify::text='1' AND NOT cl.phone_verified))"""))
+    db.commit()
+    print("  clients email/phone verification synced from fx_users_view")
+
+    # ---- CLIENTS: KYC status from fx_users_view.is_kyc_verified. Only promotes blank/pending →
+    # verified (never touches explicit review states pending_review/pending_admin_review/docs_needed).
+    # Backfilled Jul 2026 (34k) and kept fresh here; WHERE keeps it to rows that need it (cheap/low-lock).
+    db.execute(text(f"""UPDATE clients cl SET kyc_status='verified'
+      FROM customers cu
+      JOIN {L}.fx_users_view u ON u.id = cu.legacy_user_id::text
+      WHERE cu.customer_no = cl.customer_no
+        AND u.is_kyc_verified::text = '1'
+        AND (cl.kyc_status IS NULL OR cl.kyc_status IN ('', 'pending'))"""))
+    db.commit()
+    print("  clients kyc_status synced from fx_users_view")
+
     # ---- CLIENTS: sales agent (owner) ----
     db.execute(text("ALTER TABLE clients ADD COLUMN IF NOT EXISTS legacy_sales_agent text"))
     db.commit()
@@ -155,6 +183,57 @@ def enrich(db):
     if ids:
         _batched(db, "UPDATE clients c SET agent=ib.agent FROM ib WHERE ib.login=c.login AND c.login=ANY(:ids)",
                  ids, "clients IB")
+
+    # ---- #215: TRACK TradeSoft RE-ASSIGNMENTS (owner changes made in the OLD CRM — e.g. Rahaf
+    # moving a client from a sales rep to retention once the deposit is approved). legacy_sales_agent
+    # used to be set only while blank, so those changes never reached the new CRM. We now store
+    # TradeSoft's owner in `ts_owner_snapshot` and move legacy_sales_agent ONLY when TradeSoft's owner
+    # actually CHANGES from that snapshot — so we propagate genuine TradeSoft re-assignments without
+    # clobbering legitimate new-CRM assignments (e.g. the resigned-agent transfers). The first pass
+    # just SEEDS the snapshot (no reassignment); real changes flow from then on. The alias step below
+    # then moves assigned_agent_id with legacy_sales_agent.
+    # GUARD the DDL: even ADD COLUMN IF NOT EXISTS takes an ACCESS EXCLUSIVE lock to check the
+    # catalog, which storms the constantly-written clients table and times out (#272 root cause).
+    # Only ALTER when the column is genuinely missing (first run); a no-op every run after.
+    for _t in ("clients", "leads"):
+        if not db.execute(text("SELECT 1 FROM information_schema.columns "
+                               "WHERE table_name=:t AND column_name='ts_owner_snapshot'"),
+                          {"t": _t}).fetchone():
+            db.execute(text(f"ALTER TABLE {_t} ADD COLUMN IF NOT EXISTS ts_owner_snapshot text"))
+    db.commit()
+    # clients: current TradeSoft owner per login (same {NAME} source as the alias table)
+    db.execute(text(f"""CREATE TEMP TABLE ts_owner_c AS
+      SELECT c.login, su.nm AS owner
+      FROM clients c JOIN customers cu ON cu.customer_no=c.customer_no
+      JOIN (SELECT DISTINCT ON (user_id) user_id, owner FROM {L}.fx_clients_view
+            WHERE deleted_at IS NULL AND COALESCE(owner,'') NOT IN ('','0') ORDER BY user_id) o
+        ON o.user_id=cu.legacy_user_id
+      JOIN {NAME} su ON su.id=o.owner
+      WHERE su.nm IS NOT NULL AND TRIM(su.nm)<>''"""))
+    db.execute(text("CREATE INDEX ON ts_owner_c(login)")); db.commit()
+    ch = db.execute(text("""UPDATE clients c SET legacy_sales_agent=n.owner, ts_owner_snapshot=n.owner
+      FROM ts_owner_c n WHERE n.login=c.login
+        AND c.ts_owner_snapshot IS NOT NULL AND c.ts_owner_snapshot IS DISTINCT FROM n.owner""")).rowcount
+    db.execute(text("""UPDATE clients c SET ts_owner_snapshot=n.owner
+      FROM ts_owner_c n WHERE n.login=c.login AND c.ts_owner_snapshot IS NULL"""))
+    db.commit()
+    print(f"  clients: TradeSoft owner re-assignments applied: {ch}")
+    # leads: current TradeSoft sales_rep per lead
+    db.execute(text(f"""CREATE TEMP TABLE ts_owner_l AS
+      SELECT l.id, sr.nm AS owner
+      FROM leads l JOIN customers cu ON cu.customer_no=l.customer_no
+      JOIN (SELECT DISTINCT ON (user_id) user_id, sales_rep FROM {L}.fx_leads_view
+            WHERE deleted_at IS NULL ORDER BY user_id, created_at) lv ON lv.user_id=cu.legacy_user_id
+      JOIN {NAME} sr ON sr.id=lv.sales_rep
+      WHERE l.source='tradesoft' AND sr.nm IS NOT NULL AND TRIM(sr.nm)<>''"""))
+    db.execute(text("CREATE INDEX ON ts_owner_l(id)")); db.commit()
+    chl = db.execute(text("""UPDATE leads l SET legacy_sales_agent=n.owner, ts_owner_snapshot=n.owner
+      FROM ts_owner_l n WHERE n.id=l.id
+        AND l.ts_owner_snapshot IS NOT NULL AND l.ts_owner_snapshot IS DISTINCT FROM n.owner""")).rowcount
+    db.execute(text("""UPDATE leads l SET ts_owner_snapshot=n.owner
+      FROM ts_owner_l n WHERE n.id=l.id AND l.ts_owner_snapshot IS NULL"""))
+    db.commit()
+    print(f"  leads: TradeSoft owner re-assignments applied: {chl}")
 
     # ---- SALES AGENT: map the legacy owner NAME -> our staff users.id via the editable
     # `sales_agent_aliases` table (built by build_sales_aliases.py; the desk can add rows for

@@ -128,8 +128,8 @@ export default function TransferModal({ source, agents, onClose, onDone }:
         {/* what + how much */}
         <div style={card}>
           <div style={{ fontSize: 12, color: '#9aa3b2', marginBottom: 10 }}>
-            Book: <b style={{ color: '#00aaff' }}>{(book.total || 0).toLocaleString()}</b> {rtype === 'client' ? 'clients' : 'leads'}
-            {matched != null && <> · matching filters: <b style={{ color: '#00e5a0' }}>{matched.toLocaleString()}</b></>}
+            Book: <b style={{ color: '#00aaff' }}>{(book.total || 0).toLocaleString('en-GB')}</b> {rtype === 'client' ? 'clients' : 'leads'}
+            {matched != null && <> · matching filters: <b style={{ color: '#00e5a0' }}>{matched.toLocaleString('en-GB')}</b></>}
           </div>
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div>

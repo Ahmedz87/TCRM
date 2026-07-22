@@ -7,23 +7,8 @@ nothing ever blocks or has to be stopped:
   C  provisioning  — UserAdd / credit / real deposits   (write)
   D  execution     — copy-trade order send / close      (write, high-freq)
 
-Each function imports its (server, login, password) from here. Update in ONE place.
-Connection-test status (2026-06-24): MT4-B login 1016 FAILS (rc=65) — needs correct login/pw.
+Credentials now live in the GITIGNORED backend/mt_secrets.py (P0-6) so the secret is never
+committed. This module re-exports them, so every `import mt_managers as M; M.MT5[...]` caller is
+unchanged. To rotate: update mt_secrets.py only.
 """
-
-MT5_SERVER = "192.109.15.62:443"
-MT4_SERVER = b"192.109.17.53:443"   # ctypes wants bytes
-
-# role -> (login, password)
-MT5 = {
-    "A": (1025, "ZjFb!vA0"),         # live sync (existing bridge)
-    "B": (1026, "Malakies@008"),     # deals -> transactions + backfill (mt5_deal_worker)
-    "C": (3027, "Malakies@008"),     # provisioning + crediting
-    "D": (3028, "Malakies@008"),     # copy-trade execution
-}
-MT4 = {
-    "A": (1025, b"Aqjf0pJ"),         # live sync (existing mt4_loop)
-    "B": (1026, b"Malakies@008"),    # journal pull + backfill (mt4_journal_worker)
-    "C": (3027, b"Malakies@008"),    # provisioning
-    "D": (3028, b"Malakies@008"),    # execution
-}
+from mt_secrets import MT5_SERVER, MT4_SERVER, MT5, MT4   # noqa: F401

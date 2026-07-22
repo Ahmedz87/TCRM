@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost, apiPatch, apiDelete } from './api';
+import { CT } from './crmTable';
 
 // ── Finance Management (ticket #35) ───────────────────────────────────────────
 // Finance overview built on REAL data: liquidity KPIs, money-movement ledger,
@@ -24,8 +25,8 @@ const LEDGER_TYPES: [string, string][] = [
   ['bonus_withdrawal', 'Bonus out'],
 ];
 
-const fmtUSD = (n: number) => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n || 0)).toLocaleString();
-const fmtNum = (n: number) => (n || 0).toLocaleString();
+const fmtUSD = (n: number) => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n || 0)).toLocaleString('en-GB');
+const fmtNum = (n: number) => (n || 0).toLocaleString('en-GB');
 
 const card: React.CSSProperties = {
   background: 'var(--bg-card,#2c333e)',
@@ -37,8 +38,9 @@ const input: React.CSSProperties = {
   background: 'var(--bg-card,#2c333e)', color: '#e6e9ef',
   border: '1px solid var(--border,#373f4d)', borderRadius: 8, padding: '7px 10px', fontSize: 13,
 };
-const th: React.CSSProperties = { padding: '8px 8px', fontWeight: 600, textAlign: 'left', color: '#8a93a3', whiteSpace: 'nowrap' };
-const td: React.CSSProperties = { padding: '7px 8px', borderTop: '1px solid var(--border,#373f4d)' };
+// row hover for the CT data tables
+const hoverIn = (e: React.MouseEvent<HTMLTableRowElement>) => (e.currentTarget.style.background = 'var(--bg-card,#2c333e)');
+const hoverOut = (e: React.MouseEvent<HTMLTableRowElement>) => (e.currentTarget.style.background = 'transparent');
 
 function KpiCard({ label, value, color, sub }: { label: string; value: string; color?: string; sub?: string }) {
   return (
@@ -135,31 +137,33 @@ function Overview() {
             {/* Payment-method balances */}
             <div style={card}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Payment-method balances (net cash in, all-time)</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr>
-                    <th style={th}>Method / PSP</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Deposits</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Withdrawals</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Net balance</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Txns</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(data.payment_methods || []).length === 0 && (
-                    <tr><td colSpan={5} style={{ ...td, color: '#8a93a3' }}>No data</td></tr>
-                  )}
-                  {(data.payment_methods || []).map((m: any) => (
-                    <tr key={m.method}>
-                      <td style={td}>{m.method}</td>
-                      <td style={{ ...td, textAlign: 'right', color: '#7fe0a8' }}>{fmtUSD(m.deposits)}</td>
-                      <td style={{ ...td, textAlign: 'right', color: '#ff8a93' }}>{fmtUSD(m.withdrawals)}</td>
-                      <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: m.net >= 0 ? '#37d67a' : '#ff5c6c' }}>{fmtUSD(m.net)}</td>
-                      <td style={{ ...td, textAlign: 'right', color: '#8a93a3' }}>{fmtNum(m.count)}</td>
+              <div style={CT.scroll}>
+                <table style={CT.table}>
+                  <thead>
+                    <tr style={CT.theadTr}>
+                      <th style={CT.th()}>Method / PSP</th>
+                      <th style={CT.th(false, 'right')}>Deposits</th>
+                      <th style={CT.th(false, 'right')}>Withdrawals</th>
+                      <th style={CT.th(false, 'right')}>Net balance</th>
+                      <th style={CT.th(false, 'right')}>Txns</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {(data.payment_methods || []).length === 0 && (
+                      <tr><td colSpan={5} style={{ ...CT.td, color: '#8a93a3' }}>No data</td></tr>
+                    )}
+                    {(data.payment_methods || []).map((m: any) => (
+                      <tr key={m.method} style={CT.row()} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+                        <td style={CT.td}>{m.method}</td>
+                        <td style={{ ...CT.td, textAlign: 'right', color: '#7fe0a8' }}>{fmtUSD(m.deposits)}</td>
+                        <td style={{ ...CT.td, textAlign: 'right', color: '#ff8a93' }}>{fmtUSD(m.withdrawals)}</td>
+                        <td style={{ ...CT.td, textAlign: 'right', fontWeight: 700, color: m.net >= 0 ? '#37d67a' : '#ff5c6c' }}>{fmtUSD(m.net)}</td>
+                        <td style={{ ...CT.td, textAlign: 'right', color: '#8a93a3' }}>{fmtNum(m.count)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* How calculated */}
@@ -212,8 +216,8 @@ function Ledger() {
         </select>
         <input placeholder="Method / PSP" value={method} onChange={e => { setMethod(e.target.value); setPage(1); }} style={{ ...input, width: 130 }} />
         <input placeholder="Search login / name / ref" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ ...input, width: 200 }} />
-        <label style={{ fontSize: 11, color: '#8a93a3' }}>From <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} style={{ ...input, padding: '5px 8px' }} /></label>
-        <label style={{ fontSize: 11, color: '#8a93a3' }}>To <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} style={{ ...input, padding: '5px 8px' }} /></label>
+        <label style={{ fontSize: 11, color: '#8a93a3' }}>From <input type="date" max={new Date(Date.now()+86400000).toISOString().slice(0,10)} value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} style={{ ...input, padding: '5px 8px' }} /></label>
+        <label style={{ fontSize: 11, color: '#8a93a3' }}>To <input type="date" max={new Date(Date.now()+86400000).toISOString().slice(0,10)} value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} style={{ ...input, padding: '5px 8px' }} /></label>
       </div>
 
       {data && (
@@ -224,37 +228,39 @@ function Ledger() {
         </div>
       )}
 
-      <div style={{ ...card, padding: 0, overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-          <thead>
-            <tr style={{ background: 'var(--bg-card2,#262c36)' }}>
-              <th style={th}>Date</th>
-              <th style={th}>Login</th>
-              <th style={th}>Client</th>
-              <th style={th}>Type</th>
-              <th style={{ ...th, textAlign: 'right' }}>Amount</th>
-              <th style={th}>Method</th>
-              <th style={th}>Status</th>
-              <th style={th}>Reference</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={8} style={{ ...td, color: '#8a93a3' }}>Loading…</td></tr>}
-            {!loading && (data?.items || []).length === 0 && <tr><td colSpan={8} style={{ ...td, color: '#8a93a3' }}>No movements</td></tr>}
-            {!loading && (data?.items || []).map((r: any) => (
-              <tr key={r.id}>
-                <td style={td}>{(r.tx_date || '').slice(0, 16)}</td>
-                <td style={td}>{r.login}</td>
-                <td style={{ ...td, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.client_name}</td>
-                <td style={td}><span style={{ color: TYPE_COLOR[r.tx_type] || '#cdd3dd' }}>{TYPE_LABEL[r.tx_type] || r.tx_type}</span></td>
-                <td style={{ ...td, textAlign: 'right', fontWeight: 600, color: TYPE_COLOR[r.tx_type] || '#e6e9ef' }}>{fmtUSD(r.amount)}</td>
-                <td style={td}>{r.method || '—'}</td>
-                <td style={td}>{r.status}</td>
-                <td style={{ ...td, color: '#8a93a3' }}>{r.psp_reference || r.ref_id || ''}</td>
+      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+        <div style={CT.scroll}>
+          <table style={CT.table}>
+            <thead>
+              <tr style={CT.theadTr}>
+                <th style={CT.th()}>Date</th>
+                <th style={CT.th()}>Login</th>
+                <th style={CT.th()}>Client</th>
+                <th style={CT.th()}>Type</th>
+                <th style={CT.th(false, 'right')}>Amount</th>
+                <th style={CT.th()}>Method</th>
+                <th style={CT.th()}>Status</th>
+                <th style={CT.th()}>Reference</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading && <tr><td colSpan={8} style={{ ...CT.td, color: '#8a93a3' }}>Loading…</td></tr>}
+              {!loading && (data?.items || []).length === 0 && <tr><td colSpan={8} style={{ ...CT.td, color: '#8a93a3' }}>No movements</td></tr>}
+              {!loading && (data?.items || []).map((r: any) => (
+                <tr key={r.id} style={CT.row()} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+                  <td style={CT.td}>{(r.tx_date || '').slice(0, 16)}</td>
+                  <td style={CT.td}>{r.login}</td>
+                  <td style={{ ...CT.td, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.client_name}</td>
+                  <td style={CT.td}><span style={{ color: TYPE_COLOR[r.tx_type] || '#cdd3dd' }}>{TYPE_LABEL[r.tx_type] || r.tx_type}</span></td>
+                  <td style={{ ...CT.td, textAlign: 'right', fontWeight: 600, color: TYPE_COLOR[r.tx_type] || '#e6e9ef' }}>{fmtUSD(r.amount)}</td>
+                  <td style={CT.td}>{r.method || '—'}</td>
+                  <td style={CT.td}>{r.status}</td>
+                  <td style={{ ...CT.td, color: '#8a93a3' }}>{r.psp_reference || r.ref_id || ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 12 }}>
@@ -349,43 +355,45 @@ function Expenses() {
         </div>
       )}
 
-      <div style={{ ...card, padding: 0, overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-          <thead>
-            <tr style={{ background: 'var(--bg-card2,#262c36)' }}>
-              <th style={th}>Date</th>
-              <th style={th}>Payee</th>
-              <th style={th}>Category</th>
-              <th style={{ ...th, textAlign: 'right' }}>Amount</th>
-              <th style={th}>Cur</th>
-              <th style={th}>Invoice #</th>
-              <th style={th}>Note</th>
-              <th style={th}>Status</th>
-              <th style={th}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={9} style={{ ...td, color: '#8a93a3' }}>Loading…</td></tr>}
-            {!loading && (data?.items || []).length === 0 && <tr><td colSpan={9} style={{ ...td, color: '#8a93a3' }}>No expenses yet — add one above.</td></tr>}
-            {!loading && (data?.items || []).map((r: any) => (
-              <tr key={r.id}>
-                <td style={td}>{r.exp_date}</td>
-                <td style={td}>{r.payee}</td>
-                <td style={td}>{r.category}</td>
-                <td style={{ ...td, textAlign: 'right', fontWeight: 600, color: '#ffb454' }}>{fmtUSD(r.amount)}</td>
-                <td style={td}>{r.currency}</td>
-                <td style={{ ...td, color: '#8a93a3' }}>{r.invoice_no || '—'}</td>
-                <td style={{ ...td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#8a93a3' }}>{r.note || ''}</td>
-                <td style={td}>
-                  <select value={r.status} onChange={e => setStatus(r.id, e.target.value)} style={{ ...input, padding: '4px 6px', fontSize: 11, color: STATUS_COLOR[r.status] || '#cdd3dd' }}>
-                    {statuses.map((s: string) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </td>
-                <td style={td}><button onClick={() => remove(r.id)} style={{ background: 'transparent', border: '1px solid #ff5c6c', color: '#ff5c6c', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>Delete</button></td>
+      <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+        <div style={CT.scroll}>
+          <table style={CT.table}>
+            <thead>
+              <tr style={CT.theadTr}>
+                <th style={CT.th()}>Date</th>
+                <th style={CT.th()}>Payee</th>
+                <th style={CT.th()}>Category</th>
+                <th style={CT.th(false, 'right')}>Amount</th>
+                <th style={CT.th()}>Cur</th>
+                <th style={CT.th()}>Invoice #</th>
+                <th style={CT.th()}>Note</th>
+                <th style={CT.th()}>Status</th>
+                <th style={CT.th()}></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading && <tr><td colSpan={9} style={{ ...CT.td, color: '#8a93a3' }}>Loading…</td></tr>}
+              {!loading && (data?.items || []).length === 0 && <tr><td colSpan={9} style={{ ...CT.td, color: '#8a93a3' }}>No expenses yet — add one above.</td></tr>}
+              {!loading && (data?.items || []).map((r: any) => (
+                <tr key={r.id} style={CT.row()} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+                  <td style={CT.td}>{r.exp_date}</td>
+                  <td style={CT.td}>{r.payee}</td>
+                  <td style={CT.td}>{r.category}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', fontWeight: 600, color: '#ffb454' }}>{fmtUSD(r.amount)}</td>
+                  <td style={CT.td}>{r.currency}</td>
+                  <td style={{ ...CT.td, color: '#8a93a3' }}>{r.invoice_no || '—'}</td>
+                  <td style={{ ...CT.td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', color: '#8a93a3' }}>{r.note || ''}</td>
+                  <td style={CT.td}>
+                    <select value={r.status} onChange={e => setStatus(r.id, e.target.value)} style={{ ...input, padding: '4px 6px', fontSize: 11, color: STATUS_COLOR[r.status] || '#cdd3dd' }}>
+                      {statuses.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td style={CT.td}><button onClick={() => remove(r.id)} style={{ background: 'transparent', border: '1px solid #ff5c6c', color: '#ff5c6c', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>Delete</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );

@@ -117,18 +117,34 @@ async def gateway_webhook(gateway: str, request: Request, db: Session = Depends(
     if r[2] == "approved":
         return {"ok": True, "note": "already credited"}   # idempotent
     if ev["status"] == "success":
-        amount = float(r[1] or 0)
+        # MONEY SAFETY (P0, Jul 16): credit what was ACTUALLY PAID, not what the client requested.
+        # The gateway reports the real paid amount+currency; if it differs from the request (under/
+        # over-payment or a wrong currency), credit the paid amount and FLAG the row for review
+        # rather than silently recording the requested figure.
+        requested = float(r[1] or 0)
+        paid = float(ev.get("amount") or 0)
+        cur = (ev.get("currency") or "").upper()
+        credit_amount = paid if paid > 0 else requested          # some gateways omit amount
+        amt_mismatch = paid > 0 and abs(paid - requested) > max(0.01, requested * 0.01)
+        cur_mismatch = bool(cur) and cur != "USD"
+        note = f"{gateway} gateway deposit"
+        review = amt_mismatch or cur_mismatch
+        if review:
+            note += f" ⚠ REVIEW: paid {paid:.2f} {cur or 'USD'} vs requested {requested:.2f} USD"
         db.execute(text("""INSERT INTO transactions (deal_id, login, tx_type, amount, currency, method,
               status, notes, tx_date, tx_month, created_at, updated_at)
-            VALUES (:d,:l,'deposit',:a,'USD',:m,'approved',:note,
+            VALUES (:d,:l,'deposit',:a,:cur,:m,:st,:note,
               to_char(NOW(),'YYYY-MM-DD HH24:MI:SS'), to_char(NOW(),'YYYY-MM'), NOW(), NOW())
             ON CONFLICT (deal_id) WHERE deal_id IS NOT NULL DO NOTHING"""),
-            {"d": 9_000_000_000 + rid, "l": r[0], "a": amount,
-             "m": PG.LABELS.get(gateway, gateway), "note": f"{gateway} gateway deposit"})
+            {"d": 9_000_000_000 + rid, "l": r[0], "a": credit_amount, "cur": cur or "USD",
+             "st": "review" if review else "approved",
+             "m": PG.LABELS.get(gateway, gateway), "note": note})
+        # keep status='approved' on the request so a duplicate webhook stays idempotent; the
+        # transaction row carries the review flag + the true paid amount for the desk.
         db.execute(text("UPDATE portal_money_requests SET status='approved', gateway_ref=:gr WHERE id=:i"),
                    {"gr": str(ev.get("gateway_ref") or "")[:80], "i": rid})
         db.commit()
-        return {"ok": True, "credited": True}
+        return {"ok": True, "credited": True, "amount": credit_amount, "review": review}
     if ev["status"] == "failed":
         db.execute(text("UPDATE portal_money_requests SET status='rejected' WHERE id=:i"), {"i": rid}); db.commit()
     return {"ok": True, "status": ev["status"]}

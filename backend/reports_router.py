@@ -14,7 +14,7 @@ provider — it marks an internal MT5 balance adjustment / zeroing (see
 transactions_router.MT5_ADJUST_METHOD). Those are excluded from the deposit
 figures here so the report matches the client Deposits view.
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import date, timedelta
@@ -47,7 +47,8 @@ def _previous_period_dates(period: str, p_from: str, p_to: str):
     - last_year  -> the year before
     - all_time   -> no previous (returns None, None)
     """
-    today = date.today()
+    from crm_tz import today_local
+    today = today_local()
     if period == "today":
         y = today - timedelta(days=1)
         return y.isoformat(), y.isoformat()
@@ -89,13 +90,13 @@ def _pct_change(cur: float, prev):
 
 def _compute_kpis(db: Session, p_from: str, p_to: str):
     """All numeric KPIs for one [p_from, p_to] window. Read-only."""
-    from datetime import date as _date, timedelta as _td
-    # exclusive upper bound (day after p_to) for the fast deal_date string-range markup query
+    # Iraqi-day boundaries in UTC (crm_tz): day D = [D-1 21:00, D 21:00) UTC
     try:
-        t_next = (_date.fromisoformat(p_to) + _td(days=1)).isoformat()
+        from crm_tz import day_lo, day_hi
+        f_lo, t_next = day_lo(p_from), day_hi(p_to)
     except Exception:
-        t_next = p_to + "~"
-    p = {"f": p_from, "t": p_to, "t_next": t_next, "mt5": MT5_ADJUST_METHOD}
+        f_lo, t_next = p_from, p_to + "~"
+    p = {"f": f_lo, "t": p_to, "t_next": t_next, "mt5": MT5_ADJUST_METHOD}
 
     # Deposits (exclude internal MT5 adjustments — not real deposits).
     # tx_date is VARCHAR 'YYYY-MM-DD HH:MM:SS'; compare the raw column to ISO 'YYYY-MM-DD'
@@ -169,10 +170,14 @@ def reports_kpi(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    # ADMINS / DIRECTORS ONLY (desk decision Jul 2026): the Performance Report is hidden from
+    # everyone else. The nav hides it client-side; this is the server-side enforcement so it
+    # can't be reached by a direct API call.
+    if (getattr(current_user, "role", "") or "") not in ("super_admin", "admin", "director"):
+        raise HTTPException(status_code=403, detail="The Performance Report is restricted to admins.")
     if period not in VALID_PERIODS:
         period = "this_month"
-    # NOT role-scoped: company-wide performance KPIs, identical for every staff member
-    # (current_user is auth-only). Fixed "all" scope; only `period` varies the result.
+    # Company-wide performance KPIs, identical for every admin. Fixed "all" scope; only `period` varies.
     return cached(f"reports:kpi:all:{period}", 120,
                   lambda: _build_reports_kpi(db, period))
 
@@ -216,11 +221,12 @@ def _build_reports_kpi(db, period):
     }
     kpis["total_clients"] = {"current": int(total_clients), "previous": None, "pct_change": None}
 
-    # next-day exclusive bound for the index-friendly string-range tx_date filters below
+    # Iraqi-day UTC bounds for the index-friendly string-range tx_date filters below
     try:
-        t_next = (date.fromisoformat(p_to) + timedelta(days=1)).isoformat()
+        from crm_tz import day_lo as _dlo, day_hi as _dhi
+        f_lo, t_next = _dlo(p_from), _dhi(p_to)
     except Exception:
-        t_next = p_to + "~"
+        f_lo, t_next = p_from, p_to + "~"
 
     # ── Per-method withdrawal breakdown (selected period) ──
     wd_rows = db.execute(text("""
@@ -230,7 +236,7 @@ def _build_reports_kpi(db, period):
         WHERE tx_type='withdrawal'
           AND tx_date >= :f AND tx_date < :t_next
         GROUP BY 1 ORDER BY val DESC
-    """), {"f": p_from, "t_next": t_next}).fetchall()
+    """), {"f": f_lo, "t_next": t_next}).fetchall()
     withdrawals_by_method = [
         {"method": r[0], "count": int(r[1] or 0), "value": round(float(r[2] or 0), 2)}
         for r in wd_rows
@@ -244,7 +250,7 @@ def _build_reports_kpi(db, period):
         WHERE tx_type='deposit' AND method <> :mt5
           AND tx_date >= :f AND tx_date < :t_next
         GROUP BY 1 ORDER BY val DESC
-    """), {"f": p_from, "t_next": t_next, "mt5": MT5_ADJUST_METHOD}).fetchall()
+    """), {"f": f_lo, "t_next": t_next, "mt5": MT5_ADJUST_METHOD}).fetchall()
     deposits_by_type = [
         {"method": r[0], "count": int(r[1] or 0), "value": round(float(r[2] or 0), 2)}
         for r in dep_rows

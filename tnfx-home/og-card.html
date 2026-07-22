@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- Source for img/og-home.png — render at exactly 1200x630 with headless Edge. Not deployed. -->
+<html lang="en">
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1200px;height:630px;overflow:hidden}
+body{
+  background:#0B0E14;font-family:"Segoe UI",system-ui,Arial,sans-serif;color:#fff;
+  position:relative;display:flex;flex-direction:column;justify-content:center;padding:0 92px;
+}
+.rays{
+  position:absolute;top:-70%;left:-10%;width:130%;height:220%;opacity:.16;
+  background:repeating-conic-gradient(from 208deg at 32% 22%,
+    transparent 0deg 7deg, rgba(232,184,75,.4) 8.4deg 9.6deg, transparent 11deg 20deg);
+  -webkit-mask-image:radial-gradient(62% 55% at 34% 28%,#000 0%,transparent 74%);
+  mask-image:radial-gradient(62% 55% at 34% 28%,#000 0%,transparent 74%);
+}
+.blob1{position:absolute;width:760px;height:760px;border-radius:50%;filter:blur(130px);opacity:.34;
+  background:radial-gradient(circle,#ff5412 0%,transparent 62%);top:-320px;left:-180px}
+.blob2{position:absolute;width:560px;height:560px;border-radius:50%;filter:blur(120px);opacity:.4;
+  background:radial-gradient(circle,#8a6420 0%,transparent 65%);bottom:-300px;right:-140px}
+.grid{position:absolute;inset:0;
+  background-image:radial-gradient(circle,rgba(255,255,255,.06) 1px,transparent 1px);
+  background-size:28px 28px;
+  -webkit-mask-image:linear-gradient(180deg,#000,transparent 85%);
+  mask-image:linear-gradient(180deg,#000,transparent 85%);}
+.logo{height:64px;width:auto;margin-bottom:44px;position:relative}
+h1{font-size:64px;line-height:1.06;font-weight:800;letter-spacing:-1.8px;position:relative;max-width:900px}
+h1 .grad{background:linear-gradient(92deg,#F8500A 8%,#FF9A3D 55%,#E8B84B 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+p{position:relative;margin-top:26px;font-size:25px;color:#9AA3B2;font-weight:600}
+.chips{position:relative;margin-top:38px;display:flex;gap:14px}
+.chip{font-size:19px;font-weight:700;color:#E8B84B;border:2px solid rgba(232,184,75,.4);
+  border-radius:999px;padding:10px 24px;background:rgba(232,184,75,.07)}
+.chip.o{color:#fff;background:linear-gradient(135deg,#ff5412,#ff9a3d);border-color:transparent}
+.bar{position:absolute;left:0;right:0;bottom:0;height:10px;background:linear-gradient(90deg,#ff4700,#ff9100,#E8B84B)}
+</style>
+<body>
+  <div class="rays"></div><div class="blob1"></div><div class="blob2"></div><div class="grid"></div>
+  <img class="logo" src="img/tnfx-logo.png" alt="TNFX">
+  <h1>Trade <span class="grad">gold, forex</span> &amp; global markets on MT4 &amp; MT5</h1>
+  <p>1,000+ instruments · Swap-free accounts · Fast local deposits</p>
+  <div class="chips">
+    <span class="chip o">Open Live Account</span>
+    <span class="chip">FSA-licensed · SD133</span>
+  </div>
+  <div class="bar"></div>
+</body>
+</html>

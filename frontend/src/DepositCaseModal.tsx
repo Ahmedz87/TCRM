@@ -60,8 +60,8 @@ export default function DepositCaseModal({ rid, reasons, canAct, onClose, onAppr
         <div style={{ padding: 18, borderRight: '1px solid #232d3a' }}>
           <div style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: '#8A93A3', fontWeight: 700, marginBottom: 8 }}>Payment details</div>
           {row('Type', kindL, isDep ? '#3ad29f' : '#ff6b6b')}
-          {row('Amount', `$${(d.amount || 0).toLocaleString()}`)}
-          {d.ocr_amount != null && Math.abs(d.ocr_amount - d.amount) > 0.5 && row('OCR amount', `$${d.ocr_amount.toLocaleString()}`, '#f0556a')}
+          {row('Amount', `$${(d.amount || 0).toLocaleString('en-GB')}`)}
+          {d.ocr_amount != null && Math.abs(d.ocr_amount - d.amount) > 0.5 && row('OCR amount', `$${d.ocr_amount.toLocaleString('en-GB')}`, '#f0556a')}
           {row('Method', d.method)}
           {row('Requested', d.date)}
           {isDep && (d.company_card || d.company_card_name || d.company_account) && <>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
 
 // ── Monthly Report / Report Builder ─────────────────────────────────────────────
 // Two modes:
@@ -15,13 +16,15 @@ const input: React.CSSProperties = {
   background: 'var(--bg-card,#2c333e)', color: '#e6e9ef',
   border: '1px solid var(--border,#373f4d)', borderRadius: 8, padding: '7px 10px', fontSize: 13,
 };
-const th: React.CSSProperties = { padding: '8px 10px', fontWeight: 600, textAlign: 'right', color: '#8a93a3', whiteSpace: 'nowrap', fontSize: 11 };
-const thL: React.CSSProperties = { ...th, textAlign: 'left' };
-const td: React.CSSProperties = { padding: '7px 10px', borderTop: '1px solid var(--border,#373f4d)', textAlign: 'right', whiteSpace: 'nowrap', fontSize: 13 };
-const tdL: React.CSSProperties = { ...td, textAlign: 'left', fontWeight: 600 };
+// Report tables use the shared canonical CRM table design (CT). These reports are
+// numeric, so the default cell alignment here is right; the label/dimension column is left.
+const th: React.CSSProperties = CT.th(false, 'right');
+const thL: React.CSSProperties = CT.th(false, 'left');
+const td: React.CSSProperties = { ...CT.td, textAlign: 'right' };
+const tdL: React.CSSProperties = { ...CT.td, fontWeight: 600 };
 
-const fmtMoney = (n: number) => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n || 0)).toLocaleString();
-const fmtNum = (n: number) => (n || 0).toLocaleString();
+const fmtMoney = (n: number) => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n || 0)).toLocaleString('en-GB');
+const fmtNum = (n: number) => (n || 0).toLocaleString('en-GB');
 const fmtFloat = (n: number) => (n || 0).toLocaleString(undefined, { maximumFractionDigits: 1 });
 const fmtCell = (type: string, v: any) => {
   if (v === null || v === undefined) return '';
@@ -42,6 +45,112 @@ const TABS: [string, string, string][] = [
   ['withdraw', '⬆️', 'Withdrawals'],
 ];
 
+// ─────────────────────────── Overview charts (no external lib) ─────────────────
+// Year trend: grouped Deposits/Withdrawals bars per month + Net line overlay.
+function YearTrend({ months }: { months: any[] }) {
+  const data = months || [];
+  const W = 760, H = 240, PL = 58, PR = 16, PT = 14, PB = 30;
+  const iw = W - PL - PR, ih = H - PT - PB;
+  const maxBar = Math.max(1, ...data.map((m) => Math.max(m.deposits || 0, m.withdrawals || 0)));
+  const nets = data.map((m) => m.net || 0);
+  const nMax = Math.max(0, ...nets), nMin = Math.min(0, ...nets);
+  const nSpan = (nMax - nMin) || 1;
+  const n = Math.max(1, data.length);
+  const gw = iw / n;
+  const bw = Math.min(16, gw * 0.32);
+  const yBar = (v: number) => PT + ih - (Math.max(0, v) / maxBar) * ih;
+  const yNet = (v: number) => PT + ih - ((v - nMin) / nSpan) * ih;
+  const netPts = data.map((m, i) => `${PL + gw * i + gw / 2},${yNet(m.net || 0)}`).join(' ');
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(maxBar * f));
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <svg width={W} height={H} style={{ maxWidth: '100%' }}>
+        {ticks.map((t, i) => {
+          const yy = PT + ih - (t / maxBar) * ih;
+          return (
+            <g key={i}>
+              <line x1={PL} y1={yy} x2={W - PR} y2={yy} stroke="#373f4d" strokeWidth={1} />
+              <text x={PL - 6} y={yy + 3} textAnchor="end" fontSize={9} fill="#8a93a3">{fmtMoney(t)}</text>
+            </g>
+          );
+        })}
+        {data.map((m, i) => {
+          const cx = PL + gw * i + gw / 2;
+          const dTop = yBar(m.deposits || 0), wTop = yBar(m.withdrawals || 0);
+          return (
+            <g key={i}>
+              <rect x={cx - bw - 1} y={dTop} width={bw} height={PT + ih - dTop} fill="#37d67a" rx={2}>
+                <title>{(m.label || '')}: Deposits {fmtMoney(m.deposits || 0)}</title>
+              </rect>
+              <rect x={cx + 1} y={wTop} width={bw} height={PT + ih - wTop} fill="#ff5c6c" rx={2}>
+                <title>{(m.label || '')}: Withdrawals {fmtMoney(m.withdrawals || 0)}</title>
+              </rect>
+              <text x={cx} y={H - 10} textAnchor="middle" fontSize={9} fill="#8a93a3">{(m.label || '').slice(0, 3)}</text>
+            </g>
+          );
+        })}
+        <polyline points={netPts} fill="none" stroke="#5b9dff" strokeWidth={2} />
+        {data.map((m, i) => {
+          const cx = PL + gw * i + gw / 2;
+          return (
+            <circle key={i} cx={cx} cy={yNet(m.net || 0)} r={2.5} fill="#5b9dff">
+              <title>{(m.label || '')}: Net {fmtMoney(m.net || 0)}</title>
+            </circle>
+          );
+        })}
+      </svg>
+      <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#8a93a3', marginTop: 4 }}>
+        <span><span style={{ color: '#37d67a' }}>■</span> Deposits</span>
+        <span><span style={{ color: '#ff5c6c' }}>■</span> Withdrawals</span>
+        <span><span style={{ color: '#5b9dff' }}>—</span> Net</span>
+      </div>
+    </div>
+  );
+}
+
+// Per-month expansion: money bar chart + KPI tiles.
+function MonthDetail({ row }: { row: any }) {
+  const bars: [string, number, string][] = [
+    ['Deposits', row.deposits || 0, '#37d67a'],
+    ['Withdrawals', row.withdrawals || 0, '#ff5c6c'],
+    ['Net', row.net || 0, (row.net || 0) < 0 ? '#ff5c6c' : '#5b9dff'],
+    ['Markup', row.markup || 0, '#f5a623'],
+  ];
+  const maxB = Math.max(1, ...bars.map((b) => Math.abs(b[1])));
+  const kpis: [string, string][] = [
+    ['Reg. accounts', fmtNum(row.reg_accounts)], ['Verified', fmtNum(row.verified)],
+    ['New depositors', fmtNum(row.nda)], ['Depositing clients', fmtNum(row.dep_clients)],
+    ['Withdrawing clients', fmtNum(row.wd_clients)], ['Deposit count', fmtNum(row.dep_count)],
+    ['Withdrawal count', fmtNum(row.wd_count)], ['Volume (lots)', fmtFloat(row.volume_lots)],
+  ];
+  return (
+    <div style={{ background: 'rgba(91,157,255,0.05)', padding: 16, borderTop: '1px solid var(--border,#373f4d)' }}>
+      <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 13 }}>{row.label || row.month} — breakdown</div>
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 300 }}>
+          {bars.map(([lbl, val, col]) => (
+            <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ width: 90, fontSize: 11, color: '#8a93a3' }}>{lbl}</span>
+              <div style={{ flex: 1, background: '#1c2027', borderRadius: 4, height: 16, minWidth: 120 }}>
+                <div style={{ width: `${(Math.abs(val) / maxB) * 100}%`, background: col, height: '100%', borderRadius: 4 }} />
+              </div>
+              <span style={{ width: 90, textAlign: 'right', fontSize: 12, color: col }}>{fmtMoney(val)}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8, flex: 1, minWidth: 260 }}>
+          {kpis.map(([lbl, val]) => (
+            <div key={lbl} style={{ background: 'var(--bg-card,#2c333e)', border: '1px solid var(--border,#373f4d)', borderRadius: 8, padding: '8px 10px' }}>
+              <div style={{ fontSize: 10, color: '#8a93a3' }}>{lbl}</div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>{val}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────── Overview (auto monthly) ───────────────────────────
 function OverviewTab() {
   const now = new Date();
@@ -50,6 +159,7 @@ function OverviewTab() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [expanded, setExpanded] = useState<number | null>(null);
 
   const MONEY = new Set(['deposits', 'withdrawals', 'net', 'markup']);
   const FLOAT = new Set(['volume_lots']);
@@ -81,20 +191,31 @@ function OverviewTab() {
   };
 
   const columns = data?.columns || [];
-  const Table = ({ rows, rollup }: { rows: any[]; rollup?: boolean }) => (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 900 }}>
-        <thead><tr>{columns.map((c: any) => <th key={c.key} style={c.key === 'label' ? thL : th}>{c.label}</th>)}</tr></thead>
+  const Table = ({ rows, rollup, expandable }: { rows: any[]; rollup?: boolean; expandable?: boolean }) => (
+    <div style={CT.scroll}>
+      <table style={{ ...CT.table, minWidth: 900 }}>
+        <thead><tr style={CT.theadTr}>{columns.map((c: any) => <th key={c.key} style={c.key === 'label' ? thL : th}>{c.label}</th>)}</tr></thead>
         <tbody>{rows.map((row, i) => (
-          <tr key={i} style={{ background: row.partial ? 'rgba(255,210,80,0.10)' : (rollup ? 'rgba(91,157,255,0.08)' : 'transparent') }}>
-            {columns.map((c: any) => (
-              <td key={c.key} style={c.key === 'label' ? tdL : td}>
-                {c.key === 'label'
-                  ? <>{row.label || row.month}{row.partial && <span style={{ color: '#ffbf47', fontSize: 10, marginLeft: 6 }}>partial</span>}{row.months && <span style={{ color: '#8a93a3', fontWeight: 400, fontSize: 11, marginLeft: 6 }}>{row.months}</span>}</>
-                  : <span style={{ color: c.key === 'net' ? (row[c.key] < 0 ? '#ff5c6c' : '#37d67a') : '#e6e9ef' }}>{fmt(c.key, row[c.key])}</span>}
-              </td>
-            ))}
-          </tr>
+          <React.Fragment key={i}>
+            <tr
+              onClick={expandable ? () => setExpanded(expanded === i ? null : i) : undefined}
+              style={{
+                ...CT.row(),
+                cursor: expandable ? 'pointer' : 'default',
+                background: row.partial ? 'rgba(255,210,80,0.10)' : (expandable && expanded === i ? 'rgba(91,157,255,0.12)' : (rollup ? 'rgba(91,157,255,0.08)' : 'transparent')),
+              }}>
+              {columns.map((c: any) => (
+                <td key={c.key} style={c.key === 'label' ? tdL : td}>
+                  {c.key === 'label'
+                    ? <>{expandable && <span style={{ color: '#5b9dff', marginRight: 6, display: 'inline-block', transition: 'transform .15s', transform: expanded === i ? 'rotate(90deg)' : 'none' }}>▸</span>}{row.label || row.month}{row.partial && <span style={{ color: '#ffbf47', fontSize: 10, marginLeft: 6 }}>partial</span>}{row.months && <span style={{ color: '#8a93a3', fontWeight: 400, fontSize: 11, marginLeft: 6 }}>{row.months}</span>}</>
+                    : <span style={{ color: c.key === 'net' ? (row[c.key] < 0 ? '#ff5c6c' : '#37d67a') : '#e6e9ef' }}>{fmt(c.key, row[c.key])}</span>}
+                </td>
+              ))}
+            </tr>
+            {expandable && expanded === i && (
+              <tr><td colSpan={columns.length} style={{ padding: 0 }}><MonthDetail row={row} /></td></tr>
+            )}
+          </React.Fragment>
         ))}</tbody>
       </table>
     </div>
@@ -116,9 +237,13 @@ function OverviewTab() {
       {data && !loading && (
         <>
           <div style={{ ...card, marginBottom: 18 }}>
+            <div style={{ fontWeight: 700, marginBottom: 10 }}>Year trend — {year}</div>
+            <YearTrend months={data.months} />
+          </div>
+          <div style={{ ...card, marginBottom: 18 }}>
             <div style={{ fontWeight: 700, marginBottom: 10 }}>Monthly — {year}</div>
-            <Table rows={data.months} />
-            <div style={{ color: '#8a93a3', fontSize: 11, marginTop: 8 }}>Partial (current) month highlighted. Generated {data.generated_at}.</div>
+            <Table rows={data.months} expandable />
+            <div style={{ color: '#8a93a3', fontSize: 11, marginTop: 8 }}>Click any month to expand its charts. Partial (current) month highlighted. Generated {data.generated_at}.</div>
           </div>
           <div style={{ ...card, marginBottom: 18 }}>
             <div style={{ fontWeight: 700, marginBottom: 10 }}>Quarterly rollups</div>
@@ -200,8 +325,8 @@ function BuilderTab({ category, schema }: { category: string; schema: any }) {
           </Field>
           {period === 'custom' && (
             <>
-              <Field label="From"><input type="date" value={start} onChange={(e) => setStart(e.target.value)} style={input} /></Field>
-              <Field label="To"><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} style={input} /></Field>
+              <Field label="From"><input type="date" max={new Date(Date.now()+86400000).toISOString().slice(0,10)} value={start} onChange={(e) => setStart(e.target.value)} style={input} /></Field>
+              <Field label="To"><input type="date" max={new Date(Date.now()+86400000).toISOString().slice(0,10)} value={end} onChange={(e) => setEnd(e.target.value)} style={input} /></Field>
             </>
           )}
           {cfg.group_by.length > 1 && (
@@ -236,17 +361,21 @@ function BuilderTab({ category, schema }: { category: string; schema: any }) {
             <div style={{ color: '#8a93a3', fontSize: 12 }}>{result.rows.length} row(s){result.period?.start ? ` · ${result.period.start} → ${result.period.end}` : ' · all time'}</div>
           </div>
           {result.rows.length === 0 ? <div style={{ color: '#8a93a3' }}>No data for these filters.</div> : (
-            <div style={{ overflowX: 'auto', maxHeight: '62vh' }}>
-              <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 700 }}>
-                <thead><tr>{cols.map((c: any, i: number) => <th key={c.key} style={i < nd ? thL : th}>{c.label}</th>)}</tr></thead>
+            <div style={{ ...CT.scroll, maxHeight: '62vh' }}>
+              <table style={{ ...CT.table, minWidth: 700 }}>
+                <thead><tr style={CT.theadTr}>{cols.map((c: any, i: number) => <th key={c.key} style={i < nd ? thL : th}>{c.label}</th>)}</tr></thead>
                 <tbody>
                   {result.rows.map((row: any[], ri: number) => (
-                    <tr key={ri}>{cols.map((c: any, ci: number) => (
-                      <td key={c.key} style={ci < nd ? tdL : td}>{fmtCell(c.type, row[ci])}</td>
-                    ))}</tr>
+                    <tr key={ri} style={CT.row()}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-card,#2c333e)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                      {cols.map((c: any, ci: number) => (
+                        <td key={c.key} style={ci < nd ? tdL : td}>{fmtCell(c.type, row[ci])}</td>
+                      ))}
+                    </tr>
                   ))}
                   {result.total_row && (
-                    <tr style={{ background: 'rgba(91,157,255,0.10)', fontWeight: 700 }}>
+                    <tr style={{ ...CT.row(), background: 'rgba(91,157,255,0.10)', fontWeight: 700 }}>
                       {cols.map((c: any, ci: number) => (
                         <td key={c.key} style={{ ...(ci < nd ? tdL : td), fontWeight: 700, borderTop: '2px solid var(--border,#373f4d)' }}>{fmtCell(c.type, result.total_row[ci])}</td>
                       ))}
@@ -316,15 +445,19 @@ function ResultTable({ result }: { result: any }) {
   if (!result) return null;
   if (!result.rows?.length) return <div style={{ color: '#8a93a3' }}>No data for that request.</div>;
   return (
-    <div style={{ overflowX: 'auto', maxHeight: '60vh' }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 600 }}>
-        <thead><tr>{cols.map((c: any, i: number) => <th key={c.key} style={i < nd ? thL : th}>{c.label}</th>)}</tr></thead>
+    <div style={{ ...CT.scroll, maxHeight: '60vh' }}>
+      <table style={{ ...CT.table, minWidth: 600 }}>
+        <thead><tr style={CT.theadTr}>{cols.map((c: any, i: number) => <th key={c.key} style={i < nd ? thL : th}>{c.label}</th>)}</tr></thead>
         <tbody>
           {result.rows.map((row: any[], ri: number) => (
-            <tr key={ri}>{cols.map((c: any, ci: number) => <td key={c.key} style={ci < nd ? tdL : td}>{fmtCell(c.type, row[ci])}</td>)}</tr>
+            <tr key={ri} style={CT.row()}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-card,#2c333e)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+              {cols.map((c: any, ci: number) => <td key={c.key} style={ci < nd ? tdL : td}>{fmtCell(c.type, row[ci])}</td>)}
+            </tr>
           ))}
           {result.total_row && (
-            <tr style={{ background: 'rgba(91,157,255,0.10)', fontWeight: 700 }}>
+            <tr style={{ ...CT.row(), background: 'rgba(91,157,255,0.10)', fontWeight: 700 }}>
               {cols.map((c: any, ci: number) => <td key={c.key} style={{ ...(ci < nd ? tdL : td), fontWeight: 700, borderTop: '2px solid var(--border,#373f4d)' }}>{fmtCell(c.type, result.total_row[ci])}</td>)}
             </tr>
           )}
@@ -335,6 +468,7 @@ function ResultTable({ result }: { result: any }) {
 }
 
 // Conversation box: type a request in plain words → AI builds the table.
+// (The full back-and-forth AI chat lives in the Ticketing center — AIChat.tsx.)
 function AskBox() {
   const [q, setQ] = useState('');
   const [resp, setResp] = useState<any>(null);
@@ -361,7 +495,7 @@ function AskBox() {
     <div style={{ ...card, marginBottom: 18, border: '1px solid #1f6feb66' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 16 }}>🗨</span><b>Ask for a report</b>
-        <span style={{ color: '#8a93a3', fontSize: 12 }}>type what you want in plain words — it builds the table</span>
+        <span style={{ color: '#8a93a3', fontSize: 12 }}>one question → one table · for full AI chat use the Tickets page 🤖</span>
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') ask(); }}
@@ -386,7 +520,6 @@ function AskBox() {
     </div>
   );
 }
-
 // ───────────────────────────────── Page ────────────────────────────────────────
 export default function MonthlyReport() {
   const [tab, setTab] = useState('overview');
@@ -398,7 +531,7 @@ export default function MonthlyReport() {
       <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>📊 Reports</h2>
       <div style={{ color: '#8a93a3', fontSize: 12, marginBottom: 14 }}>Build & export reports per section — computed live from the CRM database.</div>
 
-      {/* Conversation box — ask for any report in plain words */}
+      {/* AI analyst chat — questions, attachments, reports on demand */}
       <AskBox />
 
       {/* Tabs */}

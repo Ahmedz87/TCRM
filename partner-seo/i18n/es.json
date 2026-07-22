@@ -1,0 +1,330 @@
+{
+ "ui": {
+  "partners": "Socios",
+  "nav_commission": "Comisión",
+  "nav_challenges": "Retos",
+  "nav_payments": "Pagos",
+  "nav_about": "Sobre TNFX",
+  "login": "Iniciar sesión",
+  "become_partner": "Hazte socio",
+  "cta_primary": "Hazte socio",
+  "cta_secondary": "Mira cómo funciona",
+  "per_lot": "/ lote",
+  "up_to": "hasta",
+  "lang_pick": "Idioma",
+  "suggest_prefix": "Ver esta página en",
+  "suggest_yes": "Cambiar",
+  "suggest_no": "No, gracias",
+  "start_earning": "Empieza a ganar hoy",
+  "ib_partner": "Socio IB / Afiliado",
+  "ib_sub": "Gana hasta $10 por lote",
+  "client_area": "Abrir una cuenta de trading",
+  "client_sub": "Opera en MT4 y MT5",
+  "sign_up": "Regístrate",
+  "open_account": "Abrir cuenta",
+  "on_this_page": "En esta página",
+  "key_facts": "Datos clave",
+  "other_pages": "Más páginas para socios",
+  "read_time": "min de lectura",
+  "earnings": "Ganancias del socio",
+  "this_mo": "Este mes",
+  "last30": "Últimos 30 días",
+  "clients": "Clientes",
+  "funded": "Clientes con depósito",
+  "lots": "Lotes operados",
+  "active_mission": "Misión activa",
+  "claim": "Reclamar",
+  "live": "EN VIVO"
+ },
+ "s": {
+  "commission_kicker": "El número que importa",
+  "commission_h2": "Hasta $10 por cada lote que operan tus clientes",
+  "commission_lead": "Tu comisión se paga por cada lote que operan tus clientes referidos — en oro y pares principales — con seguimiento en vivo al dólar y retirable en cualquier momento. Cada socio empieza en $5 por lote y sube hasta $10 a medida que crece tu cartera. Sin negociaciones, sin favoritismos: alcanza los umbrales publicados y tu tarifa sube de forma automática.",
+  "commission_tiers_note": "Seis grados. Un solo número que solo sube.",
+  "commission_rate_word": "por lote",
+  "challenges_kicker": "Arena de Retos",
+  "challenges_h2": "Te pagamos por crecer — dinero real además de tu comisión",
+  "challenges_lead": "Los socios de TNFX no solo ganan por lote. Acepta misiones, alcanza la meta y reclama dinero real — pagado directo a tu billetera de socio, además de cada dólar de comisión.",
+  "career_h3": "Misiones de carrera — hasta $4,000",
+  "career_lead": "Seis misiones de carrera, un solo camino épico. Cada una que conquistas paga una recompensa en efectivo y te sube en la escalera de grados hacia los $10 por lote.",
+  "weekly_h3": "Misiones semanales — se reinician cada domingo",
+  "weekly_lead": "Nuevas metas de efectivo cada semana. Trae clientes fondeados, genera volumen y reclama — luego el tablero se reinicia el domingo y lo vuelves a hacer. Una nueva oportunidad de ganar, cada semana.",
+  "weekly_reward_line": "Hasta $400 en recompensas en efectivo cada semana — además de tu comisión de $10 por lote.",
+  "payments_kicker": "Cómo fondean tus clientes",
+  "payments_h2": "13 formas para que tus clientes depositen y retiren",
+  "payments_lead": "La razón #1 por la que los traders referidos realmente se activan es un fondeo fácil. TNFX admite los métodos locales y globales que tu audiencia ya usa — depósitos locales instantáneos, tarjetas y cripto — para que los clientes que envías conviertan en lugar de abandonar en la caja.",
+  "about_kicker": "Sobre TNFX",
+  "about_h2": "El bróker que puede respaldar tu nombre",
+  "about_para1": "TNFX es un bróker de forex y CFD con licencia de la FSA, creado para traders en Medio Oriente y más allá. Tus clientes operan más de 1,000 instrumentos — oro, pares principales de FX, índices y más — en las plataformas MetaTrader 4 y MetaTrader 5 que ya conocen, con spreads ajustados y ejecución rápida.",
+  "about_para2": "La comisión solo se acumula cuando tus clientes siguen operando — y TNFX está diseñado para retenerlos: soporte en idioma local, depósitos locales instantáneos y una experiencia de trading hecha para esta región. Por eso las carteras de socios aquí duran.",
+  "how_kicker": "Cómo empezar",
+  "how_h2": "De la solicitud a tu primera comisión",
+  "dash_kicker": "Tu panel de socio",
+  "dash_h2": "Toda tu cartera, en vivo y al dólar",
+  "dash_lead": "Cada cliente, cada lote, cada dólar de comisión — actualizado en el momento en que ocurre una operación. Sin estados de cuenta mensuales, sin adivinar. Sigue tu embudo, tu progreso en los retos y tu saldo retirable en un solo portal de socio en tiempo real.",
+  "dash_caption": "El panel de socio de TNFX — comisión en vivo, embudo y progreso de retos. (Ilustración.)",
+  "dash_caption_ch": "La Arena de Retos — acepta misiones, alcanza metas, reclama dinero real. (Ilustración.)",
+  "finalcta_h2": "Tu primer cliente puede estar operando esta semana",
+  "finalcta_lead": "Registro gratis. Tarifa Bronce de $5 por lote desde el primer día, subiendo hasta $10. Retos en efectivo cada semana. Solicita en 60 segundos.",
+  "finalcta_btn": "Hazte socio de TNFX",
+  "finalcta_assurance": "Registro gratis · Retira cuando quieras · Reportes en tiempo real",
+  "footer_disclaimer": "TNFX cuenta con licencia de la Financial Services Authority (FSA). Operar con divisas y CFD conlleva un alto nivel de riesgo y puede no ser adecuado para todos los inversionistas. Las comisiones de socios se pagan según la actividad de trading de los clientes; las ganancias pasadas no garantizan resultados futuros.",
+  "footer_rights": "© 2026 TNFX. Todos los derechos reservados.",
+  "footer_login": "Acceso de socios",
+  "footer_home": "Programa de socios"
+ },
+ "about_trust": [
+  {
+   "k": "FSA",
+   "v": "Bróker con licencia y regulado"
+  },
+  {
+   "k": "MT4 & MT5",
+   "v": "Ambas plataformas, un solo acceso"
+  },
+  {
+   "k": "1000+",
+   "v": "Instrumentos — oro, FX, índices"
+  },
+  {
+   "k": "Instant",
+   "v": "Depósitos locales y retiros rápidos"
+  }
+ ],
+ "how_steps": [
+  {
+   "t": "Solicita en 60 segundos",
+   "d": "Tu nombre, contacto y cómo presentas a tus clientes. Ese es todo el formulario."
+  },
+  {
+   "t": "Aprobación del equipo",
+   "d": "Nuestro equipo de socios revisa cada solicitud y activa tu cuenta — normalmente el mismo día."
+  },
+  {
+   "t": "Comparte tu enlace",
+   "d": "Obtén tu enlace de referido más banners publicitarios listos que ya lo llevan. Publícalos donde esté tu audiencia."
+  },
+  {
+   "t": "Gana por lote",
+   "d": "La comisión llega por cada operación que hacen tus clientes — en vivo en tu panel. Retira cuando quieras."
+  }
+ ],
+ "weekly": [
+  {
+   "name": "First Blood",
+   "desc": "Trae 1 cliente fondeado esta semana"
+  },
+  {
+   "name": "Hat Trick",
+   "desc": "Trae 3 clientes fondeados esta semana"
+  },
+  {
+   "name": "Volume Hunter",
+   "desc": "Tus clientes operan 50 lotes"
+  },
+  {
+   "name": "Whale Hunter",
+   "desc": "Tus clientes depositan $50,000"
+  }
+ ],
+ "faq": [
+  {
+   "q": "¿Cuánto gano como socio de TNFX?",
+   "a": "Hasta $10 por cada lote que tus clientes referidos operan en oro y pares principales. Empiezas en $5 por lote y tu tarifa sube hasta $10 a medida que crece tu cartera — además de recompensas en efectivo de los retos semanales y de carrera."
+  },
+  {
+   "q": "¿Necesito operar o invertir para ganar?",
+   "a": "No. Ganas presentando clientes, no operando tú mismo. No hay costo para unirse ni se requiere capital — te pagan según la actividad de trading de tus clientes."
+  },
+  {
+   "q": "¿Cuándo y cómo me pagan?",
+   "a": "La comisión se acumula en vivo por cada operación y es retirable en cualquier momento — sin bloqueos, sin ciclo mínimo. Retira a través de cualquiera de los 13 métodos que admite TNFX, incluidas opciones locales instantáneas."
+  },
+  {
+   "q": "¿TNFX está regulado?",
+   "a": "Sí. TNFX cuenta con licencia y regulación de la Financial Services Authority (FSA), operando en MetaTrader 4 y MetaTrader 5 con más de 1,000 instrumentos."
+  },
+  {
+   "q": "¿Cómo me hago socio?",
+   "a": "Solicita en unos 60 segundos con tu nombre y contacto. Nuestro equipo de socios revisa y activa tu cuenta — normalmente el mismo día — y obtienes tu enlace de referido de inmediato."
+  },
+  {
+   "q": "¿Cuál es la diferencia entre un IB, un affiliate y un socio de referidos?",
+   "a": "Los tres te generan comisión por traer clientes a TNFX. Un affiliate atrae tráfico con enlaces y banners; un introducing broker (IB) gestiona y da soporte de forma activa a una cartera de clientes, muchas veces con un equipo; y un socio de referidos simplemente comparte un enlace con sus conocidos. Con TNFX puedes empezar como cualquiera de ellos desde la misma cuenta e ir creciendo hasta armar todo un desk de IB: la comisión de hasta $10 per lot es la misma."
+  },
+  {
+   "q": "¿Cómo obtengo mi enlace de referidos y los banners de marketing?",
+   "a": "En cuanto se aprueba tu cuenta recibes un enlace de referido personal en tu panel de socio, además de una biblioteca de banners publicitarios ya listos que llevan tu enlace incorporado. Compártelos en cualquier canal que use tu audiencia."
+  },
+  {
+   "q": "¿Mis clientes pagan más o tienen peores spreads por usar mi enlace?",
+   "a": "No. Tus clientes operan exactamente con los mismos spreads ajustados y las mismas condiciones que todos los demás: tu comisión la paga TNFX, no tus clientes. Referir a través tuyo no les cuesta nada."
+  },
+  {
+   "q": "¿Cómo se calcula mi comisión per lot?",
+   "a": "Ganas un monto fijo por cada lote estándar que operen tus clientes referidos en oro y pares mayores: desde $5 per lot en Bronze hasta $10 per lot en Prime. Multiplica tu tarifa por los lotes mensuales de tus clientes para estimar tus ingresos; se acumula en vivo con cada operación."
+  },
+  {
+   "q": "¿Cómo funcionan los desafíos semanales y las misiones de carrera?",
+   "a": "Además de la comisión per lot, puedes aceptar misiones y reclamar dinero real. Las misiones semanales se reinician cada domingo y pagan hasta $400; las misiones de carrera se recorren una sola vez a lo largo de seis etapas y pagan hasta $4,000. Las recompensas llegan a tu billetera de socio en el momento en que alcanzas la meta."
+  },
+  {
+   "q": "¿Qué métodos puedo usar para retirar mi comisión?",
+   "a": "Puedes retirar a través de cualquiera de los métodos que admite TNFX, incluidas opciones locales instantáneas y crypto, como Ovadot, Qi Card, ZainCash, USDT y Perfect Money. No hay bloqueos de fondos ni un ciclo mínimo de pago."
+  },
+  {
+   "q": "¿Puedo promocionar TNFX en redes sociales, Telegram o YouTube?",
+   "a": "Sí. Comparte tu enlace y tus banners donde esté tu audiencia: redes sociales, grupos de mensajería, un sitio web o video, siempre que cumplas los términos del programa de socios y las reglas locales de publicidad. Los creativos ya listos hacen que sea muy rápido."
+  },
+  {
+   "q": "¿Hay una cuota de inscripción o un número mínimo de clientes?",
+   "a": "No. Unirte es totalmente gratis, no hay un número mínimo de clientes y no se requiere capital. Empiezas a ganar desde el primer lote del primer cliente."
+  },
+  {
+   "q": "¿Qué pasa con mi comisión si un cliente deja de operar?",
+   "a": "Tu comisión se paga sobre la actividad real de trading, así que se pausa cuando un cliente no está operando y se reanuda cuando vuelve. Como es un reparto de ingresos de por vida, sigues ganando de ese cliente cada vez que vuelva a operar."
+  },
+  {
+   "q": "¿Puedo armar un equipo o traer sub-socios bajo mi cuenta?",
+   "a": "Sí. TNFX admite introducing brokers que construyen redes y gestionan un equipo de sub-socios, así que puedes escalar mucho más allá de tus referidos directos. Habla con nuestro partner desk sobre la estructura que mejor se ajuste a tu operación."
+  },
+  {
+   "q": "¿Cómo subo de $5 a $10 per lot?",
+   "a": "Tu tarifa aumenta automáticamente a medida que crece tu cartera y alcanzas los umbrales publicados: más clientes fondeados y más volumen mensual te hacen subir en la escalera de grados, de Bronze a Prime. Sin negociaciones ni favoritismos: cumples los números y tu tarifa sube."
+  },
+  {
+   "q": "¿Cómo hago seguimiento de mis clientes, lotes y ganancias?",
+   "a": "Todo está en tu panel de socio en tiempo real: cada registro, depósito, lote operado y dólar de comisión, actualizado en el momento en que ocurre, además de tu progreso en los desafíos y tu saldo disponible para retirar. Sin estados de cuenta mensuales ni adivinanzas."
+  }
+ ],
+ "topics": {
+  "introducing-broker": {
+   "title": "Conviértete en Introducing Broker (IB) de Forex — Gana hasta $10 por Lote | Socios TNFX",
+   "meta": "Conviértete en introducing broker de forex de TNFX y gana hasta $10 por lote en cada operación de tus clientes. Registro gratis, retos semanales, 13 métodos de pago, regulado por FSA.",
+   "h1": "Conviértete en Introducing Broker de Forex",
+   "subhead": "Presenta traders a un bróker con licencia de la FSA y gana hasta $10 por cada lote que operan — con retos en efectivo semanales encima y un panel en vivo que sigue cada dólar.",
+   "lead_h2": "¿Qué es un introducing broker — y cuánto puedes ganar?",
+   "lead_p": "Un introducing broker (IB) refiere traders a un bróker y gana comisión por su trading — sin operar tú mismo, sin capital requerido. Como IB de TNFX ganas hasta $10 por lote, pagado en vivo por cada operación de tus clientes, retirable en cualquier momento. Es una de las formas más claras de construir un ingreso real con forex sin tomar una sola posición tú mismo."
+  },
+  "affiliate-program": {
+   "title": "Programa de Afiliados de Forex — Hasta $10 por Lote | Socios TNFX",
+   "meta": "Únete al programa de afiliados de forex de TNFX y gana hasta $10 por lote más retos en efectivo semanales. El programa CFD que mejor paga en la región MENA — gratis, regulado por FSA.",
+   "h1": "Programa de Afiliados de Forex",
+   "subhead": "Promociona un bróker con licencia de la FSA en el que tu audiencia puede confiar y gana hasta $10 por lote — más recompensas en efectivo semanales, banners listos y seguimiento en tiempo real de cada referido.",
+   "lead_h2": "El programa de afiliados de forex que de verdad paga",
+   "lead_p": "El marketing de afiliados para forex funciona cuando el pago es real y el bróker convierte. TNFX paga hasta $10 por lote en cada operación de tus clientes referidos — no un bono único — más retos en efectivo cada semana. Obtén tu enlace y tus creativos listos en minutos y empieza a ganar."
+  },
+  "partnership": {
+   "title": "Programa de Socios de Forex — Asóciate con TNFX | Gana hasta $10 por Lote",
+   "meta": "Asóciate con TNFX, un bróker de forex con licencia de la FSA, y gana hasta $10 por lote. Alianzas de introducing broker, afiliados y referidos — retos semanales, 13 métodos de pago, panel en vivo.",
+   "h1": "Hazte Socio de TNFX",
+   "subhead": "Una alianza, hasta $10 por lote. Ya sea que presentes clientes, gestiones campañas de afiliados o refieras amigos — TNFX te paga por cada lote que operan, con retos en efectivo cada semana.",
+   "lead_h2": "Asóciate con un bróker que paga y que perdura",
+   "lead_p": "Una alianza vale tanto como el bróker que la respalda. TNFX tiene licencia de la FSA, opera en MT4 y MT5 con más de 1,000 instrumentos, y está diseñado para retener a los clientes que envías — para que tu comisión siga acumulándose. Hasta $10 por lote, retos en efectivo semanales y un panel de socio en vivo."
+  },
+  "cpa": {
+   "title": "Pagos CPA y de Socios de Forex — hasta $10 por Lote o CPA | TNFX",
+   "meta": "Pagos de socios de forex de TNFX: gana hasta $10 por lote en reparto de ingresos, más opciones de CPA. Tarifas transparentes y publicadas, regulado por FSA, retos semanales. Elige tu modelo de pago.",
+   "h1": "Pagos CPA y de Socios de Forex",
+   "subhead": "Elige el modelo de pago que se ajusta a tu tráfico. Gana hasta $10 por lote en reparto de ingresos de por vida, o habla con nuestro equipo sobre CPA — con tarifas transparentes y publicadas y retos en efectivo semanales.",
+   "lead_h2": "CPA, reparto de ingresos o híbrido — tú eliges",
+   "lead_p": "Los afiliados serios eligen su modelo de pago. El modelo principal de TNFX paga hasta $10 por lote como reparto de ingresos de por vida — ganas mientras tu cliente opere, no solo una vez. ¿Prefieres costo por adquisición? Nuestro equipo de socios trabaja contigo en acuerdos de CPA e híbridos con condiciones claras y publicadas — sin trampas de calificación ocultas."
+  },
+  "cashback-rebate": {
+   "title": "Cashback y Rebate de Forex — Dinero de Vuelta en Cada Lote | TNFX",
+   "meta": "Obtén cashback y rebates de forex en cada lote con TNFX. Dinero de vuelta por lote en oro y principales, pagado en vivo, retirable cuando quieras por 13 métodos. Regulado por FSA. El mayor rebate en MENA.",
+   "h1": "Cashback y Rebate de Forex",
+   "subhead": "Gana dinero de vuelta en cada lote operado — tuyo o de tus clientes — pagado en vivo y retirable en cualquier momento por 13 métodos de fondeo. El acuerdo de cashback más claro de la región.",
+   "lead_h2": "Cashback y rebate en cada lote",
+   "lead_p": "El rebate (o cashback) significa dinero real de vuelta por cada lote de volumen operado — hasta $10 por lote en oro y principales. Como socio de TNFX lo ganas sobre el volumen que generan tus clientes referidos; se paga en vivo a tu billetera y es retirable cuando quieras. Sin juegos de topes, sin calificaciones vagas."
+  },
+  "commission-per-lot": {
+   "title": "Comisión de Forex por Lote — Hasta $10 | Ganancias de Socios TNFX",
+   "meta": "¿Cuánto ganan los IB de forex? Hasta $10 de comisión por lote con TNFX, pagado en vivo en cada operación. Mira la escalera de tarifas por lote de $5 a $10 y los retos semanales. Regulado por FSA.",
+   "h1": "Comisión de Forex — Hasta $10 por Lote",
+   "subhead": "Exactamente lo que ganas, por lote, sin nada oculto. Desde $5 en Bronce hasta $10 en Prime — pagado en vivo por cada operación de tus clientes, más retos en efectivo cada semana.",
+   "lead_h2": "¿Cuánto ganan realmente los IB y afiliados de forex?",
+   "lead_p": "La respuesta honesta es: depende de tu tarifa y del volumen de tus clientes. TNFX publica ambas. Tu comisión va de $5 por lote en Bronce a $10 por lote en Prime, en oro y pares principales, pagada por cada lote que operan tus clientes. Multiplica tu tarifa por sus lotes mensuales y tienes tu ingreso — luego suma hasta $400 a la semana en efectivo de los retos."
+  },
+  "referral": {
+   "title": "Refiere a un Amigo a Forex — Programa de Referidos | Socios TNFX",
+   "meta": "Refiere amigos a TNFX y gana por cada lote que operan. Obtén tu enlace de referido al instante, gana hasta $10 por lote y retira cuando quieras. Registro gratis, regulado por FSA, 13 métodos de pago.",
+   "h1": "Refiere a un Amigo — Programa de Referidos de Forex",
+   "subhead": "Comparte tu enlace y gana por cada lote que operan tus amigos — hasta $10 por lote, pagado en vivo. La forma más simple de empezar: obtén tu enlace de referido en 60 segundos y compártelo donde quieras.",
+   "lead_h2": "Refiere, comparte y gana — sin equipo requerido",
+   "lead_p": "¿Aún no estás listo para una operación completa de IB? Solo refiere. Obtén tu enlace de referido personal en el momento en que te registras, compártelo con amigos y tu audiencia, y gana hasta $10 por cada lote que operan — en vivo y retirable cuando quieras. Cuando estés listo para escalar, la misma cuenta se convierte en tu operación completa de IB y afiliados."
+  },
+  "earn-without-trading": {
+   "title": "Cómo Ganar Dinero en Forex Sin Operar | Socios TNFX",
+   "meta": "Gana dinero con forex sin operar y sin capital — hazte socio de TNFX y gana hasta $10 por lote refiriendo clientes. ¿Es legítimo? Sí — regulado por FSA. Descubre cómo funciona.",
+   "h1": "Cómo Ganar Dinero en Forex Sin Operar",
+   "subhead": "No tienes que arriesgar una sola operación. Gana hasta $10 por lote presentando clientes a un bróker con licencia de la FSA — sin capital, sin posiciones, solo tu red y tu enlace.",
+   "lead_h2": "Gana con forex — sin operar y sin capital",
+   "lead_p": "La mayoría de las personas pierde dinero operando forex. Los socios no operan — ganan del volumen que operan otras personas. Como socio de TNFX refieres clientes y cobras hasta $10 por lote sobre todo lo que operan, con cero capital en riesgo. Es legítimo, es transparente, y la licencia de la FSA de TNFX significa que el bróker detrás de tu ingreso está regulado. Aquí te explicamos exactamente cómo funciona."
+  },
+  "compare": {
+   "title": "Mejor Programa de Socios Forex IB y Affiliate 2026 — Hasta $10 por Lot | TNFX",
+   "meta": "¿Comparando programas de socios forex? Mira lo que de verdad importa: pago por lot, qué tan rápido cobras y si el broker convierte. TNFX: hasta $10 por lot, retos semanales en efectivo, retiros locales rápidos, regulado por la FSA.",
+   "h1": "El Mejor Programa de Socios Forex para 2026",
+   "subhead": "No todos los programas merecen tu tráfico. Esto es lo que distingue a los mejores programas forex IB y affiliate, y cómo se compara TNFX: hasta $10 por lot, retos semanales en efectivo, retiros locales rápidos y una mesa de socios dedicada para MENA.",
+   "lead_h2": "Qué buscar en un programa forex IB / affiliate",
+   "lead_p": "Todo programa de socios serio paga por lot o por adquisición; la verdadera diferencia está en cuánto, qué tan rápido cobras de verdad y si el broker convierte el tráfico que envías. Evalúa un programa por cuatro cosas: la tarifa por lot (y qué tan alto puede llegar), la velocidad y los métodos de pago, qué tan bien retiene el broker a tus clientes y si hay soporte local real detrás. TNFX paga hasta $10 por lot, suma hasta $400 por semana en efectivo de retos, deposita y retira a través de 13 métodos locales y globales, y lo respalda con una licencia de la FSA y una mesa de socios real en MENA; por eso los socios traen sus carteras a TNFX."
+  },
+  "what-is-introducing-broker": {
+   "title": "¿Qué Es un Introducing Broker (IB) de Forex? Significado, Pago y Cómo Serlo | TNFX",
+   "meta": "¿Qué es un introducing broker (IB) de forex? Una guía clara de cómo funcionan los IB, cómo cobran por lot, IB vs affiliate, y cómo convertirte en uno con TNFX: hasta $10 por lot, sin operar, sin capital.",
+   "h1": "¿Qué Es un Introducing Broker de Forex?",
+   "subhead": "Un introducing broker refiere traders a un broker y gana comisión por su actividad de trading: sin operar tú mismo, sin capital. Aquí te explicamos exactamente cómo funciona y cómo convertirte en uno con TNFX por hasta $10 por lot.",
+   "lead_h2": "El introducing broker, explicado de forma simple",
+   "lead_p": "Un introducing broker (IB) de forex es un socio que conecta traders con un broker y gana una comisión sobre el volumen que esos traders operan, pagada por el broker, no por el cliente. Tú no operas y no necesitas capital; ganas a partir de la actividad de trading de otras personas. Como IB de TNFX cobras hasta $10 por cada lot estándar que operen tus clientes referidos, en vivo en cada trade y retirable cuando quieras. Es la forma más clara y de menor riesgo para construir un ingreso real en el forex."
+  },
+  "how-much-do-ibs-make": {
+   "title": "¿Cuánto Ganan los IB de Forex? Ganancias Reales por Lot Explicadas | TNFX",
+   "meta": "¿Cuánto ganan los introducing brokers de forex? Depende de tu tarifa y del volumen de tus clientes, ambos publicados. Con TNFX ganas de $5 a $10 por lot en vivo en cada trade, más hasta $400/semana en retos.",
+   "h1": "¿Cuánto Ganan los Introducing Brokers de Forex?",
+   "subhead": "La respuesta honesta: depende de tu tarifa por lot y del volumen mensual de tus clientes, y TNFX publica ambos. Gana de $5 a $10 por lot, en vivo en cada trade, más hasta $400 por semana en efectivo de retos.",
+   "lead_h2": "Tu ingreso = tu tarifa × el volumen de tus clientes",
+   "lead_p": "No hay un número único, pero la cuenta es simple y pública. Tu tarifa va desde $5 por lot en Bronze hasta $10 por lot en Prime; multiplícala por los lots que operan tus clientes cada mes y ya tienes tu comisión. Refiere clientes activos que operen unos cientos de lots al mes y estarás ganando un ingreso mensual serio, antes de sumar hasta $400 por semana en retos semanales y hasta $4,000 en misiones de carrera. Se acumula en vivo en cada trade y puedes retirar cuando quieras."
+  },
+  "islamic-halal-ib": {
+   "title": "Programa de Socios Forex Islámico (Halal) — Comisión IB Swap-Free | TNFX",
+   "meta": "Programa de socios forex islámico: refiere traders swap-free (halal) y gana hasta $10 por lot. Comisión sobre la actividad de trading, sin interés, hecho para Medio Oriente. Gratis para unirte, regulado por la FSA.",
+   "h1": "Programa de Socios Forex Islámico (Halal)",
+   "subhead": "Refiere traders con cuenta swap-free (islámica) y gana hasta $10 por lot sobre el volumen que operan: comisión por actividad de trading real, sin interés de por medio. Hecho para el mercado de Medio Oriente.",
+   "lead_h2": "Un programa de socios hecho para traders swap-free",
+   "lead_p": "Muchos traders en la región necesitan cuentas swap-free (islámicas), y TNFX las ofrece. Como socio refieres a esos traders y ganas hasta $10 por lot sobre el volumen que operan; tu comisión proviene del spread del broker sobre la actividad de trading, no de ningún interés ni préstamo. Es una forma limpia y basada en la actividad para que ganes mientras presentas a los traders cuentas que se ajustan a ellos."
+  },
+  "gold-xau-ib": {
+   "title": "Programa de Socios Forex de Oro (XAU/USD) — Gana hasta $10 por Lot | TNFX",
+   "meta": "El oro es el mercado más operado de la región. Refiere traders de oro (XAU/USD) y gana hasta $10 por lot con TNFX: pagado en vivo, retirable cuando quieras. Gratis para unirte, regulado por la FSA, retos semanales.",
+   "h1": "Programa de Socios de Trading de Oro",
+   "subhead": "El oro es el instrumento número uno para los traders de esta región. Refiere traders de oro (XAU/USD) y gana hasta $10 por lot sobre su volumen: el nivel más alto de la escala de comisiones de TNFX.",
+   "lead_h2": "Gana en el mercado favorito de la región: el oro",
+   "lead_p": "El oro (XAU/USD) es donde ocurre una enorme parte del volumen de trading en Medio Oriente, y está en la cima de la escala de comisiones de TNFX: hasta $10 por lot. Si tu audiencia opera oro, los estás refiriendo justo al mercado que ya aman, y ganas en cada lot que operan, en vivo y retirable cuando quieras. Suma los retos semanales en efectivo y los números crecen rápido."
+  },
+  "mt4-mt5-ib": {
+   "title": "Programa de Introducing Broker MT4 y MT5 — Gana hasta $10 por Lot | TNFX",
+   "meta": "Conviértete en introducing broker de MT4 y MT5 con TNFX. Refiere traders en MetaTrader 4 y MetaTrader 5 y gana hasta $10 por lot, con seguimiento en vivo. Gratis para unirte, regulado por la FSA, retos semanales.",
+   "h1": "Programa de Introducing Broker MT4 y MT5",
+   "subhead": "Refiere traders en las plataformas MetaTrader 4 y MetaTrader 5 que ya usan, y gana hasta $10 por lot sobre su volumen: con seguimiento en vivo en tu panel de socio.",
+   "lead_h2": "Gana en ambas plataformas MetaTrader",
+   "lead_p": "Casi todo trader de forex conoce MetaTrader, y TNFX funciona tanto en MT4 como en MT5 desde una sola cuenta de socio. Ya sea que tu audiencia prefiera el clásico MT4 o el más nuevo MT5, los refieres a la plataforma en la que ya confían y ganas hasta $10 por lot en todo lo que operan. Sin herramientas nuevas que aprender, con spreads ajustados y ejecución rápida, y cada lot con seguimiento en vivo al dólar."
+  },
+  "sub-ib-master-ib": {
+   "title": "Sub-IB y Master IB — Construye un Equipo de Socios Forex | TNFX",
+   "meta": "Ve más allá de tus propios referidos: conviértete en master IB, suma sub-partners bajo tu red y gana sobre el volumen de todo tu equipo, hasta $10 por lot. Programa de socios forex multinivel de TNFX.",
+   "h1": "Construye un Equipo: Programa Master IB y Sub-IB",
+   "subhead": "No te limites a tus propios referidos. Suma sub-partners bajo tu red y gana sobre el volumen de trading de todo tu equipo: hasta $10 por lot, con una vista en vivo de cada socio y cliente.",
+   "lead_h2": "Haz crecer una red, no solo una lista de referidos",
+   "lead_p": "Los socios más grandes no solo refieren clientes: construyen equipos. TNFX apoya a los master IB que suman sub-partners bajo su red, para que ganes sobre el volumen que genera todo tu equipo, no solo tus referidos directos. Así un affiliate en solitario se convierte en un negocio IB real: recluta, apoya a tus sub-partners y escala tus ganancias hasta $10 por lot en todo el equipo. Habla con nuestra mesa de socios sobre la estructura multinivel que se ajusta a tu operación."
+  }
+ },
+ "review_flags": [
+  "'Retos' chosen for 'Challenges' (gaming/quest tone); 'misiones/reclamar' used for missions/claim — confirm the gamified voice fits the brand.",
+  "'billetera de socio' for 'partner wallet' — verify preferred term vs 'monedero'.",
+  "FSA regulatory phrasing kept literal ('con licencia de la FSA / regulado por FSA') — confirm compliance-approved wording.",
+  "'reparto de ingresos' used for 'revenue share' — confirm vs keeping English 'revenue share'.",
+  "Kept 'rebate', 'cashback', 'CPA', 'IB', 'forex', 'MENA' in English per instructions — confirm these read naturally to LatAm audience.",
+  "Disclaimer sentence 'las ganancias pasadas no garantizan resultados futuros' — verify against required legal boilerplate."
+ ]
+}

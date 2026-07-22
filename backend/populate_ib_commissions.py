@@ -37,14 +37,34 @@ def run():
                      (CASE WHEN {FX_OR_GOLD} THEN i.ib_level ELSE 1 END)
         """))
         db.commit()
-        # refresh the IB aggregate from the detail so IB Admin matches exactly
+        # refresh the IB aggregate from the detail so IB Admin matches exactly — BUT NEVER overwrite
+        # the authoritative Plugit commission (commission_source IS NOT NULL): those IBs keep
+        # commission_excel(2023..2026)+commission_computed(pre-2023). Only IBs with no Plugit data
+        # get the computed rollup. See commission_years_import.py / build_ibs.VOLUME_SQL.
         db.execute(text("""
             UPDATE ibs SET
-                total_commission  = sub.c,
-                unpaid_commission = sub.c - COALESCE(ibs.paid_commission,0),
+                total_commission  = CASE WHEN ibs.commission_source IS NOT NULL
+                                         THEN COALESCE(ibs.commission_excel,0)+COALESCE(ibs.commission_computed,0)+COALESCE(ibs.commission_live,0)
+                                         ELSE sub.c END,
+                unpaid_commission = (CASE WHEN ibs.commission_source IS NOT NULL
+                                         THEN COALESCE(ibs.commission_excel,0)+COALESCE(ibs.commission_computed,0)+COALESCE(ibs.commission_live,0)
+                                         ELSE sub.c END) - COALESCE(ibs.paid_commission,0),
                 updated_at = NOW()
             FROM (SELECT ib_id, SUM(commission_usd) c FROM ib_commissions GROUP BY ib_id) sub
             WHERE ibs.id = sub.ib_id
+        """))
+        db.commit()
+        # Floor LAST: the IB wallet is commission-only, so no IB can have withdrawn (total_payoff)
+        # more than it earned. Any IB the recompute above left below its payoff gets floored to it
+        # (the shortfall is pre-report commission). Runs every refresh so net never goes negative.
+        db.execute(text("""
+            UPDATE ibs SET
+                commission_computed = COALESCE(commission_computed,0) + (COALESCE(total_payoff,0) - total_commission),
+                total_commission    = COALESCE(total_payoff,0),
+                commission_source   = COALESCE(commission_source, 'computed'),
+                unpaid_commission   = COALESCE(total_payoff,0) - COALESCE(paid_commission,0),
+                updated_at = NOW()
+            WHERE COALESCE(total_payoff,0) > total_commission + 0.01
         """))
         db.commit()
         n = db.execute(text("SELECT COUNT(*), ROUND(SUM(commission_usd)::numeric,0) FROM ib_commissions")).fetchone()

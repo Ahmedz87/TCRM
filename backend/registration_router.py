@@ -368,6 +368,17 @@ def submit(data: dict, request: Request, db: Session = Depends(get_db)):
            "src": src, "camp": _camp, "us": _us or None, "um": (data.get("utm_medium") or "").strip() or None,
            "uc": (data.get("utm_campaign") or "").strip() or None, "gclid": _gclid or None}).scalar()
     db.execute(text("UPDATE registrations SET lead_id=:l WHERE id=:r"), {"l": lead_id, "r": rid})
+    # IB REFERRAL ATTRIBUTION (Jul 15 2026): ?ref=CODE param OR the tnfx_ref cookie set by /r/<code>.
+    # Stamps the lead with the IB, records the signup + its traffic source, so the IB gets credit.
+    try:
+        ref_raw = (data.get("ref") or "").strip() or (request.cookies.get("tnfx_ref") or "").strip()
+        if ref_raw:
+            import ib_referral
+            ref_ib = ib_referral.record_signup(db, ref_raw, lead_id, email, phone)
+            if ref_ib:
+                db.execute(text("UPDATE leads SET ib_id=:ib WHERE id=:l"), {"ib": ref_ib, "l": lead_id})
+    except Exception:
+        db.rollback()   # attribution failure must never block a real registration
     client_token = None
     client_login = None
     portal_token = None
@@ -407,11 +418,37 @@ async def kyc_upload(
 ):
     _limit(request, "kyc_ip", 120, 3600)         # 120 uploads / hour per IP
     _ensure_schema(db)
-    ext = os.path.splitext(file.filename or "")[1] or ".jpg"
-    safe = f"reg{registration_id}_{doc_type}_{side}{ext}"
+    # ── SECURITY (P0, Jul 16): this is a PUBLIC unauthenticated endpoint. doc_type/side and the
+    # file extension are attacker-controlled and were concatenated straight into the save path
+    # (path traversal + arbitrary file type + no size cap = webshell/defacement/disk-fill). Lock
+    # ALL of it down: sanitized enum tokens, whitelisted image/pdf ext, int-only filename, a size
+    # cap read in chunks, and a final abspath containment check. ──
+    import re as _re
+    _tok = lambda s: (_re.sub(r"[^a-z0-9]", "", (s or "").lower())[:20]) or "x"
+    doc_type_s, side_s = _tok(doc_type), _tok(side)
+    ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".pdf"}
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXT:
+        raise HTTPException(status_code=400, detail="Only JPG, PNG, WEBP, HEIC or PDF files are allowed")
+    MAX_BYTES = 12 * 1024 * 1024                  # 12MB cap — reject oversized instead of buffering GBs
+    data = bytearray()
+    while True:
+        chunk = await file.read(1024 * 256)
+        if not chunk:
+            break
+        data.extend(chunk)
+        if len(data) > MAX_BYTES:
+            raise HTTPException(status_code=413, detail="File too large (max 12MB)")
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    # filename is derived ONLY from the int registration_id + sanitized tokens — no raw input
+    safe = f"reg{int(registration_id)}_{doc_type_s}_{side_s}{ext}"
     path = os.path.join(KYC_DIR, safe)
+    # defense-in-depth: the resolved path must stay inside KYC_DIR
+    if os.path.commonpath([os.path.abspath(path), os.path.abspath(KYC_DIR)]) != os.path.abspath(KYC_DIR):
+        raise HTTPException(status_code=400, detail="Invalid path")
     with open(path, "wb") as f:
-        f.write(await file.read())
+        f.write(data)
     lead_id = db.execute(text("SELECT lead_id FROM registrations WHERE id=:r"), {"r": registration_id}).scalar()
     did = db.execute(text("""
         INSERT INTO reg_kyc_documents (registration_id, lead_id, doc_type, side, file_path, status)
@@ -589,9 +626,32 @@ def activate(registration_id: int, data: dict = None, db: Session = Depends(get_
         lev = int(str(r.leverage or "1:500").split(":")[-1])
     except Exception:
         lev = 500
-    res = mt_provision.create_account(group, r.first_name, r.last_name, leverage=lev,
-                                      email=r.email, phone=r.phone, country=r.country, city=r.city)
+
+    # AML / sanctions gate (P0-16): screen if never screened, then refuse provisioning while an
+    # unresolved block-level hit exists. Compliance clears hits in the AML review queue to proceed.
+    try:
+        import aml_screening
+        never = db.execute(text("SELECT COUNT(*) FROM aml_screenings WHERE subject_type='registration' AND subject_id=:r"),
+                           {"r": registration_id}).scalar()
+        if not never:
+            aml_screening.screen_registration(db, registration_id, by=(getattr(_user, "email", "") or "activate"))
+        if aml_screening.has_pending_block(db, registration_id):
+            db.execute(text("UPDATE registrations SET status='aml_hold' WHERE id=:r AND status<>'account_created'"),
+                       {"r": registration_id})
+            db.commit()
+            return {"ok": False, "aml_hold": True,
+                    "error": "Sanctions screening match pending compliance review — clear it in AML review before activating."}
+    except HTTPException:
+        raise
+    except Exception as _e:
+        db.rollback()
+        print(f"[activate] AML screen error reg {registration_id}: {_e}", flush=True)
+
+    res = mt_provision.create_account_idempotent(
+        db, f"reg_{registration_id}", group, r.first_name, r.last_name, leverage=lev,
+        email=r.email, phone=r.phone, country=r.country, city=r.city)
     if not res.get("ok"):
+        # 'pending' = a prior attempt is mid-flight (or crashed) — do NOT create a second account
         return {"ok": False, "error": f"account creation failed: {res.get('error')}"}
     real_login = int(res["login"])
 
@@ -614,7 +674,9 @@ def activate(registration_id: int, data: dict = None, db: Session = Depends(get_
     emailed = False
     try:
         import email_send
-        if r.email:
+        # skip on an idempotent re-run: the account already existed, so master/investor are None
+        # (credentials are only returned on the first create) — don't email blank passwords.
+        if r.email and not res.get("idempotent"):
             body = (
                 f"Hello {r.first_name or ''},\n\n"
                 f"Your TNFX {r.platform or 'MT5'} trading account is ready.\n\n"

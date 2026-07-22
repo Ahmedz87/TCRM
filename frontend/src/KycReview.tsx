@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
 
 // Staff KYC review console (sidebar "KYC"). Lists every registration that uploaded documents,
 // shows the AI verdict + reason + the document images, and lets the verification team
@@ -71,6 +72,8 @@ export default function KycReview() {
   const [busy, setBusy] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [comment, setComment] = useState('');
+  const [sending, setSending] = useState('');           // which email is being sent
+  const [emailMsg, setEmailMsg] = useState('');         // inline result feedback
   const [sortKey, setSortKey] = useState('processed_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -95,7 +98,7 @@ export default function KycReview() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [status]);
 
   const openDetail = (rid: number) => {
-    setSel({ loading: true }); setRejecting(false); setComment('');
+    setSel({ loading: true }); setRejecting(false); setComment(''); setEmailMsg(''); setSending('');
     apiGet(`/kyc-admin/${rid}`).then(setSel).catch(() => setSel(null));
   };
 
@@ -105,6 +108,21 @@ export default function KycReview() {
       await apiPost(`/kyc-admin/${sel.registration_id}/doc/${docId}/decision`, { decision });
       openDetail(sel.registration_id); load();
     } catch (e) { /* ignore */ }
+  };
+
+  // Ticket 186 — nudge the client by email (branded TNFX templates) from the KYC console.
+  const sendEmail = async (kind: 'verification' | 'doc-reminder') => {
+    if (!sel || sending) return;
+    setSending(kind); setEmailMsg('');
+    try {
+      const ep = kind === 'verification' ? 'send-verification-email' : 'send-doc-reminder';
+      const r: any = await apiPost(`/kyc-admin/${sel.registration_id}/${ep}`, {});
+      setEmailMsg(r?.ok
+        ? `✓ ${kind === 'verification' ? 'Verification email' : 'Document reminder'} sent to ${r.sent_to}`
+        : `⚠ ${r?.error || 'Could not send the email.'}`);
+    } catch {
+      setEmailMsg('⚠ Could not send the email.');
+    } finally { setSending(''); }
   };
 
   const decide = async (decision: 'approve' | 'reject') => {
@@ -145,12 +163,12 @@ export default function KycReview() {
           {items.length === 0
             ? <div style={{ padding: 24, textAlign: 'center', color: '#8a93a5', fontSize: 13 }}>No submissions in this view.</div>
             : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <table style={CT.table}>
               <thead>
-                <tr style={{ position: 'sticky', top: 0, background: 'var(--bg-card,#2c333e)', zIndex: 1 }}>
+                <tr style={CT.theadTr}>
                   {([['name', 'Name'], ['contact', 'Contact'], ['location', 'Location'], ...(sel ? [] : [['n_docs', 'Docs'], ['processed_at', 'Reviewed']] as any), ['status', 'Status']] as any[]).map(([k, label]) => (
                     <th key={k} onClick={() => toggleSort(k === 'contact' ? 'email' : k)}
-                      style={{ textAlign: 'left', padding: '9px 12px', color: '#8a93a5', fontWeight: 600, cursor: 'pointer', borderBottom: '1px solid var(--border,#4f596b)', whiteSpace: 'nowrap' }}>
+                      style={{ ...CT.th(sortKey === k || (k === 'contact' && sortKey === 'email'), k === 'n_docs' ? 'center' : 'left'), cursor: 'pointer' }}>
                       {label}{(sortKey === k || (k === 'contact' && sortKey === 'email')) ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
                     </th>
                   ))}
@@ -159,13 +177,15 @@ export default function KycReview() {
               <tbody>
                 {sorted.map(it => (
                   <tr key={it.registration_id} onClick={() => openDetail(it.registration_id)}
-                    style={{ cursor: 'pointer', borderBottom: '1px solid var(--border,#3a4250)', background: sel?.registration_id === it.registration_id ? 'rgba(0,229,160,0.06)' : 'transparent' }}>
-                    <td style={{ padding: '10px 12px', color: 'var(--text,#e6e9ef)', fontWeight: 600 }}>{it.name}</td>
-                    <td style={{ padding: '10px 12px', color: '#8a93a5', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.email || it.phone || '—'}</td>
-                    <td style={{ padding: '10px 12px', color: '#8a93a5', whiteSpace: 'nowrap' }}>{[it.city, it.country].filter(Boolean).join(', ') || '—'}</td>
-                    {!sel && <td style={{ padding: '10px 12px', color: '#8a93a5', textAlign: 'center' }}>{it.n_docs}</td>}
-                    {!sel && <td style={{ padding: '10px 12px', color: '#8a93a5', whiteSpace: 'nowrap' }}>{(it.processed_at || it.created_at || '').slice(0, 16).replace('T', ' ') || '—'}</td>}
-                    <td style={{ padding: '10px 12px' }}>
+                    style={{ ...CT.row(sel?.registration_id === it.registration_id), cursor: 'pointer' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = sel?.registration_id === it.registration_id ? 'rgba(0,229,160,0.1)' : 'var(--bg-card,#2c333e)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = sel?.registration_id === it.registration_id ? 'rgba(0,229,160,0.06)' : 'transparent')}>
+                    <td style={{ ...CT.td, fontWeight: 600 }}>{it.name}</td>
+                    <td style={{ ...CT.td, color: '#8a93a5', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.email || it.phone || '—'}</td>
+                    <td style={{ ...CT.td, color: '#8a93a5' }}>{[it.city, it.country].filter(Boolean).join(', ') || '—'}</td>
+                    {!sel && <td style={{ ...CT.td, color: '#8a93a5', textAlign: 'center' }}>{it.n_docs}</td>}
+                    {!sel && <td style={{ ...CT.td, color: '#8a93a5' }}>{(it.processed_at || it.created_at || '').slice(0, 16).replace('T', ' ') || '—'}</td>}
+                    <td style={CT.td}>
                       <Badge status={it.status} />
                       {it.poa_review && <span title={`Address proof in another name${it.poa_holder ? ' (' + it.poa_holder + ')' : ''} — confirm family via Family ID`}
                         style={{ marginLeft: 6, display: 'inline-block', padding: '2px 7px', borderRadius: 6, fontSize: 10.5, fontWeight: 800, color: '#E8B84B', background: 'rgba(232,184,75,0.14)', border: '1px solid rgba(232,184,75,0.4)' }}>👪 Family POA</span>}
@@ -296,6 +316,21 @@ export default function KycReview() {
                 </div>
               </div>
             )}
+
+            {/* Ticket 186 — email the client (branded TNFX templates) to move verification along */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: emailMsg ? 8 : 10 }}>
+              <button disabled={!!sending} onClick={() => sendEmail('verification')}
+                title="Email the client a request to confirm their email address"
+                style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid #F8500A', background: 'rgba(248,80,10,0.10)', color: '#F8500A', fontWeight: 700, fontSize: 12.5, cursor: sending ? 'default' : 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1 }}>
+                {sending === 'verification' ? 'Sending…' : '✉ Email verification'}
+              </button>
+              <button disabled={!!sending} onClick={() => sendEmail('doc-reminder')}
+                title="Email the client a reminder to upload outstanding documents"
+                style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid #F8500A', background: 'rgba(248,80,10,0.10)', color: '#F8500A', fontWeight: 700, fontSize: 12.5, cursor: sending ? 'default' : 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1 }}>
+                {sending === 'doc-reminder' ? 'Sending…' : '📄 Doc reminder'}
+              </button>
+            </div>
+            {emailMsg && <div style={{ fontSize: 12, color: emailMsg.startsWith('✓') ? '#00e5a0' : '#ffb020', marginBottom: 10 }}>{emailMsg}</div>}
 
             {/* actions */}
             {rejecting && (

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
+import RelationsTables from './RelationsTables';
 
 const API = '/api';
 
@@ -175,7 +177,7 @@ function AccountPill({ node, isSelected, onClick }: any) {
           {node.connect_via && <span style={{ color:EDGE_COLORS[node.type]||'#555' }}>{EDGE_ICONS[node.type]||''} {node.type?.toUpperCase()}</span>}
         </div>
       </div>
-      <div style={{ fontSize:11, color:'#00e5a0', fontWeight:600, flexShrink:0 }}>${(node.balance||0).toLocaleString()}</div>
+      <div style={{ fontSize:11, color:'#00e5a0', fontWeight:600, flexShrink:0 }}>${(node.balance||0).toLocaleString('en-GB')}</div>
     </div>
   );
 }
@@ -219,7 +221,7 @@ function ClusterCard({ cluster, type }: any) {
           {/* Ring summary — the back-office "why" at a glance */}
           {cluster.totals && (() => {
             const t = cluster.totals;
-            const money = (n:number) => '$' + Math.round(n||0).toLocaleString();
+            const money = (n:number) => '$' + Math.round(n||0).toLocaleString('en-GB');
             const netBad = (t.net_to_clients||0) > 0 && (t.bonus||0) > 0;   // extracted more than deposited, on bonus
             return (
               <div style={{ background:'#20252f', border:`1px solid ${netBad?'#ff4d4d55':'#373f4d'}`, borderRadius:8, padding:'8px 10px', marginBottom:10 }}>
@@ -242,28 +244,46 @@ function ClusterCard({ cluster, type }: any) {
           })()}
 
           {/* per-account detail table */}
-          <div style={{ display:'grid', gridTemplateColumns:'1.6fr 1fr 1.2fr 0.85fr 0.85fr 0.85fr 0.95fr 0.95fr', gap:6, fontSize:9.5, color:'#667', textTransform:'uppercase', padding:'2px 0 4px', borderBottom:'1px solid #373f4d' }}>
-            <span>Account</span><span>City</span><span>IB</span><span style={{textAlign:'right'}}>Dep</span><span style={{textAlign:'right'}}>W/D</span><span style={{textAlign:'right'}}>Bonus</span><span style={{textAlign:'right'}}>P&L</span><span style={{textAlign:'right'}}>Last dep</span>
+          <div style={{ ...CT.scroll, flex:'unset', minHeight:'unset' }}>
+            <table style={CT.table}>
+              <thead>
+                <tr style={CT.theadTr}>
+                  <th style={CT.th()}>Account</th>
+                  <th style={CT.th()}>City</th>
+                  <th style={CT.th()}>IB</th>
+                  <th style={CT.th(false, 'right')}>Dep</th>
+                  <th style={CT.th(false, 'right')}>W/D</th>
+                  <th style={CT.th(false, 'right')}>Bonus</th>
+                  <th style={CT.th(false, 'right')}>P&L</th>
+                  <th style={CT.th(false, 'right')}>Last dep</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(cluster.accounts||[]).map((a:any,i:number) => {
+                  const money = (n:number) => '$' + Math.round(n||0).toLocaleString('en-GB');
+                  const lastDep = a.last_deposit ? new Date(a.last_deposit.replace(' ','T')).toLocaleDateString('en-GB') : '—';
+                  return (
+                    <tr key={i} style={CT.row()}>
+                      <td style={{ ...CT.td, maxWidth:230, overflow:'hidden', textOverflow:'ellipsis' }}>
+                        <span style={{ fontFamily:'monospace', color:'#00aaff' }}>#{a.login}</span> <span style={{ color:'#ccc' }}>{a.name}</span>
+                        {a.win_rate != null && <span style={{ color:a.win_rate>=85?'#ffaa00':'#667', marginLeft:4 }}>· {a.win_rate}% win</span>}
+                      </td>
+                      <td style={{ ...CT.td, color:'#8a93a3', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis' }} title={a.country}>{a.city || a.country || '—'}</td>
+                      <td style={{ ...CT.td, color:a.ib_name?'#ffd479':'#556', maxWidth:150, overflow:'hidden', textOverflow:'ellipsis' }} title={a.ib_name}>{a.ib_name || '—'}</td>
+                      <td style={{ ...CT.td, textAlign:'right', color:'#00aaff' }}>{money(a.deposits)}</td>
+                      <td style={{ ...CT.td, textAlign:'right', color:'#ff8888' }}>{money(a.withdrawals)}</td>
+                      <td style={{ ...CT.td, textAlign:'right', color:a.bonus>0?'#cc88ff':'#556' }}>{money(a.bonus)}</td>
+                      <td style={{ ...CT.td, textAlign:'right', color:a.pnl>=0?'#00e5a0':'#ff8888', fontWeight:600 }}>{a.pnl>0?'+':''}{money(a.pnl)}</td>
+                      <td style={{ ...CT.td, textAlign:'right', color:'#8a93a3' }}>{lastDep}</td>
+                    </tr>
+                  );
+                })}
+                {!(cluster.accounts||[]).length && (
+                  <tr><td colSpan={8} style={{ padding:40, textAlign:'center', color:'#555' }}>No accounts</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
-          {cluster.accounts.map((a:any,i:number) => {
-            const money = (n:number) => '$' + Math.round(n||0).toLocaleString();
-            const lastDep = a.last_deposit ? new Date(a.last_deposit.replace(' ','T')).toLocaleDateString() : '—';
-            return (
-              <div key={i} style={{ display:'grid', gridTemplateColumns:'1.6fr 1fr 1.2fr 0.85fr 0.85fr 0.85fr 0.95fr 0.95fr', gap:6, alignItems:'center', padding:'6px 0', borderBottom:i<cluster.accounts.length-1?'1px solid #2c333e':'none', fontSize:11 }}>
-                <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                  <span style={{ fontFamily:'monospace', color:'#00aaff' }}>#{a.login}</span> <span style={{ color:'#ccc' }}>{a.name}</span>
-                  {a.win_rate != null && <span style={{ color:a.win_rate>=85?'#ffaa00':'#667', marginLeft:4 }}>· {a.win_rate}% win</span>}
-                </span>
-                <span style={{ color:'#8a93a3', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={a.country}>{a.city || a.country || '—'}</span>
-                <span style={{ color:a.ib_name?'#ffd479':'#556', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={a.ib_name}>{a.ib_name || '—'}</span>
-                <span style={{ textAlign:'right', color:'#00aaff' }}>{money(a.deposits)}</span>
-                <span style={{ textAlign:'right', color:'#ff8888' }}>{money(a.withdrawals)}</span>
-                <span style={{ textAlign:'right', color:a.bonus>0?'#cc88ff':'#556' }}>{money(a.bonus)}</span>
-                <span style={{ textAlign:'right', color:a.pnl>=0?'#00e5a0':'#ff8888', fontWeight:600 }}>{a.pnl>0?'+':''}{money(a.pnl)}</span>
-                <span style={{ textAlign:'right', color:'#8a93a3' }}>{lastDep}</span>
-              </div>
-            );
-          })}
           {count > 10 && <div style={{ fontSize:11, color:'#555', textAlign:'center', marginTop:6 }}>+{count-10} more (showing first 10)</div>}
         </div>
       )}
@@ -274,9 +294,9 @@ function ClusterCard({ cluster, type }: any) {
 // ─── Connection-group card (the "Connections" tab) ─────────────────────────────
 const SEVC: any = { critical:'#ff4d4d', high:'#ffaa00', medium:'#ffd400', low:'#00aaff' };
 const VERDICT_ICON: any = { ib_farming:'🤝', bonus_abuse:'🎁', toxic:'☢️', swap_free:'💱', offsetting:'🔄', linked:'🔗' };
-const REASON_ICON: any = { cid:'📱', mqid:'📱', email:'✉️', similar_email:'📧', phone:'📞', family:'👪', ip:'🌐', payment:'💳', ib:'🤝', city:'📍', name:'👤' };
-const LINK_LABEL: any = { cid:'Device (CID)', mqid:'Device (MQID)', ip:'IP address', email:'Email', similar_email:'Similar email', phone:'Phone', name:'Same name', family:'Family', city:'City', payment:'Payment', ib:'Same IB' };
-const m0 = (n:number) => '$' + Math.round(n||0).toLocaleString();
+const REASON_ICON: any = { cid:'📱', mqid:'📱', email:'✉️', similar_email:'📧', phone:'📞', family:'👪', ip:'🌐', payment:'💳', pay_sender:'💳', ib:'🤝', city:'📍', name:'👤' };
+const LINK_LABEL: any = { cid:'Device (CID)', mqid:'Device (MQID)', ip:'IP address', email:'Email', similar_email:'Similar email', phone:'Phone', name:'Same name', family:'Family', city:'City', payment:'Payment', pay_sender:'Same payment card', ib:'Same IB' };
+const m0 = (n:number) => '$' + Math.round(n||0).toLocaleString('en-GB');
 
 function ConnGroupCard({ g }: any) {
   const [open, setOpen] = useState(false);
@@ -376,24 +396,43 @@ function ConnGroupCard({ g }: any) {
           </div>
 
           {/* member table */}
-          <div style={{ display:'grid', gridTemplateColumns:'1.5fr 0.9fr 1.1fr 0.8fr 0.8fr 0.8fr 0.9fr 0.7fr', gap:6, fontSize:9.5, color:'#667', textTransform:'uppercase', padding:'4px 0', borderBottom:'1px solid #373f4d' }}>
-            <span>Account</span><span>City</span><span>IB</span><span style={{textAlign:'right'}}>Dep</span><span style={{textAlign:'right'}}>W/D</span><span style={{textAlign:'right'}}>Bonus</span><span style={{textAlign:'right'}}>P&L</span><span style={{textAlign:'right'}}>Win</span>
+          <div style={{ ...CT.scroll, flex:'unset', minHeight:'unset' }}>
+            <table style={CT.table}>
+              <thead>
+                <tr style={CT.theadTr}>
+                  <th style={CT.th()}>Account</th>
+                  <th style={CT.th()}>City</th>
+                  <th style={CT.th()}>IB</th>
+                  <th style={CT.th(false, 'right')}>Dep</th>
+                  <th style={CT.th(false, 'right')}>W/D</th>
+                  <th style={CT.th(false, 'right')}>Bonus</th>
+                  <th style={CT.th(false, 'right')}>P&L</th>
+                  <th style={CT.th(false, 'right')}>Win</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(g.members||[]).map((mm:any,i:number)=>(
+                  <tr key={i} style={CT.row()}>
+                    <td style={{ ...CT.td, maxWidth:230, overflow:'hidden', textOverflow:'ellipsis' }}>
+                      <span style={{ fontFamily:'monospace', color:'#00aaff' }}>#{mm.login}</span> <span style={{ color:'#ccc' }}>{(mm.name||'').split(/\s+/).slice(0,2).join(' ')}</span>
+                      {mm.accounts>1 && <span style={{ color:'#8a93a3', marginLeft:4, fontSize:9.5 }} title={`${mm.accounts} trading accounts: ${(mm.logins||[]).join(', ')}`}>×{mm.accounts} accts</span>}
+                      {mm.is_islamic && <span style={{ color:'#9b8cff', marginLeft:4 }} title="Swap-free / Islamic">IS</span>}
+                    </td>
+                    <td style={{ ...CT.td, color:'#8a93a3', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis' }}>{mm.city||'—'}</td>
+                    <td style={{ ...CT.td, color:mm.ib_name?'#ffd479':'#556', maxWidth:150, overflow:'hidden', textOverflow:'ellipsis' }} title={mm.ib_name}>{mm.ib_name||'—'}</td>
+                    <td style={{ ...CT.td, textAlign:'right', color:'#00aaff' }}>{m0(mm.deposits)}</td>
+                    <td style={{ ...CT.td, textAlign:'right', color:'#ff8888' }}>{m0(mm.withdrawals)}</td>
+                    <td style={{ ...CT.td, textAlign:'right', color:mm.bonus>0?'#cc88ff':'#556' }}>{m0(mm.bonus)}</td>
+                    <td style={{ ...CT.td, textAlign:'right', color:mm.pnl>=0?'#00e5a0':'#ff8888', fontWeight:600 }}>{mm.pnl>0?'+':''}{m0(mm.pnl)}</td>
+                    <td style={{ ...CT.td, textAlign:'right', color:(mm.win_rate>=85)?'#ffaa00':'#8a93a3' }}>{mm.win_rate!=null?mm.win_rate+'%':'—'}</td>
+                  </tr>
+                ))}
+                {!(g.members||[]).length && (
+                  <tr><td colSpan={8} style={{ padding:40, textAlign:'center', color:'#555' }}>No members</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
-          {(g.members||[]).map((mm:any,i:number)=>(
-            <div key={i} style={{ display:'grid', gridTemplateColumns:'1.5fr 0.9fr 1.1fr 0.8fr 0.8fr 0.8fr 0.9fr 0.7fr', gap:6, alignItems:'center', padding:'6px 0', borderBottom:i<g.members.length-1?'1px solid #2c333e':'none', fontSize:11 }}>
-              <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                <span style={{ fontFamily:'monospace', color:'#00aaff' }}>#{mm.login}</span> <span style={{ color:'#ccc' }}>{(mm.name||'').split(/\s+/).slice(0,2).join(' ')}</span>
-                {mm.is_islamic && <span style={{ color:'#9b8cff', marginLeft:4 }} title="Swap-free / Islamic">IS</span>}
-              </span>
-              <span style={{ color:'#8a93a3', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{mm.city||'—'}</span>
-              <span style={{ color:mm.ib_name?'#ffd479':'#556', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={mm.ib_name}>{mm.ib_name||'—'}</span>
-              <span style={{ textAlign:'right', color:'#00aaff' }}>{m0(mm.deposits)}</span>
-              <span style={{ textAlign:'right', color:'#ff8888' }}>{m0(mm.withdrawals)}</span>
-              <span style={{ textAlign:'right', color:mm.bonus>0?'#cc88ff':'#556' }}>{m0(mm.bonus)}</span>
-              <span style={{ textAlign:'right', color:mm.pnl>=0?'#00e5a0':'#ff8888', fontWeight:600 }}>{mm.pnl>0?'+':''}{m0(mm.pnl)}</span>
-              <span style={{ textAlign:'right', color:(mm.win_rate>=85)?'#ffaa00':'#8a93a3' }}>{mm.win_rate!=null?mm.win_rate+'%':'—'}</span>
-            </div>
-          ))}
         </div>
       )}
     </div>
@@ -402,7 +441,7 @@ function ConnGroupCard({ g }: any) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function NetworkPage() {
-  const [tab, setTab]                 = useState<'connections'|'ip'|'cid'|'search'>('connections');
+  const [tab, setTab]                 = useState<'relations'|'connections'|'ip'|'cid'|'search'>('relations');
   const [groups, setGroups]           = useState<any[]>([]);
   const [linkFilter, setLinkFilter]   = useState<string>('all');
   const [loadingG, setLoadingG]       = useState(false);
@@ -475,15 +514,15 @@ export default function NetworkPage() {
 
       {/* KPIs */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, padding:'10px 14px', borderBottom:'1px solid #373f4d', flexShrink:0 }}>
-        <KPI icon="🕸️" label="Total edges"      value={(stats?.total_edges||0).toLocaleString()}      color="#00aaff" />
-        <KPI icon="🌐" label="IP clusters"       value={(stats?.ip_clusters||0).toLocaleString()}      color="#ffaa00" />
-        <KPI icon="📱" label="Device clusters"   value={(stats?.cid_clusters||0).toLocaleString()}     color="#ff4d4d" />
-        <KPI icon="⚠️" label="CID-linked accts"  value={(stats?.flagged_accounts||0).toLocaleString()} color="#ff4d4d" />
+        <KPI icon="🕸️" label="Total edges"      value={(stats?.total_edges||0).toLocaleString('en-GB')}      color="#00aaff" />
+        <KPI icon="🌐" label="IP clusters"       value={(stats?.ip_clusters||0).toLocaleString('en-GB')}      color="#ffaa00" />
+        <KPI icon="📱" label="Device clusters"   value={(stats?.cid_clusters||0).toLocaleString('en-GB')}     color="#ff4d4d" />
+        <KPI icon="⚠️" label="CID-linked accts"  value={(stats?.flagged_accounts||0).toLocaleString('en-GB')} color="#ff4d4d" />
       </div>
 
       {/* Tab bar */}
       <div style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderBottom:'1px solid #373f4d', flexShrink:0, background:'#262c36' }}>
-        {[['connections','🎯  Connections'],['ip','🌐  IP Clusters'],['cid','📱  Device Clusters'],['search','🔍  Account Network']].map(([k,l])=>(
+        {[['relations','👥  Related / Clean'],['connections','🎯  Connections'],['ip','🌐  IP Clusters'],['cid','📱  Device Clusters'],['search','🔍  Account Network']].map(([k,l])=>(
           <button key={k} onClick={()=>{ setTab(k as any); setPage(1); setSearch(''); }}
             style={{ padding:'5px 14px', borderRadius:7, border:`1px solid ${tab===k?'#00e5a0':'#626d80'}`, background:tab===k?'rgba(0,229,160,0.08)':'transparent', color:tab===k?'#00e5a0':'#555', cursor:'pointer', fontSize:12, fontFamily:'inherit', fontWeight:tab===k?700:400 }}>
             {l}
@@ -499,18 +538,21 @@ export default function NetworkPage() {
               {[2,3,5,10].map(n=><option key={n} value={n}>{n}+ accounts</option>)}
             </select>
           )}
-          <span style={{ marginLeft:'auto', fontSize:11, color:'#444' }}>{total.toLocaleString()} clusters</span>
+          <span style={{ marginLeft:'auto', fontSize:11, color:'#444' }}>{total.toLocaleString('en-GB')} clusters</span>
         </>}
       </div>
 
       {/* Content */}
       <div style={{ flex:1, overflow:'hidden', display:'flex', minHeight:0 }}>
 
+        {/* ── Related vs Clean (the two tables, from the ONE relation engine) ── */}
+        {tab==='relations' && <RelationsTables />}
+
         {/* ── Connections (grouped + verdicts) ── */}
         {tab==='connections' && (() => {
           // filter chips by link type — CID first, as requested. A group matches a filter if any of
           // its link types fall in that bucket (cid+mqid → Device; family+phone → Family; email+similar_email → Email).
-          const BUCKET: any = { cid:['cid','mqid'], ib:['ib'], city:['city'], family:['family','phone'], email:['email','similar_email'], ip:['ip'], payment:['payment'] };
+          const BUCKET: any = { cid:['cid','mqid'], ib:['ib'], city:['city'], family:['family','phone'], email:['email','similar_email'], ip:['ip'], payment:['payment','pay_sender'] };
           const CHIPS = [['all','All'],['cid','📱 Device (CID)'],['ib','🤝 IB'],['city','📍 City'],['family','👪 Family'],['email','📧 Email'],['ip','🌐 IP'],['payment','💳 Payment']];
           const shown = linkFilter==='all' ? groups
             : groups.filter(g => (g.link_reasons||[]).some((r:string)=> (BUCKET[linkFilter]||[]).includes(r)));
@@ -550,7 +592,7 @@ export default function NetworkPage() {
               <div style={{ display:'flex', justifyContent:'center', gap:8, marginTop:12, paddingBottom:16 }}>
                 <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}
                   style={{ padding:'5px 14px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:page===1?'#626d80':'#888', cursor:page===1?'default':'pointer', fontSize:12 }}>← Prev</button>
-                <span style={{ padding:'5px 10px', color:'#444', fontSize:12 }}>Page {page} · {total.toLocaleString()}</span>
+                <span style={{ padding:'5px 10px', color:'#444', fontSize:12 }}>Page {page} · {total.toLocaleString('en-GB')}</span>
                 <button onClick={()=>setPage(p=>p+1)} disabled={clusters.length<20}
                   style={{ padding:'5px 14px', background:'#373f4d', border:'1px solid #626d80', borderRadius:6, color:clusters.length<20?'#626d80':'#00e5a0', cursor:clusters.length<20?'default':'pointer', fontSize:12, borderColor:clusters.length<20?'#626d80':'#00e5a0' }}>Next →</button>
               </div>
@@ -651,7 +693,7 @@ export default function NetworkPage() {
                           {selected.layer===0?'⭐':selected.type==='ip'?'🌐':selected.type==='cid'?'📱':'👤'}
                         </div>
                         <div style={{ fontSize:14, fontWeight:600, color:'#e0e0e0', marginBottom:4 }}>{selected.name || `#${selected.login}`}</div>
-                        <div style={{ fontSize:20, fontWeight:700, color:'#00e5a0', marginBottom:12 }}>${(selected.balance||0).toLocaleString()}</div>
+                        <div style={{ fontSize:20, fontWeight:700, color:'#00e5a0', marginBottom:12 }}>${(selected.balance||0).toLocaleString('en-GB')}</div>
                         {[
                           ['Login',    `#${selected.login}`,   '#00aaff'],
                           ['Country',  selected.country,        null],

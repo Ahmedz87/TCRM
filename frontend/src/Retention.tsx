@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
 
 // ── theme ───────────────────────────────────────────────────────────────────
 const BAND: Record<string, { c: string; bg: string; label: string }> = {
@@ -64,7 +65,7 @@ export default function Retention() {
           <div style={{ ...card, padding: '10px 16px', minWidth: 160 }}>
             <div style={{ fontSize: 11, color: '#8a93a5', textTransform: 'uppercase', letterSpacing: 0.5 }}>Last computed</div>
             <div style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>
-              {summary.computed_at ? new Date(summary.computed_at).toLocaleString() : '—'}
+              {summary.computed_at ? new Date(summary.computed_at).toLocaleString('en-GB') : '—'}
             </div>
           </div>
         </div>
@@ -133,42 +134,44 @@ function ClientsView() {
       </div>
 
       <div style={{ ...card, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: 'rgba(255,255,255,0.03)', textAlign: 'left', color: '#8a93a5' }}>
-              {['Client', 'Login', 'Band', 'Risk', 'Rules', 'Top action', 'Deposits', 'Net'].map((h) => (
-                <th key={h} style={{ padding: '10px 12px', fontWeight: 600 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#8a93a5' }}>Loading…</td></tr>}
-            {!loading && rows.length === 0 && <tr><td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#8a93a5' }}>No flagged clients. Run the engine: <code>python retention_engine.py</code></td></tr>}
-            {rows.map((r) => {
-              const m = bandMeta(r.band);
-              return (
-                <tr key={r.client_key} onClick={() => setSel(r.login)}
-                  style={{ borderTop: '1px solid var(--border,#3a4250)', cursor: 'pointer' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                  <td style={{ padding: '9px 12px' }}>
-                    <div style={{ fontWeight: 600 }}>{r.name || '—'}</div>
-                    <div style={{ fontSize: 11, color: '#8a93a5' }}>{r.phone || ''}{r.n_logins > 1 ? ` · ${r.n_logins} accts` : ''}</div>
-                  </td>
-                  <td style={{ padding: '9px 12px', color: '#8a93a5' }}>{r.login}</td>
-                  <td style={{ padding: '9px 12px' }}>
-                    <span style={{ background: m.bg, color: m.c, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>{m.label}</span>
-                  </td>
-                  <td style={{ padding: '9px 12px', fontWeight: 800, color: m.c }}>{r.score}</td>
-                  <td style={{ padding: '9px 12px' }}>{r.fired_count}</td>
-                  <td style={{ padding: '9px 12px', fontSize: 12 }}>{r.top_action || '—'}<div style={{ fontSize: 11, color: '#8a93a5' }}>{r.top_days || ''}</div></td>
-                  <td style={{ padding: '9px 12px' }}>{money(r.total_deposits)}</td>
-                  <td style={{ padding: '9px 12px', color: (r.net_deposit || 0) < 0 ? '#ff4d4d' : '#e6e9ef' }}>{money(r.net_deposit)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div style={CT.scroll}>
+          <table style={CT.table}>
+            <thead>
+              <tr style={CT.theadTr}>
+                {['Client', 'Login', 'Band', 'Risk', 'Rules', 'Top action', 'Deposits', 'Net'].map((h) => (
+                  <th key={h} style={CT.th()}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading && <tr><td colSpan={8} style={{ ...CT.td, padding: 24, textAlign: 'center', color: '#8a93a5' }}>Loading…</td></tr>}
+              {!loading && rows.length === 0 && <tr><td colSpan={8} style={{ ...CT.td, padding: 24, textAlign: 'center', color: '#8a93a5' }}>No flagged clients. Run the engine: <code>python retention_engine.py</code></td></tr>}
+              {rows.map((r) => {
+                const m = bandMeta(r.band);
+                return (
+                  <tr key={r.client_key} onClick={() => setSel(r.login)}
+                    style={{ ...CT.row(), cursor: 'pointer' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-card,#2c333e)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                    <td style={CT.td}>
+                      <div style={{ fontWeight: 600 }}>{r.name || '—'}</div>
+                      <div style={{ fontSize: 11, color: '#8a93a5' }}>{r.phone || ''}{r.n_logins > 1 ? ` · ${r.n_logins} accts` : ''}</div>
+                    </td>
+                    <td style={{ ...CT.td, color: '#8a93a5' }}>{r.login}</td>
+                    <td style={CT.td}>
+                      <span style={{ background: m.bg, color: m.c, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>{m.label}</span>
+                    </td>
+                    <td style={{ ...CT.td, fontWeight: 800, color: m.c }}>{r.score}</td>
+                    <td style={CT.td}>{r.fired_count}</td>
+                    <td style={CT.td}>{r.top_action || '—'}<div style={{ fontSize: 11, color: '#8a93a5' }}>{r.top_days || ''}</div></td>
+                    <td style={CT.td}>{money(r.total_deposits)}</td>
+                    <td style={{ ...CT.td, color: (r.net_deposit || 0) < 0 ? '#ff4d4d' : '#e6e9ef' }}>{money(r.net_deposit)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* pager */}
@@ -277,38 +280,42 @@ function RulesView() {
       </div>
 
       <div style={{ ...card, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: 'rgba(255,255,255,0.03)', textAlign: 'left', color: '#8a93a5' }}>
-              {['#', 'Category', 'Rule', 'Points', 'Level', 'Suggested action', 'Days', 'Status'].map((h) => (
-                <th key={h} style={{ padding: '10px 12px', fontWeight: 600 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((r: any) => {
-              const m = bandMeta(r.trigger_level === 'Critical' ? 'Critical' : r.trigger_level === 'High' ? 'High' : r.trigger_level === 'Medium' ? 'Medium' : 'Low');
-              return (
-                <tr key={r.rule_id} style={{ borderTop: '1px solid var(--border,#3a4250)' }}>
-                  <td style={{ padding: '8px 12px', color: '#8a93a5' }}>{r.rule_id}</td>
-                  <td style={{ padding: '8px 12px' }}>{CAT_ICON[r.category] || '•'} {r.category}</td>
-                  <td style={{ padding: '8px 12px' }}>{r.description}</td>
-                  <td style={{ padding: '8px 12px', fontWeight: 700, color: r.risk_points < 0 ? '#00e5a0' : '#ff8888' }}>{r.risk_points > 0 ? '+' : ''}{r.risk_points}</td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <span style={{ background: m.bg, color: m.c, padding: '2px 7px', borderRadius: 5, fontSize: 11, fontWeight: 700 }}>{r.trigger_level}</span>
-                  </td>
-                  <td style={{ padding: '8px 12px', fontSize: 12 }}>{r.suggested_action}</td>
-                  <td style={{ padding: '8px 12px', fontSize: 12, color: '#8a93a5' }}>{r.days_to_action}</td>
-                  <td style={{ padding: '8px 12px' }}>
-                    {r.automatable
-                      ? <span style={{ color: '#00e5a0', fontSize: 11, fontWeight: 700 }}>● AUTOMATED</span>
-                      : <span style={{ color: '#8a93a5', fontSize: 11 }}>○ defined</span>}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div style={CT.scroll}>
+          <table style={CT.table}>
+            <thead>
+              <tr style={CT.theadTr}>
+                {['#', 'Category', 'Rule', 'Points', 'Level', 'Suggested action', 'Days', 'Status'].map((h) => (
+                  <th key={h} style={CT.th()}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r: any) => {
+                const m = bandMeta(r.trigger_level === 'Critical' ? 'Critical' : r.trigger_level === 'High' ? 'High' : r.trigger_level === 'Medium' ? 'Medium' : 'Low');
+                return (
+                  <tr key={r.rule_id} style={CT.row()}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-card,#2c333e)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                    <td style={{ ...CT.td, color: '#8a93a5' }}>{r.rule_id}</td>
+                    <td style={CT.td}>{CAT_ICON[r.category] || '•'} {r.category}</td>
+                    <td style={{ ...CT.td, whiteSpace: 'normal' }}>{r.description}</td>
+                    <td style={{ ...CT.td, fontWeight: 700, color: r.risk_points < 0 ? '#00e5a0' : '#ff8888' }}>{r.risk_points > 0 ? '+' : ''}{r.risk_points}</td>
+                    <td style={CT.td}>
+                      <span style={{ background: m.bg, color: m.c, padding: '2px 7px', borderRadius: 5, fontSize: 11, fontWeight: 700 }}>{r.trigger_level}</span>
+                    </td>
+                    <td style={{ ...CT.td, whiteSpace: 'normal' }}>{r.suggested_action}</td>
+                    <td style={{ ...CT.td, color: '#8a93a5' }}>{r.days_to_action}</td>
+                    <td style={CT.td}>
+                      {r.automatable
+                        ? <span style={{ color: '#00e5a0', fontSize: 11, fontWeight: 700 }}>● AUTOMATED</span>
+                        : <span style={{ color: '#8a93a5', fontSize: 11 }}>○ defined</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

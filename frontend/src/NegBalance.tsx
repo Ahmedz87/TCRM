@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import NetworkBadge from './NetworkBadge';
+import { CT } from './crmTable';
 
 const API = process.env.REACT_APP_API_URL || '/api';
 const tok = () => localStorage.getItem('token');
@@ -195,11 +197,12 @@ export default function NegBalance() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16 }}>
         {/* Table */}
         <div style={{ background: '#2c333e', borderRadius: 12, overflow: 'hidden', border: '1px solid #373f4d' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <div style={CT.scroll}>
+          <table style={CT.table}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #4f596b', color: '#666', fontSize: 11 }}>
+              <tr style={CT.theadTr}>
                 {['Login', 'Name', 'Balance', 'Credit', 'Deficit', 'Network', 'Counterparty', 'Abuse', 'Status', ''].map(h => (
-                  <th key={h} style={{ padding: '10px 8px', textAlign: 'left', fontWeight: 500 }}>{h}</th>
+                  <th key={h} style={CT.th()}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -213,17 +216,15 @@ export default function NegBalance() {
                 const net = a.network_score || 0;
                 const netColor = net >= 70 ? '#ff4d4d' : net >= 40 ? '#ffaa00' : '#00e5a0';
                 return (
-                  <tr key={a.login} style={{ borderBottom: '1px solid #373f4d', opacity: a.no_auto_cover ? 0.5 : 1, background: creditLow ? 'rgba(255,77,77,0.06)' : 'transparent' }}>
-                    <td style={{ padding: '9px 8px', fontFamily: 'monospace' }}>#{a.login}</td>
-                    <td style={{ padding: '9px 8px' }}>{a.name}</td>
-                    <td style={{ padding: '9px 8px', color: '#ff4d4d', fontWeight: 600 }}>{a.balance?.toFixed(2)}</td>
-                    <td style={{ padding: '9px 8px', color: creditLow ? '#ff8800' : '#00e5a0', fontWeight: 600 }}>{a.credit?.toFixed(2)}</td>
-                    <td style={{ padding: '9px 8px', color: '#ff8800' }}>{a.deficit?.toFixed(2)}</td>
-                    <td style={{ padding: '9px 8px', position: 'relative' }}
-                        onMouseEnter={() => { fetchNet(a.login); setNetHover(a.login); }}
-                        onMouseLeave={() => setNetHover(null)}>
-                      {net > 0 ? <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99, border: `1px solid ${netColor}`, color: netColor, fontWeight: 600, cursor: 'help' }}>{Math.min(10, Math.round(net/10))}/10</span> : <span style={{ color: '#666', fontSize: 11, cursor: 'help' }}>hover</span>}
-                      {netHover === a.login && (
+                  <tr key={a.login} style={{ ...CT.row(), opacity: a.no_auto_cover ? 0.5 : 1, background: creditLow ? 'rgba(255,77,77,0.06)' : 'transparent' }}>
+                    <td style={{ ...CT.td, fontFamily: 'monospace' }}>#{a.login}</td>
+                    <td style={CT.td}><span style={CT.ellip(180)} title={a.name}>{a.name}</span></td>
+                    <td style={{ ...CT.td, color: '#ff4d4d', fontWeight: 600 }}>{a.balance?.toFixed(2)}</td>
+                    <td style={{ ...CT.td, color: creditLow ? '#ff8800' : '#00e5a0', fontWeight: 600 }}>{a.credit?.toFixed(2)}</td>
+                    <td style={{ ...CT.td, color: '#ff8800' }}>{a.deficit?.toFixed(2)}</td>
+                    <td style={{ ...CT.td, position: 'relative' }} onClick={e=>e.stopPropagation()}>
+                      <NetworkBadge score={net} login={a.login} />
+                      {false && netHover === a.login && (
                         <div style={{ position: 'absolute', bottom: '120%', left: 0, background: '#373f4d', border: '1px solid #626d80', borderRadius: 10, padding: 12, width: 320, zIndex: 999, boxShadow: '0 8px 30px rgba(0,0,0,0.6)' }}>
                           {(() => {
                             const nd = nets[a.login];
@@ -266,7 +267,7 @@ export default function NegBalance() {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '9px 8px', position: 'relative' }}
+                    <td style={{ ...CT.td, position: 'relative' }}
                         onMouseEnter={() => { fetchCp(a.login); setCpHover(a.login); }}
                         onMouseLeave={() => setCpHover(null)}>
                       {(() => {
@@ -321,7 +322,7 @@ export default function NegBalance() {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '9px 8px', position: 'relative' }}>
+                    <td style={{ ...CT.td, position: 'relative' }}>
                       {(a.is_flagged || a.in_abuse) ? (
                         <span onMouseEnter={() => setAbuseHover(a.login)} onMouseLeave={() => setAbuseHover(null)}
                           style={{ fontSize: 10, padding: '2px 8px', borderRadius: 99, background: 'rgba(255,77,77,0.15)', color: '#ff4d4d', border: '1px solid #ff4d4d', cursor: 'help' }}>
@@ -341,11 +342,11 @@ export default function NegBalance() {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '9px 8px' }}>
+                    <td style={CT.td}>
                       <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 99, border: `1px solid ${si.color}`, color: si.color }}>{si.label}</span>
                       {a.no_auto_cover && <span style={{ fontSize: 9, color: '#888', marginLeft: 4 }}>🚫 excluded</span>}
                     </td>
-                    <td style={{ padding: '9px 8px', whiteSpace: 'nowrap' }}>
+                    <td style={CT.td}>
                       <button onClick={() => coverOne(a.login)} disabled={busy === a.login || a.status === 'has_positions_positive_pnl'}
                         style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: a.status === 'has_positions_positive_pnl' ? '#626d80' : (eligible ? '#00e5a0' : '#ff8800'), color: a.status === 'has_positions_positive_pnl' ? '#666' : '#000', fontWeight: 600, cursor: a.status === 'has_positions_positive_pnl' ? 'default' : 'pointer', fontSize: 11, marginRight: 4, fontFamily: 'inherit' }}
                         title={a.status === 'has_positions_positive_pnl' ? 'Positive PnL — cannot cover' : (eligible ? 'Cover this account' : 'Manual cover')}>
@@ -361,6 +362,7 @@ export default function NegBalance() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Live log */}

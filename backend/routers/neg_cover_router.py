@@ -9,7 +9,7 @@ from auth import get_current_user
 
 router = APIRouter(prefix="/neg-cover", tags=["neg-cover"])
 
-MT5_SERVER, MT5_LOGIN, MT5_PASSWORD = "192.109.15.62:443", 1025, "ZjFb!vA0"
+from mt_secrets import MT5_SERVER, MT5_LOGIN, MT5_PASSWORD
 BRIDGE_URL = "http://localhost:5000"
 
 # Auto-cover background state
@@ -263,17 +263,14 @@ def scan(platform: str = "MT5", db: Session = Depends(get_db), current_user: mod
         WHERE balance < 0 AND {pclause} ORDER BY balance ASC
     """)).fetchall()
 
-    # Build edge-count lookup (real network connections) for the negative accounts
+    # Canonical 0-10 network score (build_network_scores.py) — the SAME value every page shows
     edge_counts = {}
     try:
-        ec = db.execute(text("""
-            SELECT lg, COUNT(*) FROM (
-                SELECT login_a AS lg FROM network_edges
-                UNION ALL
-                SELECT login_b AS lg FROM network_edges
-            ) t GROUP BY lg
-        """)).fetchall()
-        edge_counts = {r[0]: r[1] for r in ec}
+        _negl = [r[0] for r in rows]
+        if _negl:
+            edge_counts = {x[0]: int(x[1] or 0) for x in db.execute(text(
+                "SELECT login, COALESCE(network_score,0) FROM clients WHERE login = ANY(:l)"),
+                {"l": _negl}).fetchall()}
     except Exception:
         pass
 
@@ -298,7 +295,7 @@ def scan(platform: str = "MT5", db: Session = Depends(get_db), current_user: mod
     out = []
     for r in rows:
         login, name, db_bal, no_cover = r[0], r[1], float(r[2] or 0), r[3]
-        net_score = min(100, edge_counts.get(login, 0) * 3)  # from real network edges
+        net_score = edge_counts.get(login, 0)   # canonical 0-10 (build_network_scores.py)
         flagged = bool(r[5])
         credit = float(r[6] or 0) if len(r) > 6 else 0
         deficit = abs(db_bal)

@@ -15,11 +15,14 @@ from datetime import datetime, timezone, timedelta
 import bridge                         # reuse save_deals_to_db (DB-only)
 from sync_transactions import sync as tx_sync
 
-SERVER = "192.109.15.62:443"
-LOGIN = 1026
-PW = "Malakies@008"
-INTERVAL = 90
-INCR_WINDOW = 3 * 3600               # re-pull last 3h each cycle (idempotent; catches late fills)
+import mt_managers as _M
+SERVER = _M.MT5_SERVER
+LOGIN, PW = _M.MT5["B"]
+INTERVAL = 10                        # 10s cadence — MT5 deals near-real-time (was 90s; user Jul 2026)
+INCR_WINDOW = 30 * 60                # fast per-cycle window (recent deals, light pull → true 10s freshness)
+DEEP_WINDOW = 3 * 3600               # periodic deeper pull to catch any late fills
+DEEP_EVERY = 30                      # one deep 3h pull every ~30 cycles (~5 min)
+TX_EVERY = 6                         # tx_sync (deposits/withdrawals) every ~6 cycles (~60s), not every 10s
 
 
 def connect():
@@ -78,12 +81,16 @@ def backfill(start):
 
 def loop():
     m = connect()
-    print("MT5-B deal worker (1026) live", flush=True)
+    print("MT5-B deal worker (1026) live - 10s cadence", flush=True)
+    i = 0
     while True:
         try:
             now = int(time.time())
-            pull(m, now - INCR_WINDOW, now)
-            tx_sync()
+            # every cycle: recent window (light) so deals are fresh within ~10s;
+            # periodically a 3h deep pull catches any late-reported fills.
+            pull(m, now - (DEEP_WINDOW if i % DEEP_EVERY == 0 else INCR_WINDOW), now)
+            if i % TX_EVERY == 0:
+                tx_sync()
         except Exception as e:
             print("worker err:", e, flush=True)
             try:
@@ -95,6 +102,7 @@ def loop():
                 m = connect()
             except Exception:
                 pass
+        i += 1
         time.sleep(INTERVAL)
 
 

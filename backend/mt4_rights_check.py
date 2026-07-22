@@ -3,7 +3,8 @@ import os
 os.environ["MT4_MGR_LOGIN"]="3027"
 from ctypes import Structure, POINTER, byref, sizeof, c_int, c_uint, c_char
 import bridge_mt4 as B
-B.MT4_LOGIN=3027; B.MT4_PASSWORD=b"Malakies@008"
+import mt_managers as _M
+B.MT4_LOGIN, B.MT4_PASSWORD = _M.MT4["C"]
 class ConManagerSec(Structure):
     _fields_=[("internal",c_int),("enable",c_int),("minimum_lots",c_int),("maximum_lots",c_int),("unused",c_int*16)]
 class ConManager(Structure):

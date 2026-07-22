@@ -181,7 +181,7 @@ export default function Funds({ mode }: { mode: 'deposit' | 'withdraw' | 'transf
     <div style={mobile ? { ...S.page, padding: 16 } : S.page}>
       <h1 style={S.h1}>{title}</h1>
       <div style={S.simBanner}>
-        ⚙️ Demo mode — {mode === 'transfer' ? 'transfers are' : `${mode}s are`} recorded for review. No real money moves until the live gateway is connected.
+        Demo mode — {mode === 'transfer' ? 'transfers are' : `${mode}s are`} recorded for review. No real money moves until the live gateway is connected.
       </div>
 
       <div style={S.panel}>
@@ -222,7 +222,7 @@ export default function Funds({ mode }: { mode: 'deposit' | 'withdraw' | 'transf
               : (
               <>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Step 1 — Send {amount ? <span style={{ color: '#34D399' }}>${fmt(parseFloat(amount) || 0)}</span> : 'the amount'} to this {method}:</div>
-                {card.on_shift === false && <div style={{ fontSize: 11, color: '#E8B84B', marginBottom: 6 }}>ℹ️ Outside working hours — your deposit may take a little longer to review.</div>}
+                {card.on_shift === false && <div style={{ fontSize: 11, color: '#E8B84B', marginBottom: 6 }}>Outside working hours — your deposit may take a little longer to review.</div>}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0d1117', border: '1px solid #2f3a48', borderRadius: 10, padding: '12px 14px', marginBottom: 6 }}>
                   <div>
                     <div style={{ fontSize: 10, color: '#8A93A3', textTransform: 'uppercase', letterSpacing: 1 }}>{method} number</div>
@@ -256,12 +256,12 @@ export default function Funds({ mode }: { mode: 'deposit' | 'withdraw' | 'transf
             {wchk.ok ? (
               <>
                 <div>Minimum withdrawal: <b>${fmt(wchk.min_withdraw)}</b> ({wchk.deposited ? 'you have deposited' : 'no deposit yet'}).</div>
-                {wchk.clawback > 0 && <div style={{ marginTop: 4 }}>🎁 Withdrawing this will deduct <b>${fmt(wchk.clawback)}</b> of bonus credit proportionally (you have ${fmt(wchk.credit)} bonus).</div>}
+                {wchk.clawback > 0 && <div style={{ marginTop: 4 }}>Withdrawing this will deduct <b>${fmt(wchk.clawback)}</b> of bonus credit proportionally (you have ${fmt(wchk.credit)} bonus).</div>}
                 {wchk.margin_level != null && <div style={{ marginTop: 4 }}>Margin level after: <b>{wchk.margin_level}%</b>.</div>}
               </>
             ) : (
               <>
-                <div style={{ fontWeight: 700 }}>⚠️ {wchk.reason}</div>
+                <div style={{ fontWeight: 700 }}>{wchk.reason}</div>
                 {wchk.max_withdraw != null && <div style={{ marginTop: 4 }}>You can withdraw up to <b>${fmt(wchk.max_withdraw)}</b>{wchk.max_withdraw > 0 ? '.' : ', or close some open trades first.'}</div>}
               </>
             )}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { apiGet, apiPost, apiPatch, apiDelete } from "./api";
+import { CT } from "./crmTable";
 
 const BASE = "/settings/ib-profiles";
 
@@ -76,7 +77,7 @@ export default function IBProfiles() {
           <h1 style={S.h1}>IB Commission Profiles</h1>
           <div style={S.sub}>
             Each profile = one rule (level + instruments + rate). Points are per 1.0 lot, in the symbol's quote currency.
-            Last published: {lastPub ? new Date(lastPub).toLocaleString() : "never"}
+            Last published: {lastPub ? new Date(lastPub).toLocaleString('en-GB') : "never"}
             {dirty && <span style={S.badge}>Unpublished changes</span>}
           </div>
         </div>
@@ -94,32 +95,34 @@ export default function IBProfiles() {
       </div>
 
       <div style={S.card}>
-        <table style={S.table}>
-          <thead><tr>
-            <th style={S.th}>Profile</th><th style={S.th}>Level</th><th style={S.th}>Matches</th>
-            <th style={S.th}>Suffixes</th><th style={S.th}>Accounts</th>
-            <th style={S.thNum}>Pts/lot</th><th style={S.thNum}>Min hold</th><th style={S.th}></th>
-          </tr></thead>
-          <tbody>
-            {shown.map((p) => (
-              <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
-                <td style={S.tdLabel}>{p.name}{!p.published && <span style={S.dot} title="unpublished" />}</td>
-                <td style={S.td}>{p.ib_level}</td>
-                <td style={S.td}>{matchText(p)}</td>
-                <td style={S.td}>{p.match_suffixes.length ? p.match_suffixes.map(s => s || "(none)").join(" ") : "any"}</td>
-                <td style={S.td}>{p.account_types.length ? p.account_types.join(", ") : "any"}</td>
-                <td style={S.tdNum}>{p.points}</td>
-                <td style={S.tdNum}>{p.min_hold_minutes ? `${p.min_hold_minutes}m` : "—"}</td>
-                <td style={S.tdNum}>
-                  <button style={S.link} onClick={() => setEdit({ ...p })}>Edit</button>
-                  <button style={S.link} onClick={() => duplicate(p)}>Duplicate</button>
-                  <button style={{ ...S.link, color: "#b4232b" }} onClick={() => remove(p)}>Delete</button>
-                </td>
-              </tr>
-            ))}
-            {shown.length === 0 && <tr><td style={S.td} colSpan={8}>No profiles yet. Create one to get started.</td></tr>}
-          </tbody>
-        </table>
+        <div style={CT.scroll}>
+          <table style={CT.table}>
+            <thead><tr style={CT.theadTr}>
+              <th style={CT.th()}>Profile</th><th style={CT.th()}>Level</th><th style={CT.th()}>Matches</th>
+              <th style={CT.th()}>Suffixes</th><th style={CT.th()}>Accounts</th>
+              <th style={CT.th(false, "right")}>Pts/lot</th><th style={CT.th(false, "right")}>Min hold</th><th style={CT.th(false, "right")}></th>
+            </tr></thead>
+            <tbody>
+              {shown.map((p) => (
+                <tr key={p.id} style={{ ...CT.row(), opacity: p.active ? 1 : 0.5 }}>
+                  <td style={{ ...CT.td, fontWeight: 600 }}>{p.name}{!p.published && <span style={S.dot} title="unpublished" />}</td>
+                  <td style={CT.td}>{p.ib_level}</td>
+                  <td style={{ ...CT.td, whiteSpace: "normal" }}>{matchText(p)}</td>
+                  <td style={{ ...CT.td, whiteSpace: "normal" }}>{p.match_suffixes.length ? p.match_suffixes.map(s => s || "(none)").join(" ") : "any"}</td>
+                  <td style={{ ...CT.td, whiteSpace: "normal" }}>{p.account_types.length ? p.account_types.join(", ") : "any"}</td>
+                  <td style={{ ...CT.td, textAlign: "right" }}>{p.points}</td>
+                  <td style={{ ...CT.td, textAlign: "right" }}>{p.min_hold_minutes ? `${p.min_hold_minutes}m` : "—"}</td>
+                  <td style={{ ...CT.td, textAlign: "right" }}>
+                    <button style={S.link} onClick={() => setEdit({ ...p })}>Edit</button>
+                    <button style={S.link} onClick={() => duplicate(p)}>Duplicate</button>
+                    <button style={{ ...S.link, color: "#b4232b" }} onClick={() => remove(p)}>Delete</button>
+                  </td>
+                </tr>
+              ))}
+              {shown.length === 0 && <tr><td style={CT.td} colSpan={8}>No profiles yet. Create one to get started.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {edit && <Editor p={edit} opts={opts} onCancel={() => setEdit(null)} onSave={save} />}
@@ -224,12 +227,6 @@ const S: Record<string, React.CSSProperties> = {
   tab: { padding: "6px 13px", border: "1px solid #d6dae1", background: "#fff", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475063" },
   tabActive: { background: "#2f5496", color: "#fff", borderColor: "#2f5496" },
   card: { border: "1px solid #e6e9ef", borderRadius: 12, overflow: "hidden", background: "#fff" },
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 600, padding: "11px 14px", textTransform: "uppercase", letterSpacing: 0.4, background: "#f8f9fb" },
-  thNum: { textAlign: "right", fontSize: 11, color: "#6b7280", fontWeight: 600, padding: "11px 14px", textTransform: "uppercase", letterSpacing: 0.4, background: "#f8f9fb" },
-  td: { padding: "10px 14px", fontSize: 13, borderTop: "1px solid #f0f2f5" },
-  tdNum: { padding: "10px 14px", fontSize: 13, textAlign: "right", borderTop: "1px solid #f0f2f5", whiteSpace: "nowrap" },
-  tdLabel: { padding: "10px 14px", fontSize: 13, fontWeight: 600, borderTop: "1px solid #f0f2f5" },
   dot: { display: "inline-block", width: 7, height: 7, borderRadius: 4, background: "#e0a800", marginLeft: 7 },
   link: { border: "none", background: "none", color: "#2f5496", cursor: "pointer", fontSize: 13, marginLeft: 10, padding: 0 },
   overlay: { position: "fixed", inset: 0, background: "rgba(20,25,35,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "6vh 16px", zIndex: 50 },

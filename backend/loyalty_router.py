@@ -57,7 +57,7 @@ def leaderboard(limit: int = Query(50), search: str = Query(""),
     rows = db.execute(text(f"""
         SELECT la.client_id, c.name, la.tier, la.points_balance,
                la.lifetime_points, la.current_streak, la.best_streak, la.last_trade_date, la.best_tier,
-               la.pass_tokens
+               la.pass_tokens, c.login
         FROM loyalty_accounts la
         LEFT JOIN clients c ON c.id = la.client_id
         {where}
@@ -71,6 +71,9 @@ def leaderboard(limit: int = Query(50), search: str = Query(""),
         "last_trade_date": str(r[7]) if r[7] else None,
         "best_tier": r[8] if len(r)>8 else r[2],
         "pass_tokens": r[9] if len(r)>9 and r[9] is not None else 0,
+        # the client's TRADING LOGIN — the identifier the Clients page opens/filters by
+        # (client_id here is the internal clients.id, NOT a login). See goToClient in Loyalty.tsx.
+        "login": r[10] if len(r)>10 else None,
     } for r in rows]}
 
 
@@ -151,6 +154,27 @@ def member(client_id: int, db: Session = Depends(get_db),
         FROM loyalty_redemptions WHERE client_id=:id ORDER BY id DESC LIMIT 10
     """), {"id": client_id}).fetchall()
 
+    # Days the client actually traded in the last ~60 days, for the ✓/✗ calendar. Sourced from the
+    # LIVE deals feed — NOT loyalty_ledger, which is a periodic rebuild snapshot that lags the current
+    # month, so active clients (live streak, last_trade_date=today) had 0 ledger rows this month and
+    # the calendar rendered every day as ✗. deals.deal_time is epoch seconds (bigint). Same mapping
+    # the loyalty engine uses: a deal's login -> this member via trading_accounts.client_id or clients.id.
+    lrows = db.execute(text("""
+        SELECT login FROM clients WHERE id=:id AND login IS NOT NULL
+        UNION
+        SELECT login FROM trading_accounts WHERE client_id=:id AND login IS NOT NULL
+    """), {"id": client_id}).fetchall()
+    logins = [r[0] for r in lrows]
+    trade_days = []
+    if logins:
+        tdays = db.execute(text("""
+            SELECT DISTINCT to_timestamp(d.deal_time)::date AS td
+            FROM deals d
+            WHERE d.login = ANY(:lg) AND d.entry=1 AND d.action IN (0,1)
+              AND d.deal_time >= EXTRACT(EPOCH FROM (CURRENT_DATE - INTERVAL '60 days'))
+        """), {"lg": logins}).fetchall()
+        trade_days = [str(t[0]) for t in tdays if t[0]]
+
     return {
         "client_id": a[0], "name": a[1] or f"Client #{a[0]}", "country": "",
         "tier": tier, "tier_rate": TIER_RATE.get(tier, 4),
@@ -164,6 +188,7 @@ def member(client_id: int, db: Session = Depends(get_db),
         "pass_tokens": a[10] if len(a)>10 and a[10] is not None else 0,
         "pass_days_used": a[11] if len(a)>11 and a[11] is not None else 0,
         "pass_max": PASS_MAX, "pass_earn_every": PASS_EARN_EVERY,
+        "trade_days": trade_days,
         "ledger": [{"kind": l[0], "points": float(l[1] or 0), "lots": float(l[2] or 0),
                     "tier": l[3], "symbol": l[4], "date": str(l[5]) if l[5] else None} for l in led],
         "redemptions": [{"reward": r[0], "cost": float(r[1] or 0), "status": r[2],

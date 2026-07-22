@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
 
 const fmt = (n: number, d = 0) => (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 const pos = (n: number) => (n >= 0 ? '#00e5a0' : '#ff5d6c');
@@ -104,56 +105,58 @@ export default function CopyTradingAdmin() {
 
       {/* table */}
       <div style={S.tableWrap}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr>
-              {cols.map(([k, l]) => (
-                <th key={k} onClick={() => setSortK(k)} style={S.th}>
-                  {l}{sort.k === k ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
-                </th>
-              ))}
-              <th style={{ ...S.th, cursor: 'default', textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? <tr><td colSpan={13} style={{ padding: 30, textAlign: 'center', color: '#8a93a3' }}>Loading…</td></tr> :
-              sorted.map(p => (
-                <tr key={p.id} style={{ borderTop: '1px solid var(--border,#1a1f2b)' }}>
-                  <td style={S.td}>
-                    <span style={{ marginRight: 7 }}>{p.avatar || '📈'}</span>
-                    <b>{p.name}</b>
-                    {p.is_real && <span title="Real verified" style={{ fontSize: 9, fontWeight: 800, color: '#0b0e14', background: '#34D399', borderRadius: 3, padding: '1px 4px', marginLeft: 6 }}>REAL</span>}
-                    {p.featured && <span title="Featured" style={{ color: '#ffaa00', marginLeft: 5 }}>★</span>}
-                    {p.abuse_flag && <span title={`Abuse flag: ${p.abuse_flag}`} style={{ color: '#ff5d6c', marginLeft: 5 }}>⚠</span>}
-                  </td>
-                  <td style={S.td}>{p.strategy}</td>
-                  <td style={{ ...S.td, color: '#8a93a3' }}>{p.markets}</td>
-                  <td style={S.td}>{p.days_active}d</td>
-                  <td style={{ ...S.td, fontWeight: 800, color: pos(p.return_pct) }}>{p.return_pct >= 0 ? '+' : ''}{fmt(p.return_pct, 1)}%</td>
-                  <td style={S.td}>{fmt(p.win_rate, 0)}%</td>
-                  <td style={{ ...S.td, color: '#ff5d6c' }}>{fmt(p.max_drawdown, 1)}%</td>
-                  <td style={S.td}>{riskLabel(p.risk_level)}</td>
-                  <td style={S.td}>{fmt(p.followers)}</td>
-                  <td style={{ ...S.td, color: '#E8B84B', fontWeight: 700 }}>${fmt(p.total_earned)}</td>
-                  <td style={S.td}>{p.active === false
-                    ? <span title={`Last trade ${p.last_trade_at}`} style={{ ...S.badge, background: 'rgba(138,147,163,0.15)', color: '#8a93a3' }}>inactive</span>
-                    : <span style={{ ...S.badge, background: 'rgba(0,229,160,0.12)', color: '#00e5a0' }}>active</span>}</td>
-                  <td style={S.td}><span style={{ ...S.badge, ...statusStyle(p.status) }}>{p.status}</span></td>
-                  <td style={{ ...S.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {p.status === 'pending' && <>
-                      <button style={S.approve} onClick={() => act(p.id, 'approve')}>Approve</button>
-                      <button style={S.reject} onClick={() => act(p.id, 'reject')}>Reject</button>
-                    </>}
-                    {p.status === 'approved' && <>
-                      <button style={S.preview} onClick={() => runPreview(p)}>Preview copy ⚙</button>
-                      <button style={S.feat} onClick={() => act(p.id, 'feature', { featured: !p.featured })}>{p.featured ? 'Unfeature' : 'Feature ★'}</button>
-                    </>}
-                    {p.status === 'rejected' && <button style={S.approve} onClick={() => act(p.id, 'approve')}>Re-approve</button>}
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+        <div style={CT.scroll}>
+          <table style={CT.table}>
+            <thead>
+              <tr style={CT.theadTr}>
+                {cols.map(([k, l]) => (
+                  <th key={k} onClick={() => setSortK(k)} style={{ ...CT.th(sort.k === k), cursor: 'pointer' }}>
+                    {l}{sort.k === k ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
+                  </th>
+                ))}
+                <th style={CT.th(false, 'right')}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? <tr><td colSpan={13} style={{ padding: 30, textAlign: 'center', color: '#8a93a3' }}>Loading…</td></tr> :
+                sorted.map(p => (
+                  <tr key={p.id} style={CT.row()}>
+                    <td style={CT.td}>
+                      <span style={{ marginRight: 7 }}>{p.avatar || '📈'}</span>
+                      <b>{p.name}</b>
+                      {p.is_real && <span title="Real verified" style={{ fontSize: 9, fontWeight: 800, color: '#0b0e14', background: '#34D399', borderRadius: 3, padding: '1px 4px', marginLeft: 6 }}>REAL</span>}
+                      {p.featured && <span title="Featured" style={{ color: '#ffaa00', marginLeft: 5 }}>★</span>}
+                      {p.abuse_flag && <span title={`Abuse flag: ${p.abuse_flag}`} style={{ color: '#ff5d6c', marginLeft: 5 }}>⚠</span>}
+                    </td>
+                    <td style={CT.td}>{p.strategy}</td>
+                    <td style={{ ...CT.td, color: '#8a93a3' }}>{p.markets}</td>
+                    <td style={CT.td}>{p.days_active}d</td>
+                    <td style={{ ...CT.td, fontWeight: 800, color: pos(p.return_pct) }}>{p.return_pct >= 0 ? '+' : ''}{fmt(p.return_pct, 1)}%</td>
+                    <td style={CT.td}>{fmt(p.win_rate, 0)}%</td>
+                    <td style={{ ...CT.td, color: '#ff5d6c' }}>{fmt(p.max_drawdown, 1)}%</td>
+                    <td style={CT.td}>{riskLabel(p.risk_level)}</td>
+                    <td style={CT.td}>{fmt(p.followers)}</td>
+                    <td style={{ ...CT.td, color: '#E8B84B', fontWeight: 700 }}>${fmt(p.total_earned)}</td>
+                    <td style={CT.td}>{p.active === false
+                      ? <span title={`Last trade ${p.last_trade_at}`} style={{ ...S.badge, background: 'rgba(138,147,163,0.15)', color: '#8a93a3' }}>inactive</span>
+                      : <span style={{ ...S.badge, background: 'rgba(0,229,160,0.12)', color: '#00e5a0' }}>active</span>}</td>
+                    <td style={CT.td}><span style={{ ...S.badge, ...statusStyle(p.status) }}>{p.status}</span></td>
+                    <td style={{ ...CT.td, textAlign: 'right' }}>
+                      {p.status === 'pending' && <>
+                        <button style={S.approve} onClick={() => act(p.id, 'approve')}>Approve</button>
+                        <button style={S.reject} onClick={() => act(p.id, 'reject')}>Reject</button>
+                      </>}
+                      {p.status === 'approved' && <>
+                        <button style={S.preview} onClick={() => runPreview(p)}>Preview copy ⚙</button>
+                        <button style={S.feat} onClick={() => act(p.id, 'feature', { featured: !p.featured })}>{p.featured ? 'Unfeature' : 'Feature ★'}</button>
+                      </>}
+                      {p.status === 'rejected' && <button style={S.approve} onClick={() => act(p.id, 'approve')}>Re-approve</button>}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {preview && (

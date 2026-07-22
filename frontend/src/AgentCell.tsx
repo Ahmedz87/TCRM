@@ -6,15 +6,18 @@ const tok = () => localStorage.getItem('token') || '';
 export const twoWords = (n?: string | null) =>
   (n || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join(' ');
 
-// agents list cached at module level (fetched once)
+// agents list cached at module level with a short TTL. #276: the old cache was permanent, so a
+// newly-added retention/sales employee never appeared in the assign list until a full page reload.
+// A 2-minute TTL means new hires show up on their own; still cheap (one fetch per 2 min per tab).
 let _cache: any[] | null = null;
+let _cacheAt = 0;
 let _promise: Promise<any[]> | null = null;
 function loadAgents(): Promise<any[]> {
-  if (_cache) return Promise.resolve(_cache);
+  if (_cache && Date.now() - _cacheAt < 120000) return Promise.resolve(_cache);
   if (!_promise) {
     _promise = fetch(`${API}/assign/agents`, { headers: { Authorization: `Bearer ${tok()}` } })
-      .then(r => r.json()).then(d => { _cache = d.agents || []; return _cache!; })
-      .catch(() => { _promise = null; return []; });
+      .then(r => r.json()).then(d => { _cache = d.agents || []; _cacheAt = Date.now(); _promise = null; return _cache!; })
+      .catch(() => { _promise = null; return _cache || []; });
   }
   return _promise;
 }
@@ -109,7 +112,7 @@ export function AgentCell({ entityType, entityId, agentName, onSortBy, onChanged
               {last && (
                 <div style={{ fontSize: 9.5, color: '#667', padding: '7px 8px 2px', borderTop: '1px solid #2a3142', marginTop: 4, whiteSpace: 'normal', lineHeight: 1.5 }}>
                   Last change: <span style={{ color: '#9fb0c0' }}>{twoWords(last.from)}→{twoWords(last.to)}</span><br />
-                  by {twoWords(last.by)} · {new Date(last.at).toLocaleString()}
+                  by {twoWords(last.by)} · {new Date(last.at).toLocaleString('en-GB')}
                 </div>
               )}
             </>

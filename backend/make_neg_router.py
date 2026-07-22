@@ -9,7 +9,7 @@ from auth import get_current_user
 
 router = APIRouter(prefix="/neg-cover", tags=["neg-cover"])
 
-MT5_SERVER, MT5_LOGIN, MT5_PASSWORD = "192.109.15.62:443", 1025, "ZjFb!vA0"
+from mt_secrets import MT5_SERVER, MT5_LOGIN, MT5_PASSWORD
 
 # Auto-cover background state
 _auto_running = {"on": False, "thread": None}

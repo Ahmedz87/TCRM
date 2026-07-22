@@ -48,6 +48,8 @@ FROM (
     FROM clients WHERE COALESCE(agent,0) <> 0 GROUP BY agent
 ) a
 LEFT JOIN clients ib ON ib.login = a.agent
+-- permanently-removed IBs (remove_from_IB.xlsx, Jul 2026): never re-create them
+LEFT JOIN ib_removed rm ON rm.agent_id = a.agent
 LEFT JOIN (
     SELECT c.agent,
            SUM(CASE WHEN t.tx_type='deposit' THEN t.amount
@@ -55,6 +57,7 @@ LEFT JOIN (
     FROM transactions t JOIN clients c ON c.login = t.login
     WHERE COALESCE(c.agent,0) <> 0 GROUP BY c.agent
 ) dep ON dep.agent = a.agent
+WHERE rm.agent_id IS NULL
 ON CONFLICT (agent_id) DO UPDATE SET
     name           = EXCLUDED.name,
     email          = COALESCE(EXCLUDED.email, ibs.email),
@@ -62,18 +65,28 @@ ON CONFLICT (agent_id) DO UPDATE SET
     country        = COALESCE(EXCLUDED.country, ibs.country),
     city           = COALESCE(EXCLUDED.city, ibs.city),
     group_name     = EXCLUDED.group_name,
-    ib_level       = EXCLUDED.ib_level,
+    -- NEVER clobber a known level with the group-name regex: levels are managed by the Plugit
+    -- sync + the excel promotion/demotion history ("latest level on the profile", Jul 2026).
+    ib_level       = CASE WHEN ibs.plugit_status IS NOT NULL THEN ibs.ib_level ELSE EXCLUDED.ib_level END,
     total_clients  = EXCLUDED.total_clients,
     active_clients = EXCLUDED.active_clients,
     net_deposits   = EXCLUDED.net_deposits,
     updated_at     = NOW()
 """
 
+# total_volume is always recomputed from deals. total_commission is AUTHORITATIVE from Plugit's
+# yearly Commission Reports for IBs that carry commission_source (set by commission_years_import.py):
+# for those we keep commission_excel(2023..2026)+commission_computed(pre-2023) and do NOT overwrite it
+# with our under-counting deals recompute. Only IBs with no Plugit data (commission_source IS NULL)
+# get the computed value. See commission_years_import.py.
+_COMM_EXPR = ("CASE WHEN ibs.commission_source IS NOT NULL "
+              "THEN COALESCE(ibs.commission_excel,0)+COALESCE(ibs.commission_computed,0)+COALESCE(ibs.commission_live,0) "
+              "ELSE sub.commission END")
 VOLUME_SQL = f"""
 UPDATE ibs SET
     total_volume     = sub.lots,
-    total_commission = sub.commission,
-    unpaid_commission = sub.commission - COALESCE(ibs.paid_commission,0),
+    total_commission = {_COMM_EXPR},
+    unpaid_commission = ({_COMM_EXPR}) - COALESCE(ibs.paid_commission,0),
     updated_at = NOW()
 FROM (
     SELECT c.agent,

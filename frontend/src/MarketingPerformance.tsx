@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
 
 const card: React.CSSProperties = { background: 'var(--bg-card,#2c333e)', border: '1px solid var(--border,#4f596b)', borderRadius: 12, padding: 18 };
 const cap: React.CSSProperties = { fontSize: 11, color: '#8a93a5', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, fontWeight: 700 };
-const fmt = (n: number) => (n || 0).toLocaleString();
-const usd = (n: number) => '$' + Math.round(n || 0).toLocaleString();
+const fmt = (n: number) => (n || 0).toLocaleString('en-GB');
+const usd = (n: number) => '$' + Math.round(n || 0).toLocaleString('en-GB');
 const btn = (bg: string, fg = '#06251b'): React.CSSProperties => ({ padding: '9px 14px', background: bg, border: 'none', borderRadius: 8, color: fg, fontSize: 13, fontWeight: 700, cursor: 'pointer' });
 const input: React.CSSProperties = { padding: '8px 10px', background: '#1c2231', border: '1px solid #3a4252', borderRadius: 8, color: '#e6e9ef', fontSize: 13 };
 
@@ -27,6 +28,8 @@ const TABS: { key: Tab; label: string }[] = [
 // ───────────────────────── Acquisition channels (clients.source — real, TradeSoft-backfilled) ─────────────
 const SRC_META: Record<string, { label: string; color: string; icon: string }> = {
   google: { label: 'Google', color: '#4285f4', icon: '🔍' },
+  tiktok: { label: 'TikTok', color: '#ff0050', icon: '🎵' },
+  snapchat: { label: 'Snapchat', color: '#fffc00', icon: '👻' },
   facebook: { label: 'Facebook', color: '#1877f2', icon: '📘' },
   instagram: { label: 'Instagram', color: '#e1306c', icon: '📸' },
   affiliate: { label: 'Affiliate / IB', color: '#00e5a0', icon: '🤝' },
@@ -55,29 +58,29 @@ function Acquisition() {
       </div>
       <div style={card}>
         <div style={cap}>Channel breakdown · {fmt(totC)} clients · {fmt(totD)} depositors · {usd(totR)} deposits</div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 620 }}>
-            <thead><tr style={{ color: '#8a93a5', textAlign: 'right' }}>
-              <th style={{ padding: 8, textAlign: 'left' }}>Channel</th>
-              <th style={{ padding: 8 }}>Clients</th><th style={{ padding: 8 }}>Share</th>
-              <th style={{ padding: 8 }}>Depositors</th><th style={{ padding: 8 }}>Dep %</th>
-              <th style={{ padding: 8 }}>Revenue</th><th style={{ padding: 8 }}>$/client</th>
+        <div style={CT.scroll}>
+          <table style={{ ...CT.table, minWidth: 620 }}>
+            <thead><tr style={CT.theadTr}>
+              <th style={CT.th()}>Channel</th>
+              <th style={CT.th(false, 'right')}>Clients</th><th style={CT.th(false, 'right')}>Share</th>
+              <th style={CT.th(false, 'right')}>Depositors</th><th style={CT.th(false, 'right')}>Dep %</th>
+              <th style={CT.th(false, 'right')}>Revenue</th><th style={CT.th(false, 'right')}>$/client</th>
             </tr></thead>
             <tbody>{rows.map((r, i) => {
               const m = srcMeta(r.source);
               const depRate = r.clients ? Math.round((r.depositors / r.clients) * 100) : 0;
               const perC = r.clients ? r.revenue / r.clients : 0;
               return (
-                <tr key={i} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4', textAlign: 'right' }}>
-                  <td style={{ padding: 8, textAlign: 'left', color: '#e6e9ef', fontWeight: 600 }}>
+                <tr key={i} style={CT.row()}>
+                  <td style={{ ...CT.td, color: '#e6e9ef', fontWeight: 600 }}>
                     <span style={{ color: m.color }}>{m.icon}</span> {m.label}
                   </td>
-                  <td style={{ padding: 8 }}>{fmt(r.clients)}</td>
-                  <td style={{ padding: 8, color: '#79b8ff' }}>{Math.round((r.clients / totC) * 100)}%</td>
-                  <td style={{ padding: 8 }}>{fmt(r.depositors)}</td>
-                  <td style={{ padding: 8, color: '#79b8ff' }}>{depRate}%</td>
-                  <td style={{ padding: 8, color: '#00e5a0', fontWeight: 700 }}>{usd(r.revenue)}</td>
-                  <td style={{ padding: 8, color: perC >= 50 ? '#00e5a0' : '#ffaa00' }}>{usd(perC)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.clients)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: '#79b8ff' }}>{Math.round((r.clients / totC) * 100)}%</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.depositors)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: '#79b8ff' }}>{depRate}%</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: '#00e5a0', fontWeight: 700 }}>{usd(r.revenue)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: perC >= 50 ? '#00e5a0' : '#ffaa00' }}>{usd(perC)}</td>
                 </tr>
               );
             })}</tbody>
@@ -93,25 +96,25 @@ function ROITable({ title, rows }: { title: string; rows: any[] }) {
   return (
     <div style={card}>
       <div style={cap}>{title}</div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 640 }}>
-          <thead><tr style={{ color: '#8a93a5', textAlign: 'right' }}>
-            <th style={{ padding: 8, textAlign: 'left' }}>Name</th>
-            <th style={{ padding: 8 }}>Leads</th><th style={{ padding: 8 }}>Registered</th>
-            <th style={{ padding: 8 }}>Reg %</th><th style={{ padding: 8 }}>Depositors</th>
-            <th style={{ padding: 8 }}>Dep %</th><th style={{ padding: 8 }}>Revenue</th>
-            <th style={{ padding: 8 }}>$/lead</th>
+      <div style={CT.scroll}>
+        <table style={{ ...CT.table, minWidth: 640 }}>
+          <thead><tr style={CT.theadTr}>
+            <th style={CT.th()}>Name</th>
+            <th style={CT.th(false, 'right')}>Leads</th><th style={CT.th(false, 'right')}>Registered</th>
+            <th style={CT.th(false, 'right')}>Reg %</th><th style={CT.th(false, 'right')}>Depositors</th>
+            <th style={CT.th(false, 'right')}>Dep %</th><th style={CT.th(false, 'right')}>Revenue</th>
+            <th style={CT.th(false, 'right')}>$/lead</th>
           </tr></thead>
           <tbody>{(rows || []).map((r, i) => (
-            <tr key={i} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4', textAlign: 'right' }}>
-              <td style={{ padding: 8, textAlign: 'left', color: '#e6e9ef' }}>{r.name}</td>
-              <td style={{ padding: 8 }}>{fmt(r.leads)}</td>
-              <td style={{ padding: 8 }}>{fmt(r.registered)}</td>
-              <td style={{ padding: 8, color: '#79b8ff' }}>{r.reg_rate}%</td>
-              <td style={{ padding: 8 }}>{fmt(r.depositors)}</td>
-              <td style={{ padding: 8, color: '#79b8ff' }}>{r.dep_rate}%</td>
-              <td style={{ padding: 8, color: '#00e5a0', fontWeight: 700 }}>{usd(r.revenue)}</td>
-              <td style={{ padding: 8, color: r.rev_per_lead >= 5 ? '#00e5a0' : '#ffaa00' }}>${r.rev_per_lead}</td>
+            <tr key={i} style={CT.row()}>
+              <td style={{ ...CT.td, color: '#e6e9ef' }}>{r.name}</td>
+              <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.leads)}</td>
+              <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.registered)}</td>
+              <td style={{ ...CT.td, textAlign: 'right', color: '#79b8ff' }}>{r.reg_rate}%</td>
+              <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.depositors)}</td>
+              <td style={{ ...CT.td, textAlign: 'right', color: '#79b8ff' }}>{r.dep_rate}%</td>
+              <td style={{ ...CT.td, textAlign: 'right', color: '#00e5a0', fontWeight: 700 }}>{usd(r.revenue)}</td>
+              <td style={{ ...CT.td, textAlign: 'right', color: r.rev_per_lead >= 5 ? '#00e5a0' : '#ffaa00' }}>${r.rev_per_lead}</td>
             </tr>))}</tbody>
         </table>
       </div>
@@ -190,7 +193,7 @@ function CampaignPerf() {
   useEffect(() => { load(); }, [load]);
   const t = data?.totals;
   const Th = ({ k, children, l }: any) => (
-    <th style={{ padding: 8, textAlign: l ? 'left' : 'right', cursor: 'pointer', color: sort === k ? '#00e5a0' : '#8a93a5' }} onClick={() => setSort(k)}>{children}{sort === k ? ' ▾' : ''}</th>
+    <th style={{ ...CT.th(sort === k, l ? 'left' : 'right'), cursor: 'pointer' }} onClick={() => setSort(k)}>{children}{sort === k ? ' ▾' : ''}</th>
   );
   return (
     <div style={{ display: 'grid', gap: 14 }}>
@@ -214,20 +217,20 @@ function CampaignPerf() {
       <div style={card}>
         <div style={cap}>{dimension === 'campaign' ? 'Per campaign' : dimension === 'source' ? 'Per source' : 'Per country'} — lead → matched → funded → revenue</div>
         {!data ? <div style={{ color: '#888' }}>Loading…</div> : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 720 }}>
-              <thead><tr><Th k="name" l>Name</Th><Th k="leads">Leads</Th><Th k="matched">Matched</Th><Th k="funded">Funded</Th><Th k="conv">Conv %</Th><th style={{ padding: 8, textAlign: 'right', color: '#8a93a5' }}>Funded/matched</th><Th k="deposits">Deposits</Th><Th k="rev_per_lead">$/lead</Th><th style={{ padding: 8, textAlign: 'right', color: '#8a93a5' }}>Avg dep</th></tr></thead>
+          <div style={CT.scroll}>
+            <table style={{ ...CT.table, minWidth: 720 }}>
+              <thead><tr style={CT.theadTr}><Th k="name" l>Name</Th><Th k="leads">Leads</Th><Th k="matched">Matched</Th><Th k="funded">Funded</Th><Th k="conv">Conv %</Th><th style={CT.th(false, 'right')}>Funded/matched</th><Th k="deposits">Deposits</Th><Th k="rev_per_lead">$/lead</Th><th style={CT.th(false, 'right')}>Avg dep</th></tr></thead>
               <tbody>{data.rows.map((r: any, i: number) => (
-                <tr key={i} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4', textAlign: 'right' }}>
-                  <td style={{ padding: 8, textAlign: 'left', color: '#e6e9ef' }}>{r.name}</td>
-                  <td style={{ padding: 8 }}>{fmt(r.leads)}</td>
-                  <td style={{ padding: 8 }}>{fmt(r.matched)}</td>
-                  <td style={{ padding: 8, color: '#00e5a0' }}>{fmt(r.funded)}</td>
-                  <td style={{ padding: 8, color: '#79b8ff' }}>{r.fund_rate}%</td>
-                  <td style={{ padding: 8 }}>{r.fund_of_matched}%</td>
-                  <td style={{ padding: 8, color: '#00e5a0', fontWeight: 700 }}>{usd(r.deposits)}</td>
-                  <td style={{ padding: 8, color: r.rev_per_lead >= 5 ? '#00e5a0' : '#ffaa00' }}>${r.rev_per_lead}</td>
-                  <td style={{ padding: 8 }}>{usd(r.avg_deposit)}</td>
+                <tr key={i} style={CT.row()}>
+                  <td style={{ ...CT.td, color: '#e6e9ef' }}>{r.name}</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.leads)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.matched)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: '#00e5a0' }}>{fmt(r.funded)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: '#79b8ff' }}>{r.fund_rate}%</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{r.fund_of_matched}%</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: '#00e5a0', fontWeight: 700 }}>{usd(r.deposits)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: r.rev_per_lead >= 5 ? '#00e5a0' : '#ffaa00' }}>${r.rev_per_lead}</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{usd(r.avg_deposit)}</td>
                 </tr>))}</tbody>
             </table>
           </div>
@@ -249,26 +252,26 @@ function CustomerValue() {
       <div style={card}>
         <div style={cap}>💎 Customer value & retention per campaign — CLV = Σ deposits of acquired clients</div>
         {!data ? <div style={{ color: '#888' }}>Loading…</div> : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 760 }}>
-              <thead><tr style={{ color: '#8a93a5', textAlign: 'right' }}>
-                <th style={{ padding: 8, textAlign: 'left' }}>Campaign</th>
-                <th style={{ padding: 8 }}>Funded clients</th><th style={{ padding: 8 }}>Total CLV</th>
-                <th style={{ padding: 8 }}>Avg CLV</th><th style={{ padding: 8 }}>Deposits</th>
-                <th style={{ padding: 8 }}>Repeat depositors</th><th style={{ padding: 8 }}>Repeat %</th>
-                <th style={{ padding: 8 }}>First dep</th><th style={{ padding: 8 }}>Last dep</th>
+          <div style={CT.scroll}>
+            <table style={{ ...CT.table, minWidth: 760 }}>
+              <thead><tr style={CT.theadTr}>
+                <th style={CT.th()}>Campaign</th>
+                <th style={CT.th(false, 'right')}>Funded clients</th><th style={CT.th(false, 'right')}>Total CLV</th>
+                <th style={CT.th(false, 'right')}>Avg CLV</th><th style={CT.th(false, 'right')}>Deposits</th>
+                <th style={CT.th(false, 'right')}>Repeat depositors</th><th style={CT.th(false, 'right')}>Repeat %</th>
+                <th style={CT.th(false, 'right')}>First dep</th><th style={CT.th(false, 'right')}>Last dep</th>
               </tr></thead>
               <tbody>{data.rows.map((r: any, i: number) => (
-                <tr key={i} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4', textAlign: 'right' }}>
-                  <td style={{ padding: 8, textAlign: 'left', color: '#e6e9ef' }}>{r.campaign}</td>
-                  <td style={{ padding: 8 }}>{fmt(r.funded_clients)}</td>
-                  <td style={{ padding: 8, color: '#00e5a0', fontWeight: 700 }}>{usd(r.clv)}</td>
-                  <td style={{ padding: 8, color: '#00e5a0' }}>{usd(r.avg_clv)}</td>
-                  <td style={{ padding: 8 }}>{fmt(r.deposits)}</td>
-                  <td style={{ padding: 8 }}>{fmt(r.repeat_depositors)}</td>
-                  <td style={{ padding: 8, color: '#79b8ff' }}>{r.repeat_rate}%</td>
-                  <td style={{ padding: 8, fontSize: 12 }}>{r.first_deposit || '—'}</td>
-                  <td style={{ padding: 8, fontSize: 12 }}>{r.last_deposit || '—'}</td>
+                <tr key={i} style={CT.row()}>
+                  <td style={{ ...CT.td, color: '#e6e9ef' }}>{r.campaign}</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.funded_clients)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: '#00e5a0', fontWeight: 700 }}>{usd(r.clv)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: '#00e5a0' }}>{usd(r.avg_clv)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.deposits)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(r.repeat_depositors)}</td>
+                  <td style={{ ...CT.td, textAlign: 'right', color: '#79b8ff' }}>{r.repeat_rate}%</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{r.first_deposit || '—'}</td>
+                  <td style={{ ...CT.td, textAlign: 'right' }}>{r.last_deposit || '—'}</td>
                 </tr>))}</tbody>
             </table>
           </div>
@@ -300,23 +303,27 @@ function SalesActivity() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={card}>
               <div style={cap}>By outcome</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <tbody>{(data.by_outcome || []).map((o: any, i: number) => (
-                  <tr key={i} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4' }}>
-                    <td style={{ padding: 7 }}>{o.outcome}</td>
-                    <td style={{ padding: 7, textAlign: 'right' }}>{fmt(o.count)}</td>
-                  </tr>))}</tbody>
-              </table>
+              <div style={CT.scroll}>
+                <table style={CT.table}>
+                  <tbody>{(data.by_outcome || []).map((o: any, i: number) => (
+                    <tr key={i} style={CT.row()}>
+                      <td style={CT.td}>{o.outcome}</td>
+                      <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(o.count)}</td>
+                    </tr>))}</tbody>
+                </table>
+              </div>
             </div>
             <div style={card}>
               <div style={cap}>By agent</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <tbody>{(data.by_agent || []).map((a: any, i: number) => (
-                  <tr key={i} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4' }}>
-                    <td style={{ padding: 7 }}>{a.agent}</td>
-                    <td style={{ padding: 7, textAlign: 'right' }}>{fmt(a.calls)}</td>
-                  </tr>))}</tbody>
-              </table>
+              <div style={CT.scroll}>
+                <table style={CT.table}>
+                  <tbody>{(data.by_agent || []).map((a: any, i: number) => (
+                    <tr key={i} style={CT.row()}>
+                      <td style={CT.td}>{a.agent}</td>
+                      <td style={{ ...CT.td, textAlign: 'right' }}>{fmt(a.calls)}</td>
+                    </tr>))}</tbody>
+                </table>
+              </div>
             </div>
           </div>
           <div style={{ fontSize: 12, color: '#8a93a5' }}>Source: Power Dialer call logs. Outcomes captured by the dialer; connected = answered/interested/callback.</div>
@@ -335,13 +342,15 @@ function DataQuality() {
     <div style={card}>
       <div style={cap}>{title}</div>
       {(!rows || !rows.length) ? <div style={{ color: '#5d6675', fontSize: 13 }}>None 🎉</div> : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead><tr style={{ color: '#8a93a5' }}>{cols.map(([, l], i) => <th key={i} style={{ padding: 7, textAlign: 'left' }}>{l}</th>)}</tr></thead>
-          <tbody>{rows.map((r, i) => (
-            <tr key={i} style={{ borderTop: '1px solid #373f4d', color: '#cfd6e4' }}>
-              {cols.map(([k], j) => <td key={j} style={{ padding: 7 }}>{String(r[k] ?? '—')}</td>)}
-            </tr>))}</tbody>
-        </table>
+        <div style={CT.scroll}>
+          <table style={CT.table}>
+            <thead><tr style={CT.theadTr}>{cols.map(([, l], i) => <th key={i} style={CT.th()}>{l}</th>)}</tr></thead>
+            <tbody>{rows.map((r, i) => (
+              <tr key={i} style={CT.row()}>
+                {cols.map(([k], j) => <td key={j} style={CT.td}>{String(r[k] ?? '—')}</td>)}
+              </tr>))}</tbody>
+          </table>
+        </div>
       )}
     </div>
   );

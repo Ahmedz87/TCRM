@@ -5,7 +5,11 @@ log = logging.getLogger("mt4_once")
 
 import bridge_mt4 as b
 
-DAYS = 2  # how far back to pull closed trades (~10 years). change if you want less.
+DAYS = 1 / 24  # 1-hour window: the loop runs every 60s so a 1h window is 60x overlap (plenty),
+               # and the MT4 journal is so dense (~293k records/hour) that a wider window blows past
+               # the ~288k server record cap (which silently truncated recent trades -> MT4
+               # commission froze Jul 15). Fetched in 30-min cap-safe chunks. Any brief truncation
+               # of the very newest minutes self-heals on the next cycle as the window slides.
 
 def main():
     # 1. connect + login (sets up the global manager inside bridge_mt4)
@@ -22,7 +26,7 @@ def main():
     log.info("save_mt4_clients done")
 
     # 3. closed trades -> deals (journal method = the working one per the code)
-    log.info("Fetching closed trade history (last %d days)...", DAYS)
+    log.info("Fetching closed trade history (last %.1fh)...", DAYS*24)
     try:
         trades = b.sync_trade_journal(days=DAYS)
         log.info("Got %d closed trades, saving to deals...", len(trades) if trades else 0)

@@ -1,0 +1,330 @@
+{
+ "ui": {
+  "partners": "Đối tác",
+  "nav_commission": "Hoa hồng",
+  "nav_challenges": "Thử thách",
+  "nav_payments": "Thanh toán",
+  "nav_about": "Về TNFX",
+  "login": "Đăng nhập",
+  "become_partner": "Trở thành đối tác",
+  "cta_primary": "Trở thành đối tác",
+  "cta_secondary": "Xem cách hoạt động",
+  "per_lot": "/ lot",
+  "up_to": "lên đến",
+  "lang_pick": "Ngôn ngữ",
+  "suggest_prefix": "Xem trang này bằng",
+  "suggest_yes": "Chuyển",
+  "suggest_no": "Không, cảm ơn",
+  "start_earning": "Bắt đầu kiếm tiền hôm nay",
+  "ib_partner": "Đối tác IB / Affiliate",
+  "ib_sub": "Kiếm đến $10 mỗi lot",
+  "client_area": "Mở tài khoản giao dịch",
+  "client_sub": "Giao dịch trên MT4 & MT5",
+  "sign_up": "Đăng ký",
+  "open_account": "Mở tài khoản",
+  "on_this_page": "Trên trang này",
+  "key_facts": "Thông tin chính",
+  "other_pages": "Trang đối tác khác",
+  "read_time": "phút đọc",
+  "earnings": "Thu nhập đối tác",
+  "this_mo": "Tháng này",
+  "last30": "30 ngày qua",
+  "clients": "Khách hàng",
+  "funded": "Khách hàng đã nạp",
+  "lots": "Lot đã giao dịch",
+  "active_mission": "Nhiệm vụ đang chạy",
+  "claim": "Nhận thưởng",
+  "live": "TRỰC TIẾP"
+ },
+ "s": {
+  "commission_kicker": "Con số quan trọng nhất",
+  "commission_h2": "Lên đến $10 cho mỗi lot khách hàng của bạn giao dịch",
+  "commission_lead": "Hoa hồng của bạn được trả trên từng lot mà khách hàng bạn giới thiệu giao dịch — với vàng và các cặp tiền chính — theo dõi trực tiếp đến từng đô la và rút được bất cứ lúc nào. Mỗi đối tác khởi đầu ở mức $5 mỗi lot và tăng lên $10 khi danh mục khách hàng của bạn lớn dần. Không thương lượng, không thiên vị: đạt các ngưỡng đã công bố và mức hoa hồng của bạn tự động tăng.",
+  "commission_tiers_note": "Sáu cấp bậc. Một con số chỉ có tăng.",
+  "commission_rate_word": "mỗi lot",
+  "challenges_kicker": "Đấu Trường Thử Thách",
+  "challenges_h2": "Được trả tiền để phát triển — tiền mặt thật cộng thêm vào hoa hồng của bạn",
+  "challenges_lead": "Đối tác TNFX không chỉ kiếm tiền theo lot. Nhận nhiệm vụ, đạt mục tiêu, nhận tiền mặt thật — chuyển thẳng vào ví đối tác của bạn, cộng thêm trên từng đô la hoa hồng.",
+  "career_h3": "Nhiệm vụ sự nghiệp — lên đến $4,000",
+  "career_lead": "Sáu nhiệm vụ sự nghiệp, một hành trình hoành tráng. Mỗi nhiệm vụ bạn chinh phục sẽ trả một phần thưởng tiền mặt và đưa bạn tiến lên bậc thang cấp độ hướng tới $10 mỗi lot.",
+  "weekly_h3": "Nhiệm vụ hàng tuần — làm mới mỗi Chủ Nhật",
+  "weekly_lead": "Mục tiêu tiền mặt mới mỗi tuần. Mang về khách hàng đã nạp tiền, đẩy khối lượng giao dịch, và nhận thưởng — rồi bảng nhiệm vụ làm mới vào Chủ Nhật và bạn lại làm lại. Một cơ hội kiếm tiền mới, mỗi tuần.",
+  "weekly_reward_line": "Lên đến $400 tiền thưởng mỗi tuần — cộng thêm trên hoa hồng $10 mỗi lot của bạn.",
+  "payments_kicker": "Cách khách hàng của bạn nạp tiền",
+  "payments_h2": "13 cách để khách hàng của bạn nạp và rút tiền",
+  "payments_lead": "Lý do số 1 khiến trader được giới thiệu thực sự bắt đầu giao dịch là nạp tiền dễ dàng. TNFX hỗ trợ các phương thức nội địa và quốc tế mà khách hàng của bạn đã quen dùng — nạp nội địa tức thì, thẻ và crypto — để những khách hàng bạn giới thiệu thực sự giao dịch thay vì bỏ cuộc ở khâu thanh toán.",
+  "about_kicker": "Về TNFX",
+  "about_h2": "Sàn giao dịch xứng đáng để bạn đặt tên mình vào",
+  "about_para1": "TNFX là sàn forex và CFD được cấp phép FSA, được xây dựng cho trader ở Trung Đông và xa hơn nữa. Khách hàng của bạn giao dịch hơn 1,000+ sản phẩm — vàng, các cặp FX chính, chỉ số và nhiều hơn nữa — trên nền tảng MetaTrader 4 và MetaTrader 5 mà họ đã quen thuộc, với spread thấp và khớp lệnh nhanh.",
+  "about_para2": "Hoa hồng chỉ tích lũy khi khách hàng của bạn tiếp tục giao dịch — và TNFX được xây dựng để giữ chân họ: hỗ trợ bằng tiếng địa phương, nạp nội địa tức thì, và trải nghiệm giao dịch được thiết kế riêng cho khu vực này. Đó là lý do danh mục khách hàng của đối tác ở đây bền vững.",
+  "how_kicker": "Bắt đầu",
+  "how_h2": "Từ đăng ký đến khoản hoa hồng đầu tiên",
+  "dash_kicker": "Bảng điều khiển đối tác của bạn",
+  "dash_h2": "Toàn bộ danh mục của bạn, trực tiếp và chính xác đến từng đô la",
+  "dash_lead": "Mọi khách hàng, mọi lot, mọi đô la hoa hồng — cập nhật ngay khi một giao dịch diễn ra. Không báo cáo hàng tháng, không phải đoán mò. Theo dõi phễu khách hàng, tiến độ thử thách và số dư có thể rút của bạn trong một cổng đối tác thời gian thực.",
+  "dash_caption": "Bảng điều khiển đối tác TNFX — hoa hồng trực tiếp, phễu khách hàng và tiến độ thử thách. (Hình minh họa.)",
+  "dash_caption_ch": "Đấu Trường Thử Thách — nhận nhiệm vụ, đạt mục tiêu, nhận tiền mặt thật. (Hình minh họa.)",
+  "finalcta_h2": "Khách hàng đầu tiên của bạn có thể giao dịch ngay tuần này",
+  "finalcta_lead": "Tham gia miễn phí. Mức Bronze $5 mỗi lot ngay từ ngày đầu, tăng lên $10. Thử thách tiền mặt mỗi tuần. Đăng ký trong 60 giây.",
+  "finalcta_btn": "Trở thành đối tác TNFX",
+  "finalcta_assurance": "Tham gia miễn phí · Rút bất cứ lúc nào · Báo cáo thời gian thực",
+  "footer_disclaimer": "TNFX được cấp phép bởi Cơ quan Dịch vụ Tài chính (FSA). Giao dịch ngoại hối và CFD tiềm ẩn mức rủi ro cao và có thể không phù hợp với tất cả nhà đầu tư. Hoa hồng đối tác được trả dựa trên hoạt động giao dịch của khách hàng; thu nhập trong quá khứ không đảm bảo kết quả trong tương lai.",
+  "footer_rights": "© 2026 TNFX. Bảo lưu mọi quyền.",
+  "footer_login": "Đăng nhập đối tác",
+  "footer_home": "Chương trình đối tác"
+ },
+ "about_trust": [
+  {
+   "k": "FSA",
+   "v": "Sàn được cấp phép & quản lý"
+  },
+  {
+   "k": "MT4 & MT5",
+   "v": "Cả hai nền tảng, một lần đăng nhập"
+  },
+  {
+   "k": "1000+",
+   "v": "Sản phẩm — vàng, FX, chỉ số"
+  },
+  {
+   "k": "Instant",
+   "v": "Nạp nội địa & rút tiền nhanh"
+  }
+ ],
+ "how_steps": [
+  {
+   "t": "Đăng ký trong 60 giây",
+   "d": "Tên, thông tin liên hệ và cách bạn giới thiệu khách hàng. Cả biểu mẫu chỉ có vậy."
+  },
+  {
+   "t": "Bộ phận đối tác phê duyệt",
+   "d": "Bộ phận đối tác của chúng tôi xét duyệt từng đơn đăng ký và kích hoạt tài khoản của bạn — thường trong ngày."
+  },
+  {
+   "t": "Chia sẻ liên kết của bạn",
+   "d": "Nhận liên kết giới thiệu cùng banner quảng cáo làm sẵn đã gắn sẵn liên kết. Đăng chúng ở bất cứ nơi nào có khán giả của bạn."
+  },
+  {
+   "t": "Kiếm tiền theo lot",
+   "d": "Hoa hồng đổ về trên mỗi giao dịch khách hàng của bạn thực hiện — trực tiếp trên bảng điều khiển. Rút bất cứ lúc nào."
+  }
+ ],
+ "weekly": [
+  {
+   "name": "First Blood",
+   "desc": "Mang về 1 khách hàng đã nạp tiền trong tuần này"
+  },
+  {
+   "name": "Hat Trick",
+   "desc": "Mang về 3 khách hàng đã nạp tiền trong tuần này"
+  },
+  {
+   "name": "Volume Hunter",
+   "desc": "Khách hàng của bạn giao dịch 50 lot"
+  },
+  {
+   "name": "Whale Hunter",
+   "desc": "Khách hàng của bạn nạp $50,000"
+  }
+ ],
+ "faq": [
+  {
+   "q": "Tôi kiếm được bao nhiêu khi làm đối tác TNFX?",
+   "a": "Lên đến $10 cho mỗi lot mà khách hàng bạn giới thiệu giao dịch với vàng và các cặp tiền chính. Bạn khởi đầu ở mức $5 mỗi lot và mức này tăng lên $10 khi danh mục khách hàng của bạn lớn dần — cộng thêm tiền thưởng từ các thử thách hàng tuần và nhiệm vụ sự nghiệp."
+  },
+  {
+   "q": "Tôi có cần giao dịch hay đầu tư để kiếm tiền không?",
+   "a": "Không. Bạn kiếm tiền bằng cách giới thiệu khách hàng, chứ không phải tự giao dịch. Tham gia hoàn toàn miễn phí và không cần vốn — bạn được trả dựa trên hoạt động giao dịch của khách hàng."
+  },
+  {
+   "q": "Khi nào và làm thế nào tôi được trả tiền?",
+   "a": "Hoa hồng tích lũy trực tiếp trên mỗi giao dịch và có thể rút bất cứ lúc nào — không khóa vốn, không chu kỳ tối thiểu. Rút qua bất kỳ phương thức nào trong 13 phương thức TNFX hỗ trợ, bao gồm các lựa chọn nội địa tức thì."
+  },
+  {
+   "q": "TNFX có được quản lý không?",
+   "a": "Có. TNFX được cấp phép và quản lý bởi Cơ quan Dịch vụ Tài chính (FSA), hoạt động trên MetaTrader 4 và MetaTrader 5 với hơn 1,000+ sản phẩm."
+  },
+  {
+   "q": "Làm thế nào để trở thành đối tác?",
+   "a": "Đăng ký trong khoảng 60 giây với tên và thông tin liên hệ. Bộ phận đối tác của chúng tôi xét duyệt và kích hoạt tài khoản của bạn — thường trong cùng ngày — và bạn nhận được liên kết giới thiệu ngay lập tức."
+  },
+  {
+   "q": "IB, affiliate và referral partner khác nhau ở điểm nào?",
+   "a": "Cả ba đều giúp bạn kiếm hoa hồng khi giới thiệu khách hàng cho TNFX. Affiliate kéo traffic bằng link và banner; introducing broker (IB) thì chủ động quản lý và hỗ trợ cả một danh sách khách hàng, thường là có đội nhóm; còn referral partner đơn giản chỉ chia sẻ link cho bạn bè. Với TNFX, bạn có thể bắt đầu ở bất kỳ vai trò nào từ cùng một tài khoản rồi phát triển lên thành một desk IB đầy đủ — mức hoa hồng lên tới $10 per lot là như nhau."
+  },
+  {
+   "q": "Làm sao để lấy referral link và banner quảng cáo của tôi?",
+   "a": "Ngay khi tài khoản của bạn được duyệt, bạn sẽ có một referral link cá nhân trong dashboard partner, cùng với cả một kho banner quảng cáo làm sẵn đã gắn sẵn link của bạn. Chia sẻ chúng lên bất kỳ kênh nào mà khán giả của bạn đang dùng."
+  },
+  {
+   "q": "Khách của tôi có phải trả nhiều hơn hay chịu spread tệ hơn vì dùng link của tôi không?",
+   "a": "Không. Khách của bạn giao dịch với đúng mức spread thấp và điều kiện y hệt mọi người — hoa hồng của bạn đến từ TNFX, chứ không phải từ khách. Giới thiệu qua bạn không tốn của họ đồng nào."
+  },
+  {
+   "q": "Hoa hồng per lot của tôi được tính như thế nào?",
+   "a": "Bạn kiếm được một khoản cố định cho mỗi lot chuẩn mà khách được bạn giới thiệu giao dịch trên vàng và các cặp tiền chính — từ $5 per lot ở hạng Bronze đến tối đa $10 per lot ở hạng Prime. Lấy mức của bạn nhân với số lot hàng tháng của khách là ước tính được thu nhập; hoa hồng cộng dồn ngay theo từng lệnh."
+  },
+  {
+   "q": "Các thử thách hàng tuần và nhiệm vụ sự nghiệp hoạt động ra sao?",
+   "a": "Ngoài hoa hồng per lot, bạn còn có thể nhận nhiệm vụ và lĩnh tiền mặt thật. Nhiệm vụ hàng tuần reset lại mỗi Chủ nhật và trả tới $400; nhiệm vụ sự nghiệp chạy một lần qua sáu chặng và trả tới $4,000. Phần thưởng về ví partner của bạn ngay khi bạn đạt mục tiêu."
+  },
+  {
+   "q": "Tôi có thể rút hoa hồng bằng những phương thức nào?",
+   "a": "Bạn có thể rút qua bất kỳ phương thức nào TNFX hỗ trợ, bao gồm các lựa chọn nội địa tức thì và crypto — như Ovadot, Qi Card, ZainCash, USDT và Perfect Money. Không khóa tiền, không bắt buộc chu kỳ rút tối thiểu."
+  },
+  {
+   "q": "Tôi có được quảng bá TNFX trên mạng xã hội, Telegram hay YouTube không?",
+   "a": "Có. Chia sẻ link và banner của bạn ở bất cứ đâu có khán giả — mạng xã hội, nhóm chat, website hay video — miễn là bạn tuân thủ điều khoản partner và quy định quảng cáo tại địa phương. Các creative làm sẵn giúp bạn triển khai nhanh chóng."
+  },
+  {
+   "q": "Có phí tham gia hay số lượng khách tối thiểu không?",
+   "a": "Không. Tham gia hoàn toàn miễn phí, không yêu cầu số khách tối thiểu, và không cần vốn. Bạn bắt đầu kiếm tiền ngay từ lot đầu tiên của khách hàng đầu tiên."
+  },
+  {
+   "q": "Nếu một khách ngừng giao dịch thì hoa hồng của tôi thế nào?",
+   "a": "Hoa hồng của bạn được trả dựa trên hoạt động giao dịch thực tế, nên nó tạm dừng khi khách không giao dịch và tiếp tục khi khách quay lại. Vì đây là chia sẻ doanh thu trọn đời, bạn vẫn tiếp tục kiếm được từ khách đó mỗi khi họ giao dịch trở lại."
+  },
+  {
+   "q": "Tôi có thể xây dựng đội nhóm hoặc đưa sub-partner về dưới mình không?",
+   "a": "Có. TNFX hỗ trợ các introducing broker xây dựng mạng lưới và quản lý một đội sub-partner, nên bạn có thể mở rộng vượt xa số khách trực tiếp của riêng mình. Hãy trao đổi với partner desk của chúng tôi về cấu trúc phù hợp với hoạt động của bạn."
+  },
+  {
+   "q": "Làm sao để tôi lên từ $5 lên $10 per lot?",
+   "a": "Mức của bạn tự động tăng khi danh sách khách của bạn lớn lên và bạn đạt các ngưỡng đã công bố — càng nhiều khách nạp tiền và càng nhiều volume hàng tháng thì bạn càng leo lên bậc thang từ Bronze tới Prime. Không thương lượng, không thiên vị: đạt con số là mức của bạn tăng."
+  },
+  {
+   "q": "Tôi theo dõi khách, số lot và thu nhập của mình ở đâu?",
+   "a": "Mọi thứ nằm trong dashboard partner cập nhật theo thời gian thực — từng lượt đăng ký, nạp tiền, lot đã giao dịch và từng đô hoa hồng, cập nhật ngay khi phát sinh, cùng với tiến độ thử thách và số dư có thể rút của bạn. Không cần sao kê hàng tháng, không phải đoán mò."
+  }
+ ],
+ "topics": {
+  "introducing-broker": {
+   "title": "Trở thành IB Forex (Introducing Broker) — Kiếm Lên Đến $10 Mỗi Lot | Đối Tác TNFX",
+   "meta": "Trở thành IB forex của TNFX và kiếm lên đến $10 mỗi lot trên mọi giao dịch của khách hàng. Tham gia miễn phí, thử thách tiền mặt hàng tuần, 13 phương thức thanh toán, được cấp phép FSA. Đăng ký trong 60 giây.",
+   "h1": "Trở thành IB Forex (Introducing Broker)",
+   "subhead": "Giới thiệu trader đến một sàn được cấp phép FSA và kiếm lên đến $10 cho mỗi lot họ giao dịch — cùng với thử thách tiền mặt hàng tuần và bảng điều khiển trực tiếp theo dõi từng đô la.",
+   "lead_h2": "IB (Introducing Broker) là gì — và bạn có thể kiếm bao nhiêu?",
+   "lead_p": "IB forex (introducing broker) là người giới thiệu trader đến một sàn giao dịch và kiếm hoa hồng trên hoạt động giao dịch của họ — bạn không cần tự giao dịch, không cần vốn. Là một IB của TNFX, bạn kiếm lên đến $10 mỗi lot, được trả trực tiếp trên mọi giao dịch khách hàng thực hiện, rút được bất cứ lúc nào. Đây là một trong những cách rõ ràng nhất để xây dựng thu nhập thật từ forex mà không cần vào một lệnh nào."
+  },
+  "affiliate-program": {
+   "title": "Chương Trình Affiliate Forex — Lên Đến $10 Mỗi Lot | Đối Tác TNFX",
+   "meta": "Tham gia chương trình affiliate forex của TNFX và kiếm lên đến $10 mỗi lot cùng thử thách tiền mặt hàng tuần. Chương trình affiliate CFD trả cao nhất khu vực MENA — miễn phí, cấp phép FSA, 13 phương thức thanh toán.",
+   "h1": "Chương Trình Affiliate Forex",
+   "subhead": "Quảng bá một sàn được cấp phép FSA mà khán giả của bạn có thể tin tưởng và kiếm lên đến $10 mỗi lot — cùng tiền thưởng hàng tuần, banner làm sẵn, và theo dõi thời gian thực từng lượt giới thiệu.",
+   "lead_h2": "Chương trình affiliate forex thực sự trả tiền",
+   "lead_p": "Tiếp thị affiliate cho forex phát huy hiệu quả khi khoản chi trả là thật và sàn giao dịch chuyển đổi tốt. TNFX trả lên đến $10 mỗi lot trên mọi giao dịch khách hàng bạn giới thiệu thực hiện — không phải khoản thưởng một lần — cùng thử thách tiền mặt mỗi tuần. Nhận liên kết và bộ tài liệu quảng cáo làm sẵn trong vài phút và bắt đầu kiếm tiền."
+  },
+  "partnership": {
+   "title": "Chương Trình Đối Tác Forex — Hợp Tác Với TNFX | Kiếm Lên Đến $10 Mỗi Lot",
+   "meta": "Hợp tác với TNFX, một sàn forex được cấp phép FSA, và kiếm lên đến $10 mỗi lot. Quan hệ đối tác IB, affiliate và giới thiệu — thử thách tiền mặt hàng tuần, 13 phương thức thanh toán, bảng điều khiển trực tiếp.",
+   "h1": "Trở Thành Đối Tác TNFX",
+   "subhead": "Một quan hệ đối tác, lên đến $10 mỗi lot. Dù bạn giới thiệu khách hàng, chạy chiến dịch affiliate, hay giới thiệu bạn bè — TNFX trả cho bạn trên mỗi lot họ giao dịch, cùng thử thách tiền mặt mỗi tuần.",
+   "lead_h2": "Hợp tác với một sàn vừa trả tiền vừa bền vững",
+   "lead_p": "Một quan hệ đối tác chỉ tốt khi có một sàn giao dịch vững chắc đứng sau. TNFX được cấp phép FSA, hoạt động trên MT4 và MT5 với hơn 1,000+ sản phẩm, và được xây dựng để giữ chân những khách hàng bạn giới thiệu — nhờ đó hoa hồng của bạn tiếp tục tích lũy. Lên đến $10 mỗi lot, thử thách tiền mặt hàng tuần, và một bảng điều khiển đối tác trực tiếp."
+  },
+  "cpa": {
+   "title": "Chi Trả CPA & Đối Tác Forex — Lên Đến $10 Mỗi Lot Hoặc CPA | TNFX",
+   "meta": "Chi trả đối tác forex TNFX: kiếm lên đến $10 mỗi lot theo mô hình chia sẻ doanh thu, cùng các lựa chọn CPA. Minh bạch, mức công bố rõ ràng, cấp phép FSA, thử thách tiền mặt hàng tuần. Chọn mô hình chi trả phù hợp với bạn.",
+   "h1": "Chi Trả CPA & Đối Tác Forex",
+   "subhead": "Chọn mô hình chi trả phù hợp với lưu lượng của bạn. Kiếm lên đến $10 mỗi lot theo mô hình chia sẻ doanh thu trọn đời, hoặc trao đổi với bộ phận của chúng tôi về CPA — với mức minh bạch, công bố rõ ràng và thử thách tiền mặt hàng tuần.",
+   "lead_h2": "CPA, chia sẻ doanh thu, hay kết hợp — bạn tự chọn",
+   "lead_p": "Các affiliate nghiêm túc luôn chọn mô hình chi trả của mình. Mô hình cốt lõi của TNFX trả lên đến $10 mỗi lot theo hình thức chia sẻ doanh thu trọn đời — bạn kiếm tiền chừng nào khách hàng còn giao dịch, chứ không chỉ một lần. Thích chi phí trên mỗi khách hàng thu về (CPA) hơn? Bộ phận đối tác của chúng tôi làm việc cùng bạn về các thỏa thuận CPA và kết hợp với điều khoản rõ ràng, công bố minh bạch — không có bẫy điều kiện ẩn."
+  },
+  "cashback-rebate": {
+   "title": "Hoàn Phí & Hoàn Tiền Forex — Nhận Tiền Lại Trên Mỗi Lot | TNFX",
+   "meta": "Nhận hoàn phí và hoàn tiền forex trên mỗi lot với TNFX. Tiền lại trên mỗi lot với vàng và các cặp chính, trả trực tiếp, rút bất cứ lúc nào qua 13 phương thức. Cấp phép FSA. Mức hoàn phí lớn nhất cho trader MENA.",
+   "h1": "Hoàn Phí & Hoàn Tiền Forex",
+   "subhead": "Nhận tiền lại trên mỗi lot giao dịch — của bạn hoặc của khách hàng — trả trực tiếp và rút bất cứ lúc nào qua 13 phương thức nạp tiền. Ưu đãi hoàn phí rõ ràng nhất khu vực.",
+   "lead_h2": "Hoàn phí và hoàn tiền trên từng lot",
+   "lead_p": "Hoàn phí (hay hoàn tiền) nghĩa là tiền thật được trả lại cho mỗi lot khối lượng giao dịch — lên đến $10 mỗi lot với vàng và các cặp chính. Là đối tác TNFX, bạn kiếm được khoản này trên khối lượng mà khách hàng bạn giới thiệu tạo ra; nó được trả trực tiếp vào ví của bạn và rút được bất cứ lúc nào. Không trò chơi giới hạn, không điều kiện mập mờ."
+  },
+  "commission-per-lot": {
+   "title": "Hoa Hồng Forex Mỗi Lot — Lên Đến $10 | Thu Nhập Đối Tác TNFX",
+   "meta": "IB forex kiếm được bao nhiêu? Lên đến $10 hoa hồng mỗi lot với TNFX, trả trực tiếp trên mọi giao dịch. Xem bậc thang mức mỗi lot từ $5 đến $10 và thử thách tiền mặt hàng tuần. Cấp phép FSA.",
+   "h1": "Hoa Hồng Forex — Lên Đến $10 Mỗi Lot",
+   "subhead": "Chính xác những gì bạn kiếm được, trên mỗi lot, không giấu giếm gì. Từ $5 ở bậc Bronze đến $10 ở bậc Prime — trả trực tiếp trên mọi giao dịch khách hàng thực hiện, cùng thử thách tiền mặt mỗi tuần.",
+   "lead_h2": "IB và affiliate forex thực sự kiếm được bao nhiêu?",
+   "lead_p": "Câu trả lời thành thật là: tùy vào mức hoa hồng của bạn và khối lượng của khách hàng. TNFX công bố cả hai. Hoa hồng của bạn dao động từ $5 mỗi lot ở bậc Bronze đến $10 mỗi lot ở bậc Prime, với vàng và các cặp tiền chính, trả trên mỗi lot khách hàng của bạn giao dịch. Nhân mức của bạn với số lot hàng tháng của họ là ra thu nhập của bạn — rồi cộng thêm lên đến $400 mỗi tuần tiền thử thách."
+  },
+  "referral": {
+   "title": "Giới Thiệu Bạn Bè Đến Forex — Chương Trình Giới Thiệu | Đối Tác TNFX",
+   "meta": "Giới thiệu bạn bè đến TNFX và kiếm tiền trên mỗi lot họ giao dịch. Nhận liên kết giới thiệu ngay lập tức, kiếm lên đến $10 mỗi lot, và rút bất cứ lúc nào. Tham gia miễn phí, cấp phép FSA, 13 phương thức thanh toán.",
+   "h1": "Giới Thiệu Bạn Bè — Chương Trình Giới Thiệu Forex",
+   "subhead": "Chia sẻ liên kết của bạn, và kiếm tiền trên mỗi lot bạn bè giao dịch — lên đến $10 mỗi lot, trả trực tiếp. Cách bắt đầu đơn giản nhất: nhận liên kết giới thiệu trong 60 giây và chia sẻ ở bất cứ đâu.",
+   "lead_h2": "Giới thiệu, chia sẻ và kiếm tiền — không cần bộ phận riêng",
+   "lead_p": "Chưa sẵn sàng cho một hoạt động IB toàn diện? Chỉ cần giới thiệu. Nhận liên kết giới thiệu cá nhân ngay khi đăng ký, chia sẻ với bạn bè và khán giả của bạn, và kiếm lên đến $10 trên mỗi lot họ giao dịch — trực tiếp, và rút được bất cứ lúc nào. Khi bạn sẵn sàng mở rộng, chính tài khoản đó trở thành bộ phận IB và affiliate đầy đủ của bạn."
+  },
+  "earn-without-trading": {
+   "title": "Cách Kiếm Tiền Từ Forex Mà Không Cần Giao Dịch | Đối Tác TNFX",
+   "meta": "Kiếm tiền từ forex mà không cần giao dịch và không cần vốn — trở thành đối tác TNFX và kiếm lên đến $10 mỗi lot bằng cách giới thiệu khách hàng. Có hợp pháp không? Có — cấp phép FSA. Tìm hiểu cách hoạt động.",
+   "h1": "Cách Kiếm Tiền Từ Forex Mà Không Cần Giao Dịch",
+   "subhead": "Bạn không phải mạo hiểm dù chỉ một lệnh. Kiếm lên đến $10 mỗi lot bằng cách giới thiệu khách hàng đến một sàn được cấp phép FSA — không vốn, không vị thế, chỉ cần mạng lưới và liên kết của bạn.",
+   "lead_h2": "Kiếm tiền từ forex — không giao dịch và không cần vốn",
+   "lead_p": "Phần lớn mọi người thua lỗ khi giao dịch forex. Đối tác thì không giao dịch — họ kiếm tiền từ khối lượng mà người khác giao dịch. Là đối tác TNFX, bạn giới thiệu khách hàng và thu về lên đến $10 mỗi lot trên mọi thứ họ giao dịch, không rủi ro vốn nào. Nó hợp pháp, minh bạch, và giấy phép FSA của TNFX có nghĩa là sàn đứng sau thu nhập của bạn được quản lý. Đây là cách nó hoạt động, chính xác."
+  },
+  "compare": {
+   "title": "Chương Trình Đối Tác Forex IB & Affiliate Tốt Nhất 2026 — Lên Đến $10/Lot | TNFX",
+   "meta": "Đang so sánh các chương trình đối tác forex? Xem điều thực sự quan trọng — hoa hồng mỗi lot, tốc độ thanh toán, và broker có chuyển đổi khách không. TNFX: lên đến $10 mỗi lot, thử thách tiền mặt hằng tuần, rút tiền nội địa nhanh, được cấp phép FSA.",
+   "h1": "Chương Trình Đối Tác Forex Tốt Nhất Cho Năm 2026",
+   "subhead": "Không phải chương trình nào cũng xứng đáng với lượng traffic của bạn. Đây là điều tạo nên khác biệt giữa các chương trình IB và affiliate forex hàng đầu — và TNFX đứng ở đâu: lên đến $10 mỗi lot, thử thách tiền mặt hằng tuần, rút tiền nội địa nhanh, cùng đội ngũ đối tác chuyên trách khu vực MENA.",
+   "lead_h2": "Cần tìm gì ở một chương trình IB / affiliate forex",
+   "lead_p": "Mọi chương trình đối tác nghiêm túc đều trả theo lot hoặc theo lượt khách — khác biệt thực sự nằm ở mức trả bao nhiêu, bạn nhận tiền nhanh ra sao, và broker có chuyển đổi được lượng traffic bạn gửi tới hay không. Hãy đánh giá một chương trình qua bốn yếu tố: mức hoa hồng mỗi lot (và trần cao đến đâu), tốc độ cùng phương thức thanh toán, khả năng giữ chân khách hàng của broker, và có đội hỗ trợ nội địa thực sự phía sau hay không. TNFX trả lên đến $10 mỗi lot, cộng thêm tối đa $400 mỗi tuần tiền thưởng thử thách, nạp và rút qua 13 phương thức nội địa lẫn quốc tế, tất cả được hậu thuẫn bởi giấy phép FSA và một đội đối tác MENA thực thụ — đó là lý do các đối tác chuyển danh mục khách của họ về TNFX."
+  },
+  "what-is-introducing-broker": {
+   "title": "Introducing Broker (IB) Forex Là Gì? Ý Nghĩa, Thu Nhập & Cách Trở Thành IB | TNFX",
+   "meta": "Introducing broker (IB) forex là gì? Hướng dẫn rõ ràng về cách IB hoạt động, cách nhận hoa hồng mỗi lot, IB khác affiliate ra sao, và cách trở thành IB cùng TNFX — lên đến $10 mỗi lot, không cần giao dịch, không cần vốn.",
+   "h1": "Introducing Broker Forex Là Gì?",
+   "subhead": "Introducing broker giới thiệu trader đến với broker và kiếm hoa hồng từ hoạt động giao dịch của họ — bạn không cần tự giao dịch, không cần vốn. Đây là cách nó hoạt động, và cách trở thành IB cùng TNFX để kiếm lên đến $10 mỗi lot.",
+   "lead_h2": "Introducing broker, giải thích đơn giản",
+   "lead_p": "Introducing broker (IB) forex là đối tác kết nối trader với broker và kiếm hoa hồng dựa trên khối lượng mà những trader đó giao dịch — do broker chi trả, không phải khách hàng. Bạn không tự giao dịch và không cần vốn; bạn kiếm tiền từ hoạt động giao dịch của người khác. Là một IB của TNFX, bạn được trả lên đến $10 cho mỗi lot chuẩn mà khách hàng bạn giới thiệu giao dịch, cập nhật trực tiếp theo từng lệnh và có thể rút bất cứ lúc nào. Đây là cách rõ ràng nhất, ít rủi ro nhất để xây dựng nguồn thu nhập thực sự từ forex."
+  },
+  "how-much-do-ibs-make": {
+   "title": "IB Forex Kiếm Được Bao Nhiêu? Thu Nhập Mỗi Lot Thực Tế | TNFX",
+   "meta": "Introducing broker forex kiếm được bao nhiêu? Tùy vào mức hoa hồng và khối lượng khách của bạn — cả hai đều được công bố. Với TNFX bạn kiếm $5 đến $10 mỗi lot theo từng lệnh, cộng tối đa $400/tuần từ các thử thách.",
+   "h1": "Introducing Broker Forex Kiếm Được Bao Nhiêu?",
+   "subhead": "Câu trả lời thành thật: tùy vào mức hoa hồng mỗi lot và khối lượng giao dịch hằng tháng của khách — và TNFX công bố cả hai. Kiếm $5 đến $10 mỗi lot, cập nhật theo từng lệnh, cộng tối đa $400 mỗi tuần tiền thưởng thử thách.",
+   "lead_h2": "Thu nhập của bạn = mức hoa hồng × khối lượng của khách",
+   "lead_p": "Không có con số cố định nào, nhưng phép tính rất đơn giản và công khai. Mức hoa hồng của bạn chạy từ $5 mỗi lot ở hạng Bronze đến $10 mỗi lot ở hạng Prime; nhân nó với số lot khách giao dịch mỗi tháng là ra hoa hồng của bạn. Giới thiệu những khách năng động giao dịch vài trăm lot mỗi tháng, bạn đã có một khoản thu nhập hằng tháng đáng kể — trước khi cộng thêm tối đa $400 mỗi tuần từ thử thách hằng tuần và lên đến $4,000 từ các nhiệm vụ sự nghiệp. Hoa hồng cộng dồn trực tiếp theo từng lệnh và bạn có thể rút bất cứ lúc nào."
+  },
+  "islamic-halal-ib": {
+   "title": "Chương Trình Đối Tác Forex Hồi Giáo (Halal) — Hoa Hồng IB Swap-Free | TNFX",
+   "meta": "Chương trình đối tác forex Hồi giáo: giới thiệu trader dùng tài khoản swap-free (halal) và kiếm lên đến $10 mỗi lot. Hoa hồng từ hoạt động giao dịch, không lãi suất — thiết kế cho Trung Đông. Tham gia miễn phí, cấp phép FSA.",
+   "h1": "Chương Trình Đối Tác Forex Hồi Giáo (Halal)",
+   "subhead": "Giới thiệu trader dùng tài khoản swap-free (Hồi giáo) và kiếm lên đến $10 mỗi lot — hoa hồng từ hoạt động giao dịch thực tế, hoàn toàn không liên quan đến lãi suất. Xây dựng riêng cho thị trường Trung Đông.",
+   "lead_h2": "Chương trình đối tác dành cho trader swap-free",
+   "lead_p": "Nhiều trader trong khu vực cần tài khoản swap-free (Hồi giáo), và TNFX cung cấp loại tài khoản đó. Là đối tác, bạn giới thiệu những trader này và kiếm lên đến $10 mỗi lot trên khối lượng họ giao dịch — hoa hồng đến từ spread của broker trên hoạt động giao dịch, không phải từ bất kỳ khoản lãi suất hay cho vay nào. Đây là cách kiếm tiền sạch sẽ, dựa trên hoạt động, trong khi bạn giới thiệu trader đến với loại tài khoản phù hợp với họ."
+  },
+  "gold-xau-ib": {
+   "title": "Chương Trình Đối Tác Forex Vàng (XAU/USD) — Kiếm Lên Đến $10/Lot | TNFX",
+   "meta": "Vàng là thị trường được giao dịch nhiều nhất trong khu vực. Giới thiệu trader vàng (XAU/USD) và kiếm lên đến $10 mỗi lot với TNFX — trả trực tiếp, rút bất cứ lúc nào. Tham gia miễn phí, cấp phép FSA, thử thách tiền mặt hằng tuần.",
+   "h1": "Chương Trình Đối Tác Giao Dịch Vàng",
+   "subhead": "Vàng là công cụ số một của trader trong khu vực này. Giới thiệu trader vàng (XAU/USD) và kiếm lên đến $10 mỗi lot trên khối lượng của họ — hạng cao nhất trên bậc thang hoa hồng của TNFX.",
+   "lead_h2": "Kiếm tiền từ thị trường yêu thích nhất khu vực — vàng",
+   "lead_p": "Vàng (XAU/USD) là nơi diễn ra phần lớn khối lượng giao dịch ở Trung Đông, và nó nằm ở đỉnh bậc thang hoa hồng của TNFX — lên đến $10 mỗi lot. Nếu khán giả của bạn giao dịch vàng, bạn đang giới thiệu họ đến đúng thị trường họ vốn yêu thích, và kiếm tiền trên mỗi lot họ giao dịch, trực tiếp và rút bất cứ lúc nào. Cộng thêm thử thách tiền mặt hằng tuần thì con số tăng lên rất nhanh."
+  },
+  "mt4-mt5-ib": {
+   "title": "Chương Trình Introducing Broker MT4 & MT5 — Kiếm Lên Đến $10/Lot | TNFX",
+   "meta": "Trở thành introducing broker MT4 & MT5 với TNFX. Giới thiệu trader trên MetaTrader 4 và MetaTrader 5 và kiếm lên đến $10 mỗi lot, theo dõi trực tiếp. Tham gia miễn phí, cấp phép FSA, thử thách tiền mặt hằng tuần.",
+   "h1": "Chương Trình Introducing Broker MT4 & MT5",
+   "subhead": "Giới thiệu trader trên chính nền tảng MetaTrader 4 và MetaTrader 5 mà họ đang dùng, và kiếm lên đến $10 mỗi lot trên khối lượng của họ — theo dõi trực tiếp trong bảng điều khiển đối tác của bạn.",
+   "lead_h2": "Kiếm tiền trên cả hai nền tảng MetaTrader",
+   "lead_p": "Gần như mọi trader forex đều biết MetaTrader — và TNFX chạy trên cả MT4 lẫn MT5 từ một tài khoản đối tác duy nhất. Dù khán giả của bạn thích MT4 kinh điển hay MT5 mới hơn, bạn giới thiệu họ đến nền tảng họ đã tin dùng và kiếm lên đến $10 mỗi lot trên mọi thứ họ giao dịch. Không phải học công cụ mới, spread thấp và khớp lệnh nhanh, mọi lot được theo dõi trực tiếp đến từng đô la."
+  },
+  "sub-ib-master-ib": {
+   "title": "Sub-IB & Master IB — Xây Dựng Đội Ngũ Đối Tác Forex | TNFX",
+   "meta": "Vượt xa những khách bạn tự giới thiệu: trở thành master IB, đưa các sub-partner vào dưới bạn, và kiếm tiền trên khối lượng của cả mạng lưới — lên đến $10 mỗi lot. Chương trình đối tác forex đa cấp từ TNFX.",
+   "h1": "Xây Dựng Đội Ngũ: Chương Trình Master IB & Sub-IB",
+   "subhead": "Đừng giới hạn bản thân ở những khách bạn tự giới thiệu. Đưa các sub-partner vào dưới bạn và kiếm tiền trên toàn bộ khối lượng giao dịch của mạng lưới — lên đến $10 mỗi lot, với cái nhìn trực tiếp về từng đối tác và khách hàng.",
+   "lead_h2": "Phát triển một mạng lưới, không chỉ một danh sách giới thiệu",
+   "lead_p": "Những đối tác lớn nhất không chỉ giới thiệu khách — họ xây dựng đội ngũ. TNFX hỗ trợ các master IB đưa sub-partner vào dưới mình, để bạn kiếm tiền trên khối lượng mà cả mạng lưới tạo ra, chứ không chỉ những khách bạn trực tiếp giới thiệu. Đó là cách một affiliate đơn lẻ trở thành một doanh nghiệp IB thực thụ: chiêu mộ, hỗ trợ các sub-partner, và mở rộng thu nhập lên đến $10 mỗi lot trên toàn đội. Hãy trao đổi với đội đối tác của chúng tôi về cấu trúc đa cấp phù hợp với mô hình của bạn."
+  }
+ },
+ "review_flags": [
+  "'hoàn phí' used for cashback/rebate and 'hoa hồng' for commission per the glossary — confirm consistency across cashback-rebate vs commission pages, since Vietnamese traders sometimes use both terms loosely.",
+  "IB forex kept as-is per instructions; native VN traders more commonly say 'IB forex' or 'nhà giới thiệu' — verify the parenthetical 'Introducing Broker' phrasing reads naturally in headings.",
+  "Regulatory phrasing 'Cơ quan Dịch vụ Tài chính (FSA)' — confirm this is the preferred VN rendering of the Financial Services Authority for compliance copy.",
+  "Product/challenge names (First Blood, Hat Trick, Volume Hunter, Whale Hunter) left in English per instructions; desc lines translated — confirm the gamified tone lands for a VN audience.",
+  "Meta descriptions were kept close to ~150 chars but Vietnamese diacritics/length may push some slightly over; double-check SERP truncation.",
+  "'danh mục khách hàng' used for 'book' (of clients) — verify this financial-partner sense is clear and not confused with product portfolio."
+ ]
+}

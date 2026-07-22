@@ -51,25 +51,60 @@ def ensure_schema(db):
 
 
 def _candidates_sql():
-    # Our rule (per the desk): archive a CRM trading account IFF it is GONE from MT4/5 — i.e.
-    # the MT sync stopped seeing it. The balance<$1 condition is MT's OWN criterion for deciding
-    # what to archive; we don't re-apply it, we just mirror MT's result (absence). Real accounts
-    # only (positive login). NULL mt_last_seen counts as "not seen"; the health guard below makes
-    # sure a full MT sync actually ran first, and STALE_DAYS protects against a single missed sync.
+    # Our rule (per the desk): archive a CRM trading account IFF it was ACTIVE on MT4/5 and then
+    # DISAPPEARED — i.e. MT's weekly archival dropped it from the user list, so the sync stopped
+    # seeing an account it USED to see. The balance<$1 is MT's OWN criterion for what to archive;
+    # we just mirror the result (disappearance).
+    #   KEY: we require mt_last_seen IS NOT NULL — the account must have been seen on MT at least
+    #   once. A NULL mt_last_seen means "never seen on MT" (a brand-new account, or one on an MT
+    #   server/group this bridge doesn't cover, e.g. ECN) — that is NOT a disappearance, so we must
+    #   NOT archive it. (The old rule archived NULLs too, which wrongly hid every new ECN account.)
+    # Real accounts only (positive login). STALE_DAYS protects against a single missed sync.
     return f"""
         FROM clients c
         WHERE c.login > 0
           AND COALESCE(c.group_name,'') NOT ILIKE '%retail%'
           AND COALESCE(c.group_name,'') NOT ILIKE '%demo%'
           AND c.archived_at IS NULL
-          AND (c.mt_last_seen IS NULL OR c.mt_last_seen < NOW() - INTERVAL '{STALE_DAYS} days')
+          AND c.mt_last_seen IS NOT NULL
+          AND c.mt_last_seen < NOW() - INTERVAL '{STALE_DAYS} days'
     """
+
+
+def reactivate_on_mt(db, commit=False):
+    """Reverse side of the cross-check: an account that is BACK on MT (fresh mt_last_seen) must NOT
+    stay archived. This catches (a) accounts MT un-archived, and (b) the big one — NEW accounts
+    imported from TradeSoft that default to archive_reason='tradesoft_not_on_mt' but are actually
+    live on MT (the bridge's full user-list pull stamps their mt_last_seen). Un-archive them and mark
+    their trading_accounts active. Inherently safe: requires FRESH mt_last_seen, so a dead bridge
+    (nothing fresh) un-archives nothing."""
+    sql_where = f"archived_at IS NOT NULL AND mt_last_seen > NOW() - INTERVAL '{STALE_DAYS} days'"
+    n = db.execute(text(f"SELECT count(*) FROM clients WHERE {sql_where}")).scalar() or 0
+    by_reason = db.execute(text(
+        f"SELECT COALESCE(archive_reason,'?'), count(*) FROM clients WHERE {sql_where} GROUP BY 1")).fetchall()
+    print(f"\nOn MT again but still archived: {n:,}")
+    for reason, cnt in by_reason:
+        print(f"   {reason}: {cnt:,}")
+    if not commit:
+        print("   (dry run — pass --commit to re-activate)")
+        return {"would_reactivate": n}
+    logins = [r[0] for r in db.execute(text(f"SELECT login FROM clients WHERE {sql_where}")).fetchall()]
+    r1 = db.execute(text(
+        f"UPDATE clients SET archived_at=NULL, archive_reason=NULL WHERE {sql_where}"))
+    if logins:
+        db.execute(text("UPDATE trading_accounts SET is_active=TRUE WHERE login = ANY(:l)"), {"l": logins})
+    db.commit()
+    print(f"   RE-ACTIVATED {r1.rowcount:,} account(s).")
+    return {"reactivated": r1.rowcount}
 
 
 def run(commit=False):
     db = SessionLocal()
     try:
         ensure_schema(db)
+        # bidirectional cross-check: FIRST bring back accounts that are live on MT again, THEN
+        # archive the ones that have gone stale/absent.
+        reactivate_on_mt(db, commit=commit)
 
         # ── health guard: how many accounts did MT stamp in the last day? ──
         seen_recent = db.execute(text(
@@ -130,5 +165,13 @@ def unarchive(login):
 if __name__ == "__main__":
     if "--unarchive" in sys.argv:
         unarchive(sys.argv[sys.argv.index("--unarchive") + 1])
+    elif "--reactivate-only" in sys.argv:
+        # only the reverse pass: bring back accounts that are live on MT again (no archiving)
+        _db = SessionLocal()
+        try:
+            ensure_schema(_db)
+            reactivate_on_mt(_db, commit="--commit" in sys.argv)
+        finally:
+            _db.close()
     else:
         run(commit="--commit" in sys.argv)

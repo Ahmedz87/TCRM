@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiGet, apiPost } from './api';
+import { CT } from './crmTable';
 
 const ROLES = ['super_admin', 'admin', 'sales_manager', 'sales_agent', 'marketing', 'finance', 'risk'];
 const ROLE_LABELS: Record<string, string> = {
@@ -48,14 +49,6 @@ interface UserFormData {
 
 interface CatItem { key: string; label: string; desc: string }
 interface Category { category: string; items: CatItem[] }
-
-const thS: React.CSSProperties = {
-  padding: '9px 12px', textAlign: 'left', color: '#555', fontWeight: 500,
-  fontSize: 11, borderBottom: '1px solid #373f4d', whiteSpace: 'nowrap',
-};
-const tdS: React.CSSProperties = {
-  padding: '9px 12px', borderBottom: '1px solid #2c333e', verticalAlign: 'middle', fontSize: 12,
-};
 
 function UserModal({ user, onClose, onSave }: { user: Partial<User> | null; onClose: () => void; onSave: (data: UserFormData) => void }) {
   const [form, setForm] = useState<UserFormData>({
@@ -196,16 +189,20 @@ function RowActions({ user, onAction }: { user: User; onAction: (action: string,
             </>) : null;
           })()}
           {item('permissions', '🔐 Permissions')}
+          {item('scope', '🎯 Team scope', { color: '#00aaff' })}
           {item('edit', '✏️ Edit')}
           {sep}
+          {item('position', '💼 Change position')}
+          {item('department', '🏢 Change department')}
           {item('email', '✉️ Change email')}
           {item('phone', '📞 Change phone')}
-          {item('department', '🏢 Change department')}
           {item('photo', '🖼️ Upload photo')}
           {sep}
           {item('toggle-active', user.is_active ? '⏸️ Deactivate' : '▶️ Activate', { color: user.is_active ? '#ff8844' : '#00e5a0' })}
           {item('freeze', user.is_frozen ? '🟦 Unfreeze account' : '❄️ Freeze account', { color: '#00aaff' })}
           {item('block', user.is_blocked ? '✅ Unblock' : '⛔ Block', { color: user.is_blocked ? '#00e5a0' : '#ff4d4d' })}
+          {sep}
+          {item('delete', '🗑️ Delete user', { color: '#ff4d4d' })}
         </div>
       )}
     </div>
@@ -382,6 +379,216 @@ function fileToScaledDataURL(file: File, max = 256): Promise<string> {
   });
 }
 
+// shared modal shell (dark, centered)
+function Modal({ title, sub, onClose, children, width = 460 }: any) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }} onClick={onClose}>
+      <div style={{ background: '#2c333e', border: '1px solid #626d80', borderRadius: 14, width, maxWidth: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '16px 20px', borderBottom: '1px solid #373f4d' }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#e6ebf3' }}>{title}</div>
+            {sub && <div style={{ fontSize: 11, color: '#8b96a8', marginTop: 3 }}>{sub}</div>}
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#8b96a8', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>✕</button>
+        </div>
+        <div style={{ padding: 20, overflowY: 'auto' }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── TEAM-LEADER / MANAGER DATA SCOPE (requirement #2) ──
+function TeamScopeModal({ user, onClose, onSaved }: { user: User; onClose: () => void; onSaved: () => void }) {
+  const [mode, setMode] = useState<'team' | 'self' | 'none'>('team');
+  const [sections, setSections] = useState<Record<string, boolean>>({ clients: true, leads: true, ibs: true, calls: true });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const SECS: [string, string, string][] = [
+    ['clients', '👥 Clients', 'the Clients page'],
+    ['leads', '🌱 Leads', 'the Leads page'],
+    ['ibs', '🤝 IBs', 'the IB System pages'],
+    ['calls', '📞 Calls QA', 'call quality reports'],
+  ];
+  useEffect(() => {
+    apiGet(`/users/${user.id}/scope`).then((d: any) => {
+      setMode((d.scope_mode || 'team'));
+      const on = (d.sections || []);
+      // empty list from backend = ALL sections allowed
+      setSections(on.length ? { clients: on.includes('clients'), leads: on.includes('leads'), ibs: on.includes('ibs'), calls: on.includes('calls') }
+                            : { clients: true, leads: true, ibs: true, calls: true });
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [user.id]);
+  const allOn = SECS.every(([k]) => sections[k]);
+  const save = async () => {
+    setSaving(true);
+    // if every section is ticked, send [] (means "all") — cleaner + future-proof
+    const secs = allOn ? [] : SECS.filter(([k]) => sections[k]).map(([k]) => k);
+    try {
+      const r: any = await apiPost(`/users/${user.id}/scope`, { scope_mode: mode, sections: secs });
+      if (r && r.detail && !r.ok) { alert(r.detail); setSaving(false); return; }
+      onSaved(); onClose();
+    } catch (e: any) { alert(e?.detail || 'Failed to save'); setSaving(false); }
+  };
+  const MODES: [string, string, string][] = [
+    ['team', '👥 Team + themselves', 'Sees their own book AND everyone reporting to them (default for a leader).'],
+    ['self', '👤 Only their own book', 'Sees only records assigned to them — not their team.'],
+    ['none', '🚫 Nothing', 'Sees no client/lead/IB/call data at all.'],
+  ];
+  return (
+    <Modal title={`Team scope — ${user.full_name}`} sub="What data this team leader / manager can see" onClose={onClose} width={480}>
+      {loading ? <div style={{ color: '#8b96a8', fontSize: 12, padding: 12 }}>Loading…</div> : (<>
+        <div style={{ fontSize: 11, color: '#8b96a8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>Whose data</div>
+        {MODES.map(([k, label, desc]) => (
+          <label key={k} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', marginBottom: 8, borderRadius: 9, cursor: 'pointer',
+            background: mode === k ? 'rgba(0,170,255,0.1)' : '#373f4d', border: `1px solid ${mode === k ? '#00aaff' : '#4f596b'}` }}>
+            <input type="radio" checked={mode === k} onChange={() => setMode(k as any)} style={{ marginTop: 2 }} />
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#e6ebf3' }}>{label}</div>
+              <div style={{ fontSize: 11, color: '#8b96a8', marginTop: 2 }}>{desc}</div>
+            </div>
+          </label>
+        ))}
+        <div style={{ fontSize: 11, color: '#8b96a8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', margin: '16px 0 8px' }}>Which pages {mode === 'none' && '(disabled — sees nothing)'}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, opacity: mode === 'none' ? .4 : 1, pointerEvents: mode === 'none' ? 'none' : 'auto' }}>
+          {SECS.map(([k, label, desc]) => (
+            <label key={k} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '9px 11px', borderRadius: 8, cursor: 'pointer',
+              background: sections[k] ? 'rgba(0,229,160,0.09)' : '#373f4d', border: `1px solid ${sections[k] ? '#00e5a0' : '#4f596b'}` }}>
+              <input type="checkbox" checked={!!sections[k]} onChange={e => setSections(s => ({ ...s, [k]: e.target.checked }))} />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#e6ebf3' }}>{label}</div>
+                <div style={{ fontSize: 9.5, color: '#8b96a8' }}>{desc}</div>
+              </div>
+            </label>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+          <button onClick={save} disabled={saving} style={{ flex: 1, padding: '10px', background: '#00aaff', border: 'none', borderRadius: 9, color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{saving ? 'Saving…' : 'Save scope'}</button>
+          <button onClick={onClose} style={{ padding: '10px 16px', background: '#373f4d', border: '1px solid #626d80', borderRadius: 9, color: '#cdd6e4', fontSize: 12.5, cursor: 'pointer' }}>Cancel</button>
+        </div>
+      </>)}
+    </Modal>
+  );
+}
+
+// ── CHANGE POSITION (title, and optionally apply a defined position's rules) ──
+function PositionPicker({ user, onClose, onReload, onManage }: { user: User; onClose: () => void; onReload: () => void; onManage: () => void }) {
+  const [title, setTitle] = useState(user.title || '');
+  const [positions, setPositions] = useState<any[]>([]);
+  const [used, setUsed] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { apiGet('/users/positions').then((d: any) => { setPositions(d.positions || []); setUsed(d.used_titles || []); }).catch(() => {}); }, []);
+  const saveTitle = async () => {
+    setBusy(true);
+    try { await apiPost(`/users/${user.id}/title`, { value: title.trim() }); onReload(); onClose(); }
+    catch (e: any) { alert(e?.detail || 'Failed'); setBusy(false); }
+  };
+  const applyPos = async (name: string, ruleCount: number) => {
+    if (!window.confirm(`Set ${user.full_name}'s position to "${name}" and REPLACE their permission rules with this position's ${ruleCount} default rules?`)) return;
+    setBusy(true);
+    try { await apiPost(`/users/${user.id}/apply-position`, { value: name }); onReload(); onClose(); }
+    catch (e: any) { alert(e?.detail || 'Failed'); setBusy(false); }
+  };
+  return (
+    <Modal title={`Change position — ${user.full_name}`} sub="Set a job title, or apply a defined position (title + its default rules)" onClose={onClose} width={460}>
+      <div style={{ fontSize: 11, color: '#8b96a8', marginBottom: 5 }}>Position / title</div>
+      <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Team Leader, Sales Specialist" list="pos-titles"
+        style={{ width: '100%', padding: '9px 12px', background: '#373f4d', border: '1px solid #626d80', borderRadius: 8, color: '#e0e0e0', fontSize: 12.5, outline: 'none' }} />
+      <datalist id="pos-titles">{Array.from(new Set([...positions.map(p => p.name), ...used])).map(t => <option key={t} value={t} />)}</datalist>
+      <button onClick={saveTitle} disabled={busy || !title.trim()} style={{ width: '100%', marginTop: 10, padding: '9px', background: '#00e5a0', border: 'none', borderRadius: 8, color: '#000', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: (busy || !title.trim()) ? .5 : 1 }}>Save title only</button>
+
+      {positions.length > 0 && (<>
+        <div style={{ fontSize: 11, color: '#8b96a8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', margin: '18px 0 8px' }}>Or apply a defined position</div>
+        {positions.map((p: any) => (
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', marginBottom: 6, borderRadius: 8, background: '#373f4d', border: '1px solid #4f596b' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#e6ebf3' }}>{p.name}</div>
+              <div style={{ fontSize: 10.5, color: '#8b96a8' }}>{p.count} default rule{p.count === 1 ? '' : 's'}</div>
+            </div>
+            <button onClick={() => applyPos(p.name, p.count)} disabled={busy} style={{ padding: '6px 13px', background: '#00aaff', border: 'none', borderRadius: 7, color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>Apply</button>
+          </div>
+        ))}
+      </>)}
+      <button onClick={onManage} style={{ width: '100%', marginTop: 12, padding: '8px', background: 'none', border: '1px dashed #626d80', borderRadius: 8, color: '#8b96a8', fontSize: 11.5, cursor: 'pointer' }}>⚙ Manage positions & their rules…</button>
+    </Modal>
+  );
+}
+
+// ── POSITIONS MANAGER — create/edit positions + their default rule sets ──
+function PositionsManager({ onClose }: { onClose: () => void }) {
+  const [positions, setPositions] = useState<any[]>([]);
+  const [catalog, setCatalog] = useState<Category[]>([]);
+  const [editing, setEditing] = useState<any | null>(null);   // {name, keys:Set} being edited/created
+  const [saving, setSaving] = useState(false);
+  const load = () => apiGet('/users/positions').then((d: any) => setPositions(d.positions || [])).catch(() => {});
+  useEffect(() => { load(); apiGet('/users/permissions/catalog').then((d: any) => setCatalog(d.catalog || [])).catch(() => {}); }, []);
+  const startNew = () => setEditing({ name: '', keys: new Set<string>() });
+  const startEdit = (p: any) => setEditing({ id: p.id, name: p.name, keys: new Set<string>(p.keys) });
+  const toggleKey = (k: string) => setEditing((e: any) => { const ks = new Set<string>(e.keys); ks.has(k) ? ks.delete(k) : ks.add(k); return { ...e, keys: ks }; });
+  const toggleCat = (keys: string[], on: boolean) => setEditing((e: any) => { const ks = new Set<string>(e.keys); keys.forEach(k => on ? ks.add(k) : ks.delete(k)); return { ...e, keys: ks }; });
+  const savePos = async () => {
+    if (!editing.name.trim()) { alert('Position name required'); return; }
+    setSaving(true);
+    try { await apiPost('/users/positions/save', { name: editing.name.trim(), keys: Array.from(editing.keys) }); setEditing(null); await load(); }
+    catch (e: any) { alert(e?.detail || 'Failed'); } finally { setSaving(false); }
+  };
+  const del = async (p: any) => {
+    if (!window.confirm(`Delete the position "${p.name}"? (Users keep their current title/rules — only the template is removed.)`)) return;
+    try { await apiPost(`/users/positions/${p.id}/delete`, {}); await load(); } catch (e: any) { alert(e?.detail || 'Failed'); }
+  };
+  if (editing) {
+    return (
+      <Modal title={editing.id ? `Edit position — ${editing.name}` : 'New position'} sub="Name it and tick the default rules users in this position get" onClose={() => setEditing(null)} width={640}>
+        <input value={editing.name} onChange={e => setEditing((s: any) => ({ ...s, name: e.target.value }))} placeholder="Position name (e.g. Retention Agent)"
+          style={{ width: '100%', padding: '9px 12px', background: '#373f4d', border: '1px solid #626d80', borderRadius: 8, color: '#e0e0e0', fontSize: 13, outline: 'none', marginBottom: 14 }} />
+        <div style={{ fontSize: 11, color: '#8b96a8', marginBottom: 10 }}>{editing.keys.size} rule{editing.keys.size === 1 ? '' : 's'} selected</div>
+        <div style={{ maxHeight: '48vh', overflowY: 'auto', display: 'grid', gap: 12 }}>
+          {catalog.map(cat => {
+            const keys = cat.items.map(i => i.key);
+            const allOn = keys.every(k => editing.keys.has(k));
+            return (
+              <div key={cat.category}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#cdd6e4' }}>{cat.category}</span>
+                  <button onClick={() => toggleCat(keys, !allOn)} style={{ fontSize: 10.5, color: '#00aaff', background: 'none', border: 'none', cursor: 'pointer' }}>{allOn ? 'Clear' : 'All'}</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                  {cat.items.map(it => (
+                    <label key={it.key} title={it.desc} style={{ display: 'flex', gap: 7, alignItems: 'center', padding: '5px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 11,
+                      background: editing.keys.has(it.key) ? 'rgba(0,229,160,0.08)' : '#2c333e', border: `1px solid ${editing.keys.has(it.key) ? '#00e5a055' : '#373f4d'}` }}>
+                      <input type="checkbox" checked={editing.keys.has(it.key)} onChange={() => toggleKey(it.key)} />
+                      <span style={{ color: '#cdd6e4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <button onClick={savePos} disabled={saving} style={{ flex: 1, padding: '10px', background: '#00e5a0', border: 'none', borderRadius: 9, color: '#000', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{saving ? 'Saving…' : 'Save position'}</button>
+          <button onClick={() => setEditing(null)} style={{ padding: '10px 16px', background: '#373f4d', border: '1px solid #626d80', borderRadius: 9, color: '#cdd6e4', fontSize: 12.5, cursor: 'pointer' }}>Cancel</button>
+        </div>
+      </Modal>
+    );
+  }
+  return (
+    <Modal title="Positions" sub="Named job positions with a default rule set you can apply to users" onClose={onClose} width={520}>
+      <button onClick={startNew} style={{ width: '100%', marginBottom: 14, padding: '10px', background: '#00e5a0', border: 'none', borderRadius: 9, color: '#000', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>+ New position</button>
+      {positions.length === 0 && <div style={{ color: '#8b96a8', fontSize: 12, textAlign: 'center', padding: 20 }}>No positions defined yet — create one to reuse a rule set across users.</div>}
+      {positions.map((p: any) => (
+        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', marginBottom: 8, borderRadius: 9, background: '#373f4d', border: '1px solid #4f596b' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#e6ebf3' }}>{p.name}</div>
+            <div style={{ fontSize: 11, color: '#8b96a8' }}>{p.count} default rule{p.count === 1 ? '' : 's'}</div>
+          </div>
+          <button onClick={() => startEdit(p)} style={{ padding: '6px 12px', background: '#2c333e', border: '1px solid #626d80', borderRadius: 7, color: '#cdd6e4', fontSize: 11.5, cursor: 'pointer' }}>Edit</button>
+          <button onClick={() => del(p)} style={{ padding: '6px 10px', background: 'none', border: '1px solid #ff4d4d55', borderRadius: 7, color: '#ff6b6b', fontSize: 11.5, cursor: 'pointer' }}>Delete</button>
+        </div>
+      ))}
+    </Modal>
+  );
+}
+
 export default function UserManagement() {
   const [users, setUsers]       = useState<User[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -390,6 +597,9 @@ export default function UserManagement() {
   const [showModal, setShowModal]   = useState(false);
   const [editUser, setEditUser]     = useState<Partial<User> | null>(null);
   const [permUser, setPermUser]     = useState<User | null>(null);
+  const [scopeUser, setScopeUser]   = useState<User | null>(null);   // team-leader/manager scope modal
+  const [posUser, setPosUser]       = useState<User | null>(null);   // change-position modal
+  const [showPositions, setShowPositions] = useState(false);         // positions manager modal
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoTargetRef = useRef<User | null>(null);
 
@@ -466,6 +676,18 @@ export default function UserManagement() {
         if (v !== null) await callAndReload(`/users/${u.id}/department`, { value: v.trim() });
         break;
       }
+      case 'position':
+        setPosUser(u);
+        break;
+      case 'scope':
+        setScopeUser(u);
+        break;
+      case 'delete': {
+        if (!window.confirm(`Delete ${u.full_name}?\n\nThis permanently removes the user. Their team is re-parented to their manager and their clients/leads are unassigned.`)) break;
+        if (!window.confirm(`This CANNOT be undone. Really delete ${u.full_name}?`)) break;
+        await callAndReload(`/users/${u.id}/delete`, {});
+        break;
+      }
       case 'photo':
         photoTargetRef.current = u;
         fileInputRef.current?.click();
@@ -523,6 +745,10 @@ export default function UserManagement() {
           <option value="">All roles</option>
           {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]} ({roleCounts[r] || 0})</option>)}
         </select>
+        <button onClick={() => setShowPositions(true)}
+          style={{ padding: '6px 14px', background: '#2c333e', border: '1px solid #626d80', borderRadius: 8, color: '#cdd6e4', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          💼 Positions
+        </button>
         <button onClick={() => { setEditUser(null); setShowModal(true); }}
           style={{ padding: '6px 16px', background: '#00e5a0', border: 'none', borderRadius: 8, color: '#000', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
           + Add user
@@ -544,11 +770,11 @@ export default function UserManagement() {
 
       {/* Table */}
       <div style={{ background: '#2c333e', border: '1px solid #4f596b', borderRadius: 12, overflow: 'visible' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table style={CT.table}>
           <thead>
-            <tr>
+            <tr style={CT.theadTr}>
               {['Name', 'Email', 'Role', 'Perms', 'Clients assigned', 'Last login', 'Created', 'Status', 'Actions'].map(h => (
-                <th key={h} style={thS}>{h}</th>
+                <th key={h} style={CT.th(false, h === 'Clients assigned' ? 'center' : 'left')}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -560,28 +786,28 @@ export default function UserManagement() {
             ) : filtered.map(u => {
               const [bg, col] = ROLE_COLORS[u.role] || ['#373f4d', '#555'];
               return (
-                <tr key={u.id}>
-                  <td style={tdS}>
+                <tr key={u.id} style={CT.row()}>
+                  <td style={CT.td}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Avatar user={u} />
                       <span style={{ fontWeight: 500 }}>{u.full_name}</span>
                     </div>
                   </td>
-                  <td style={{ ...tdS, color: '#666' }}>{u.email}</td>
-                  <td style={tdS}>
+                  <td style={{ ...CT.td, color: '#666' }}>{u.email}</td>
+                  <td style={CT.td}>
                     <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 99, background: bg, color: col, fontWeight: 500 }}>
                       {ROLE_LABELS[u.role] || u.role}
                     </span>
                   </td>
-                  <td style={tdS}>
+                  <td style={CT.td}>
                     <span title="Permissions granted" style={{ fontSize: 11, color: (u.perm_count || 0) > 0 ? '#cc88ff' : '#555', whiteSpace: 'nowrap' }}>
                       🔐 {u.perm_count || 0}
                     </span>
                   </td>
-                  <td style={{ ...tdS, color: '#00aaff', textAlign: 'center' }}>{u.clients_assigned || 0}</td>
-                  <td style={{ ...tdS, color: '#555' }}>{u.last_login ? new Date(u.last_login).toLocaleDateString() : '—'}</td>
-                  <td style={{ ...tdS, color: '#555' }}>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
-                  <td style={tdS}>
+                  <td style={{ ...CT.td, color: '#00aaff', textAlign: 'center' }}>{u.clients_assigned || 0}</td>
+                  <td style={{ ...CT.td, color: '#555' }}>{u.last_login ? new Date(u.last_login).toLocaleDateString('en-GB') : '—'}</td>
+                  <td style={{ ...CT.td, color: '#555' }}>{u.created_at ? new Date(u.created_at).toLocaleDateString('en-GB') : '—'}</td>
+                  <td style={CT.td}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 99, background: u.is_active ? '#0e3a2a' : '#373f4d', color: u.is_active ? '#00e5a0' : '#555', fontWeight: 500 }}>
                         {u.is_active ? 'Active' : 'Inactive'}
@@ -594,7 +820,7 @@ export default function UserManagement() {
                       )}
                     </div>
                   </td>
-                  <td style={tdS}>
+                  <td style={CT.td}>
                     <RowActions user={u} onAction={handleAction} />
                   </td>
                 </tr>
@@ -620,6 +846,15 @@ export default function UserManagement() {
           onSaved={(count) => setUsers(us => us.map(x => x.id === permUser.id ? { ...x, perm_count: count } : x))}
         />
       )}
+
+      {/* Team-leader / manager data scope (requirement #2) */}
+      {scopeUser && <TeamScopeModal user={scopeUser} onClose={() => setScopeUser(null)} onSaved={load} />}
+
+      {/* Change position (title + optional apply-a-defined-position rules) */}
+      {posUser && <PositionPicker user={posUser} onClose={() => setPosUser(null)} onReload={load} onManage={() => { setPosUser(null); setShowPositions(true); }} />}
+
+      {/* Positions manager — create/edit positions + their default rules */}
+      {showPositions && <PositionsManager onClose={() => setShowPositions(false)} />}
     </div>
   );
 }

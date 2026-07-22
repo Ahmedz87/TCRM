@@ -4,7 +4,7 @@ System 1: Bonus Hedge Abuse (6 layers)
 System 2: Swap Arbitrage Abuse (5 signals)  
 System 3: Toxic Flow (Night Latency + General Latency + News + Midnight Exotic)
 """
-from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, BackgroundTasks, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import get_db
@@ -81,14 +81,16 @@ def network_score_for_logins(db, logins: list) -> int:
     """), {"l": ll}).scalar() or 0
     if cids: score += 50
 
+    # IP: a SINGLE shared IP is noise (mobile/NAT) — require 2+ DISTINCT shared IPs (relation-engine rule)
     ips = db.execute(text("""
         SELECT COUNT(*) FROM (
             SELECT identifier_value FROM account_identifiers
-            WHERE login=ANY(:l) AND identifier_type='ip'
+            WHERE login=ANY(:l) AND identifier_type='ip' AND identifier_value NOT IN ('0','')
             GROUP BY identifier_value HAVING COUNT(DISTINCT login)>1
         ) x
     """), {"l": ll}).scalar() or 0
-    if ips: score += 35
+    if ips >= 2: score += 35
+    elif ips == 1: score += 10
 
     names = db.execute(text("""
         SELECT COUNT(DISTINCT name) FROM clients
@@ -96,11 +98,12 @@ def network_score_for_logins(db, logins: list) -> int:
     """), {"l": ll}).scalar() or 0
     if names == 1: score += 30
 
+    # IB matters: accounts all referred by the SAME IB is a real connection factor
     ibs = db.execute(text("""
         SELECT COUNT(DISTINCT agent) FROM clients
         WHERE login=ANY(:l) AND agent>0
     """), {"l": ll}).scalar() or 0
-    if ibs == 1: score += 15
+    if ibs == 1: score += 20
 
     return min(score, 100)
 
@@ -1012,6 +1015,8 @@ def get_case_detail(case_id: int, db: Session = Depends(get_db), current_user: m
         } for a in accounts],
         "proof_trades": proof,
         "connections": _case_connections(db, logins) if len(logins) > 1 else [],
+        # ONE relation engine: are the case accounts connected? + each account's wider network
+        "relations": abuse_case_relations(db, logins),
         "evidence_obj": evidence_obj,
     }
 
@@ -1111,6 +1116,90 @@ def case_network(db, logins, abuse_type):
     return {"nodes": node_objs, "edges": edge_objs}
 
 
+def abuse_case_relations(db, logins):
+    """The ONE relation engine, applied to an abuse case. Returns:
+       connected      : are the case's accounts operated by connected parties?
+       same_person    : groups of case logins that are the SAME customer (one person's accounts)
+       inter          : cross-customer connections BETWEEN the case's accounts (device/2+IP/IB/wallet…)
+       accounts       : per trading account — its own wider network (count + top connections)
+    Uses entity_relations / entity_status (relation_engine), so IP means 2+ shared IPs, IB counts, etc.
+    — the same signals as the network page, not the abuse system's old ad-hoc IP=any-shared rule."""
+    import connection_engine as CE
+    from collections import defaultdict
+    logins = list(dict.fromkeys(int(x) for x in logins if str(x).lstrip("-").isdigit()))
+    if not logins:
+        return {"connected": False, "same_person": [], "inter": [], "accounts": []}
+    rows = db.execute(text("SELECT login, customer_no, name FROM clients WHERE login = ANY(:l)"),
+                      {"l": logins}).fetchall()
+    lc = {r[0]: (str(r[1]) if r[1] else None, r[2]) for r in rows}
+    ent_of = {lg: (f"C{lc[lg][0]}" if lc.get(lg) and lc[lg][0] else None) for lg in logins}
+    ents = list({e for e in ent_of.values() if e})
+    ent_login = {}
+    for lg in logins:                       # a representative case-login per customer entity
+        e = ent_of.get(lg)
+        if e and e not in ent_login:
+            ent_login[e] = lg
+
+    # same person = case logins sharing a customer_no (one person's multiple trading accounts)
+    bycust = defaultdict(list)
+    for lg in logins:
+        cn = (lc.get(lg) or (None,))[0]
+        if cn:
+            bycust[cn].append(lg)
+    same_person = [sorted(v) for v in bycust.values() if len(v) > 1]
+
+    # inter-connection: entity_relations edges among the case's DISTINCT customers
+    inter = []
+    if len(ents) > 1:
+        for a, b, signals, top, strength in db.execute(text("""
+                SELECT ent_a, ent_b, signals, top_reason, strength FROM entity_relations
+                WHERE ent_a = ANY(:e) AND ent_b = ANY(:e)"""), {"e": ents}).fetchall():
+            inter.append({
+                "login_a": ent_login.get(a), "login_b": ent_login.get(b), "strength": strength,
+                "top_reason": top,
+                "reasons": [{"type": s, "label": CE.SIGNAL_LABEL.get(s, s)} for s in (signals or [])]})
+
+    connected = bool(same_person) or bool(inter)
+
+    # per-account wider network (each trading account's own connections, from the ledger)
+    case_ents = set(ents)
+    accounts = []
+    for lg in logins:
+        e = ent_of.get(lg)
+        cn, name = lc.get(lg, (None, None))
+        n_conn, score, top, conns = 0, 0, "", []
+        if e:
+            st = db.execute(text("SELECT network_score, top_reason, n_related FROM entity_status WHERE ent=:e"),
+                            {"e": e}).fetchone()
+            if st:
+                score, top, n_conn = int(st[0] or 0), st[1] or "", int(st[2] or 0)
+            erows = db.execute(text("""
+                SELECT CASE WHEN ent_a=:e THEN ent_b ELSE ent_a END AS o, signals, strength, top_reason
+                FROM entity_relations WHERE ent_a=:e OR ent_b=:e ORDER BY decisive DESC LIMIT 40"""),
+                {"e": e}).fetchall()
+            oents = [r[0] for r in erows]
+            nm = {}
+            ocns = [o[1:] for o in oents if o.startswith("C")]
+            olds = [int(o[1:]) for o in oents if o.startswith("L")]
+            if ocns:
+                for c2, nm2, lg2 in db.execute(text("""SELECT DISTINCT ON (customer_no) customer_no, name, login
+                        FROM clients WHERE customer_no = ANY(:c) ORDER BY customer_no, COALESCE(total_deposits,0) DESC"""),
+                        {"c": ocns}).fetchall():
+                    nm[f"C{c2}"] = (nm2, lg2, "client")
+            if olds:
+                for lid, fn in db.execute(text("SELECT id, full_name FROM leads WHERE id = ANY(:l)"), {"l": olds}).fetchall():
+                    nm[f"L{lid}"] = (fn, None, "lead")
+            for o, signals, strength, otop in erows:
+                m = nm.get(o, (o, None, "client"))
+                conns.append({"name": m[0] or o, "login": m[1], "kind": m[2],
+                              "in_this_case": o in case_ents, "strength": strength, "top_reason": otop,
+                              "reasons": [{"type": s, "label": CE.SIGNAL_LABEL.get(s, s)} for s in (signals or [])]})
+        accounts.append({"login": lg, "name": name, "customer_no": cn,
+                         "network_score": score, "n_connections": n_conn, "top_reason": top,
+                         "connections": conns})
+    return {"connected": connected, "same_person": same_person, "inter": inter, "accounts": accounts}
+
+
 def _case_connections(db, logins):
     """Return the network links between the accounts in this case (shared IP/CID/etc)."""
     rows = db.execute(text("""
@@ -1154,23 +1243,37 @@ def _case_connections(db, logins):
 
 
 @router.post("/cases/{case_id}/action")
-def take_action(case_id: int, data: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def take_action(case_id: int, data: dict, request: Request, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # go-live hardening: freezing accounts / resolving cases is a back-office decision.
+    _role = (getattr(current_user, "role", "") or "").lower()
+    if _role not in ("super_admin", "admin", "backoffice", "director"):
+        raise HTTPException(status_code=403, detail="Only back-office can action abuse cases")
     action = data.get("action")
     status_map = {"freeze":"frozen","hold_wd":"hold_wd","resolve":"resolved","clear":"resolved","review":"reviewing"}
     new_status = status_map.get(action, "reviewing")
+    _old = db.execute(text("SELECT status FROM abuse_cases WHERE id=:id"), {"id":case_id}).scalar()
     db.execute(text("UPDATE abuse_cases SET status=:s, updated_at=NOW() WHERE id=:id"), {"s":new_status,"id":case_id})
+    frozen_logins = []
     if action == "freeze":
         row = db.execute(text("SELECT all_logins, login_a FROM abuse_cases WHERE id=:id"), {"id":case_id}).fetchone()
-        logins = parse_logins(row[0], row[1]) if row else []
-        for login in logins:
+        frozen_logins = parse_logins(row[0], row[1]) if row else []
+        for login in frozen_logins:
             db.execute(text("UPDATE clients SET is_flagged=TRUE, flag_reason='abuse_freeze' WHERE login=:l"), {"l":login})
             db.execute(text("UPDATE trading_accounts SET is_active=FALSE WHERE login=:l"), {"l":login})
     db.commit()
+    # immutable audit trail: freezing accounts / clearing an abuse case is a sensitive action
+    import audit
+    audit.log(db, current_user, f"abuse_{action}", "abuse_case", case_id, old=_old,
+              new=new_status + (f" | froze logins {frozen_logins}" if frozen_logins else ""),
+              request=request)
     return {"message": f"Action '{action}' applied", "status": new_status}
 
 
 @router.post("/run-detection")
 def run_detection(background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # go-live hardening: a 3-5 min full engine run over 17M deals — back-office only.
+    if (getattr(current_user, "role", "") or "").lower() not in ("super_admin", "admin", "backoffice", "director"):
+        raise HTTPException(status_code=403, detail="Back-office only")
     def task():
         from database import SessionLocal
         _db = SessionLocal()

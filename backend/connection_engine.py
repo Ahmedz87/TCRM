@@ -24,26 +24,58 @@ from collections import defaultdict
 from sqlalchemy import text
 
 SIGNAL_WEIGHT = {
-    "cid": 1.00, "mqid": 0.97, "email": 0.92, "similar_email": 0.80, "phone": 0.90, "family": 0.90,
-    # SAME PAYMENT SENDER (same Qi card / same wallet funding both accounts) = strong financial link,
-    # desk-set to 0.50 = 50 points = 5/10 on its own (Jul 2026). NOT the same as sharing a METHOD.
-    "pay_sender": 0.50,
-    # reweighted per desk (Jul 2026): IB/agent and city matter MORE than IP; IP is the weakest signal
-    "ib": 0.55, "city": 0.45, "payment": 0.55, "ip": 0.30,
+    "cid": 1.00, "mqid": 0.97, "similar_email": 0.80,
+    # EXACT phone / email are NOT connection factors: two different users can't share them — same phone
+    # or same email = the SAME user (one customer), so they're handled by customer_no, not shown as a
+    # "connection". Only SIMILAR email (different-but-related inbox) links two different people.
+    # SAME PAYMENT SENDER = strong financial/family link. For Qi this is the same SENDER NAME on the
+    # receipt (NOT the card number — cards rotate / are shared by exchangers); zain = sender wallet.
+    "pay_sender": 0.85,
+    "ib": 0.55, "city": 0.45,
+    "payment": 0.20,   # same METHOD (e.g. both use Zain Cash) is near-noise — corroboration only
+    # IP is the WEAKEST thing we hold and is NEVER a link on its own (see IP_NEEDS_CORROBORATION):
+    # Iraq has no static IPs and every CRM + MT4/MT5 login stamps another one, so two strangers share
+    # IPs constantly. It only counts next to another factor (city/IB/email/device)…
+    "ip": 0.30,
+    # …or when the TIMING lines up: the same IP that registered two accounts within hours, or funded
+    # two first-deposits in the same window, is the same person/desk sitting at one connection.
+    "ip_coreg": 0.85,
+    "ip_codep": 0.80,
+    # (kept for legacy callers; not fired as connection signals anymore)
+    "email": 0.92, "phone": 0.90, "family": 0.90,
 }
 SIGNAL_LABEL = {
     "cid": "Same device (CID)", "mqid": "Same device (MetaQuotes ID)", "email": "Same email",
     "similar_email": "Similar email", "phone": "Same phone", "family": "Family / same phone",
-    "pay_sender": "Same payment sender (same Qi card / wallet)",
+    "pay_sender": "Same payment sender (same Qi sender name / wallet)",
     "ip": "Same IP address", "payment": "Same payment method", "ib": "Same IB / agent", "city": "Same city",
+    "ip_coreg": "Same IP + registered at the same time",
+    "ip_codep": "Same IP + first deposit in the same period",
+    "reg_period": "Registered in the same period",
+    "dep_period": "First deposit in the same period",
+    "family_l1": "Family (direct — brother / parent / child)",
+    "family_l2": "Family (extended)",
+    "ip1": "Same IP address", "ip2": "Same IP (2 shared)", "ip3": "Same IP (3+ shared)",
+    "email3": "Same / near-identical email", "email2": "Similar email", "email1": "Loosely similar email",
 }
-# Signal display priority — used to pick the headline reason.
-SIGNAL_ORDER = ["cid", "mqid", "email", "similar_email", "family", "phone", "pay_sender", "ib", "payment", "ip", "city"]
+# Signal display priority — used to pick the headline reason (strong → weak).
+SIGNAL_ORDER = ["cid", "mqid", "family_l1", "pay_sender", "ip3", "email3", "ip2", "email2",
+                "similar_email", "family_l2", "ib", "city", "reg_period", "dep_period", "email1",
+                "payment", "ip1", "ip_coreg", "ip_codep", "ip", "family", "phone", "email", "name"]
 
-# Connection-tab ORDER requested by the desk: device(CID) first, then IB, City, Family, same-sender,
-# Email, IP, Payment. Lower number = shown first.
-LINK_PRIORITY = {"cid": 1, "mqid": 1, "ib": 2, "city": 3, "family": 4, "phone": 4, "pay_sender": 3,
-                 "email": 5, "similar_email": 5, "payment": 6, "ip": 7, "name": 8}  # IP lowest
+# Connection-tab ORDER: device(CID) → family → same-card → 3+IP/same-email → 2IP → … → single IP.
+LINK_PRIORITY = {"cid": 1, "mqid": 1, "family_l1": 2, "pay_sender": 3, "ip3": 4, "email3": 4,
+                 "ip2": 5, "email2": 6, "similar_email": 6, "family_l2": 7, "ib": 8, "city": 9,
+                 "reg_period": 10, "dep_period": 10, "email1": 11, "payment": 12, "ip1": 13,
+                 "ip_coreg": 13, "ip_codep": 13, "ip": 13, "family": 14, "phone": 14, "email": 14, "name": 15}
+
+# ── IP RULE (Jul 2026 desk rule) ────────────────────────────────────────────────────────────────
+# A shared IP ALONE never links two people. It links them only when a second factor agrees, or when
+# the timing matches: registered from the same IP within IP_COREG_HOURS, or first-deposited from the
+# same IP within IP_CODEP_HOURS (that pattern is a real co-located signup/funding, esp. around FTD).
+IP_COREG_HOURS = 72        # ±72h — co-registration from one IP (desk-set Jul 2026)
+IP_CODEP_HOURS = 24 * 7    # ±7 days — co-funding from one IP (deposits cluster over a longer window)
+IP_ONLY = {"ip"}          # a candidate whose signals are only this is NOT a connection
 
 
 def _norm_name(s):
@@ -64,6 +96,54 @@ def _norm_email(e):
     loc = e.split("@", 1)[0] if "@" in e else e
     return loc.split("+", 1)[0].replace(".", "")
 
+# The email "core" = the normalised local part with the DIGITS stripped (ali1990 -> ali).
+def _norm_email_core_sql(col):
+    return "regexp_replace(%s, '[0-9]', '', 'g')" % _norm_email_sql(col)
+
+# COMMON-NAME GUARD (Jul 2026 desk rule). In Iraq/the Arab world millions share a first name, so
+# ali1990@x / ali2005@y / mohammedi1994@z are NOT relatives — ~89% of similar-email pairs in this DB
+# come from such cores. A core shared by >= this many DIFFERENT people is treated as NOT identifying:
+# a similar-email match on it only counts when CORROBORATED by same city / IP / IB. Distinctive cores
+# (a real surname shared by 2-4 people) still link on their own. Data-driven, so it also catches
+# non-name junk like 'souriahost', 'iraqx', 'tnfx'. Table built by build_network_scores.py.
+COMMON_CORE_MIN_PEOPLE = 5
+# signals that can corroborate a common-name email match (anything real that ties the two people)
+EMAIL_CORROBORATORS = {"cid", "mqid", "ip", "ib", "city", "pay_sender"}
+# …but a MEGA-city is not corroboration: ~1/3 of the book is Baghdad, so "both named Ali AND both in
+# Baghdad" is still two strangers. Baghdad is excluded as a corroborator; any smaller city counts.
+# (Cities are compared on the CANONICAL name — clients.city_canon, build_city_canon.py — because the
+# field is free text: Erbil/Arbil/Irbil, Baghdad/Bagdad/بغداد, Basra/Basrah/Basraa all collapse to one.)
+WEAK_CITIES = {"baghdad"}
+
+
+def _core_variants(core):
+    """The core plus its 1-2 trailing-letter-stripped forms, so a decorated common token is still
+    caught: iraq1224x -> core 'iraqx' -> 'iraq' (common). Keeps real surnames safe (alialwan -> 'ali'
+    only after stripping 5 chars, which we never do)."""
+    out = [core]
+    for k in (1, 2):
+        if len(core) - k >= 3:
+            out.append(core[:-k])
+    return out
+
+
+def core_is_common(core, common_set):
+    """Pure form of the guard for bulk jobs that already hold the common-core set."""
+    if not core or len(core) < 3:
+        return True
+    return any(v in common_set for v in _core_variants(core))
+
+
+def is_common_core(db, core):
+    """True if this email core is a common name / generic token (not identifying on its own)."""
+    if not core or len(core) < 3:
+        return True          # too short to identify anyone
+    try:
+        return db.execute(text("SELECT 1 FROM common_email_cores WHERE core = ANY(:c) LIMIT 1"),
+                          {"c": _core_variants(core)}).scalar() is not None
+    except Exception:
+        return False         # table not built yet -> behave as before
+
 # IP / device tokens shared by more than this many logins are treated as noise (NAT, shared PC bank).
 MAX_TOKEN_FANOUT = 25
 # A payment sender (Qi card / wallet) shared by more than this many clients is a money exchanger /
@@ -80,6 +160,27 @@ def _table_exists(db, name):
 def _phone9(p):
     d = re.sub(r"[^0-9]", "", p or "")
     return d[-9:] if len(d) >= 9 else d
+
+
+def _ts(v):
+    """Parse an ISO date/datetime string (reg_date / first_deposit_at are VARCHAR) -> datetime|None."""
+    if not v:
+        return None
+    s = str(v).strip()[:19].replace("T", " ")
+    for f in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return __import__("datetime").datetime.strptime(s[:len(f) + 2] if f.endswith("S") else s[:10], f)
+        except Exception:
+            continue
+    return None
+
+
+def _within(a, b, hours):
+    """True if both timestamps parse and land within `hours` of each other."""
+    ta, tb = _ts(a), _ts(b)
+    if not ta or not tb:
+        return False
+    return abs((ta - tb).total_seconds()) <= hours * 3600
 
 
 def _noisy_or(weights):
@@ -99,34 +200,131 @@ def _confidence(signals):
     return pct, max(1, round(pct / 10))
 
 
+# ── ONE canonical network-risk level + colour (the SINGLE source used everywhere) ──────────────
+# The x/10 badge on every page (Clients, Leads, IB, Transactions, Neg-balance, the detail popup)
+# reads the SAME stored score and maps it through THIS function. Any device (CID/MQID) share pushes
+# the score to 10 → "critical" → red, so "any CID = red" holds automatically.
+RISK_COLORS = {"critical": "#ff4d4d", "high": "#ff8c00", "medium": "#ffd166",
+               "low": "#5a6472", "none": "#3a4150"}
+
+def risk_level(score10):
+    """score10 (0-10) -> (level, colour). Shared by the scorer, the API and (mirrored) the UI."""
+    s = int(score10 or 0)
+    if s >= 8:   lvl = "critical"     # DEVICE (CID/MQID) link -> always here -> red
+    elif s >= 5: lvl = "high"         # same payment card / multi-signal
+    elif s >= 3: lvl = "medium"       # similar email
+    elif s >= 1: lvl = "low"          # shared IP only
+    else:        lvl = "none"
+    return lvl, RISK_COLORS[lvl]
+
+def top_reason(sigs):
+    """Headline signal (strongest link type) for a set of fired signals."""
+    if not sigs:
+        return ""
+    best = min(sigs, key=lambda s: LINK_PRIORITY.get(s, 99))
+    return SIGNAL_LABEL.get(best, best)
+
+# SUBJECT-level risk weight per signal (distinct from the per-connection confidence used in the
+# detail popup). RED is reserved for a DEVICE match, per the desk rule "any CID = red". A same-card
+# link is high; a similar-email is medium; a shared IP alone is low. Multiple signals nudge upward.
+SUBJECT_SIGNAL_SCORE = {"cid": 10, "mqid": 10, "pay_sender": 6,
+                        "ip3": 6, "email3": 6, "ip2": 4, "email2": 4, "similar_email": 4,
+                        "ip1": 2, "ip": 2, "email1": 2, "reg_period": 2, "dep_period": 2,
+                        "ib": 2, "city": 2, "payment": 1}
+
+def score_signals(sigs):
+    """Canonical subject score from a set of fired signal keys -> (score10, level, colour, reason)."""
+    sigs = set(sigs)
+    # IP ALONE IS NOT A LINK (Iraq: no static IPs, every CRM/MT login stamps a new one). It scores
+    # only alongside another factor, or via the timing signals ip_coreg / ip_codep.
+    if not sigs or sigs <= IP_ONLY:
+        return 0, "none", RISK_COLORS["none"], ""
+    scoring = set(sigs)
+    # ip_coreg/ip_codep ARE the IP evidence with timing attached — don't also count the bare 'ip' as a
+    # separate corroborating signal, or a co-registration would inflate to red (red stays for a DEVICE).
+    if scoring & {"ip_coreg", "ip_codep"}:
+        scoring.discard("ip")
+    base = max(SUBJECT_SIGNAL_SCORE.get(s, 1) for s in scoring)
+    extra = len([s for s in scoring if SUBJECT_SIGNAL_SCORE.get(s, 0) >= 2]) - 1  # +1 per extra signal
+    s10 = min(10, base + max(0, extra))
+    lvl, col = risk_level(s10)
+    return s10, lvl, col, top_reason(sigs)
+
+
+def stored_subject_score(db, login=None, lead_id=None):
+    """Read the PRECOMPUTED canonical score for one subject (the value every badge shows).
+    Returns {score10, level, colour, reason}. Kept trivial so the detail popup header matches the
+    list badge exactly — both come from clients.network_score / leads.network_score."""
+    row = None
+    if login is not None:
+        row = db.execute(text("SELECT COALESCE(network_score,0), COALESCE(network_reason,'') "
+                              "FROM clients WHERE login=:l"), {"l": login}).fetchone()
+    elif lead_id is not None:
+        row = db.execute(text("SELECT COALESCE(network_score,0), COALESCE(network_reason,'') "
+                              "FROM leads WHERE id=:l"), {"l": lead_id}).fetchone()
+    s10 = int(row[0]) if row else 0
+    lvl, col = risk_level(s10)
+    return {"score10": s10, "level": lvl, "colour": col, "reason": (row[1] if row else "") or ""}
+
+
 def _subject(db, login=None, lead_id=None):
     """Resolve the subject's identifying tokens (device ids, ips, email, phone, city, IB)."""
     if login is not None:
         c = db.execute(text("""
-            SELECT login, name, email, phone, city, country, agent, customer_no
+            SELECT login, name, email, phone,
+                   COALESCE(NULLIF(city_canon,''), city) AS city,   -- canonical (free-text unified)
+                   country, agent, customer_no,
+                   NULLIF(reg_date,''), NULLIF(first_deposit_at,'')  -- for the IP+timing signals
             FROM clients WHERE login=:l
         """), {"l": login}).fetchone()
         if not c:
             return None
+        # reg/first-deposit for the IP+timing signals are taken at CUSTOMER level (earliest across all
+        # of this person's logins) — the same grain the bulk score builder uses, so the popup's timing
+        # links and the stored badge always agree.
+        # reg / first-deposit / city / IB are ALL read at customer grain (the person, not the one
+        # account) — build_network_scores scores the customer, so the popup must judge the same facts
+        # or the badge and the connection list disagree (e.g. the IB sits on a sibling login).
+        reg, fda, city, agent = c[8], c[9], (c[4] or "").strip(), c[6] or 0
+        if c[7]:
+            r2 = db.execute(text("""
+                SELECT MIN(NULLIF(reg_date,'')), MIN(NULLIF(first_deposit_at,'')),
+                       MIN(NULLIF(city_canon,'')), MIN(NULLIF(agent,0))
+                FROM clients WHERE customer_no=:cn
+            """), {"cn": c[7]}).fetchone()
+            if r2:
+                reg, fda = r2[0] or reg, r2[1] or fda
+                city, agent = (r2[2] or city), (r2[3] or agent)
+        # USER-WISE: collect the device/IP tokens across ALL of this person's logins, not just the one
+        # we were asked about — a sibling account's device/IP is still this person's. This is the grain
+        # build_network_scores uses, so the popup and the stored badge see the same evidence.
+        own_logins = [login]
+        if c[7]:
+            own_logins = [r[0] for r in db.execute(text(
+                "SELECT login FROM clients WHERE customer_no=:cn"), {"cn": c[7]}).fetchall()] or [login]
         ids = db.execute(text("""
-            SELECT identifier_type, identifier_value FROM account_identifiers
-            WHERE login=:l AND identifier_value NOT IN ('0','')
-        """), {"l": login}).fetchall()
+            SELECT DISTINCT identifier_type, identifier_value FROM account_identifiers
+            WHERE login = ANY(:l) AND identifier_value NOT IN ('0','')
+        """), {"l": own_logins}).fetchall()
         cids = [v for t, v in ids if t == "cid"]
         mqids = [v for t, v in ids if t == "mqid"]
         ips = [v for t, v in ids if t == "ip"]
         return {"kind": "client", "id": login, "login": login, "name": c[1] or f"#{login}",
                 "email": (c[2] or "").lower().strip(), "email_norm": _norm_email(c[2]),
                 "phone": c[3] or "", "phone9": _phone9(c[3]),
-                "city": (c[4] or "").strip(), "country": c[5] or "", "agent": c[6] or 0,
-                "customer_no": str(c[7]) if c[7] else "", "cids": cids, "mqids": mqids, "ips": ips}
+                "city": city, "country": c[5] or "", "agent": agent,
+                "customer_no": str(c[7]) if c[7] else "", "cids": cids, "mqids": mqids, "ips": ips,
+                "reg": reg, "fda": fda, "own_logins": set(own_logins)}
     if lead_id is not None:
         l = db.execute(text("""
-            SELECT id, full_name, email, phone, city, country, customer_no FROM leads WHERE id=:l
+            SELECT id, full_name, email, phone,
+                   COALESCE(NULLIF(city_canon,''), city) AS city, country, customer_no
+            FROM leads WHERE id=:l
         """), {"l": lead_id}).fetchone()
         if not l:
             return None
         return {"kind": "lead", "id": lead_id, "login": None, "name": l[1] or f"lead#{lead_id}",
+                "reg": None, "fda": None,
                 "email": (l[2] or "").lower().strip(), "email_norm": _norm_email(l[2]),
                 "phone": l[3] or "", "phone9": _phone9(l[3]),
                 "city": (l[4] or "").strip(), "country": l[5] or "", "agent": 0,
@@ -147,73 +345,93 @@ def score_connections(db, login=None, lead_id=None, limit=60):
     tokens = [("cid", v) for v in subj["cids"]] + [("mqid", v) for v in subj["mqids"]] + \
              [("ip", v) for v in subj["ips"]]
     if tokens:
+        # fan-out is capped on DISTINCT CUSTOMERS (not logins) — one person's 10 accounts on their own
+        # IP must not burn the cap, and this is the same grain build_network_scores uses, so the popup
+        # and the stored badge never disagree about which tokens count.
         rows = db.execute(text("""
-            SELECT identifier_type, identifier_value, array_agg(DISTINCT login) AS logins
-            FROM account_identifiers
-            WHERE (identifier_type, identifier_value) IN :pairs
-            GROUP BY identifier_type, identifier_value
-            HAVING COUNT(DISTINCT login) <= :fan
+            SELECT ai.identifier_type, ai.identifier_value, array_agg(DISTINCT ai.login) AS logins
+            FROM account_identifiers ai
+            LEFT JOIN clients c ON c.login = ai.login
+            WHERE (ai.identifier_type, ai.identifier_value) IN :pairs
+            GROUP BY ai.identifier_type, ai.identifier_value
+            HAVING COUNT(DISTINCT COALESCE(c.customer_no, ai.login::text)) <= :fan
         """).bindparams(__import__("sqlalchemy").bindparam("pairs", expanding=True)),
             {"pairs": tokens, "fan": MAX_TOKEN_FANOUT}).fetchall()
+        _own = subj.get("own_logins") or {subj["login"]}
         for typ, val, logins in rows:
             for lg in logins:
-                if lg != subj["login"]:
+                if lg not in _own:                    # skip this person's own sibling accounts
                     cand[("client", lg)][typ] = val
 
-    # ── strong: shared email (clients + leads) ──
-    if subj["email"]:
-        for lg, in db.execute(text(
-            "SELECT login FROM clients WHERE LOWER(email)=:e AND login<>:self"),
-            {"e": subj["email"], "self": subj["login"] or -1}).fetchall():
-            cand[("client", lg)]["email"] = subj["email"]
-        for (lid,) in db.execute(text(
-            "SELECT id FROM leads WHERE LOWER(email)=:e AND id<>:self"),
-            {"e": subj["email"], "self": subj["id"] if subj["kind"] == "lead" else -1}).fetchall():
-            cand[("lead", lid)]["email"] = subj["email"]
+    # ── IP + TIMING: a bare shared IP means nothing here (no static IPs; every CRM/MT login adds one),
+    #    but the SAME IP that registered two accounts within IP_COREG_HOURS — or funded their first
+    #    deposits within IP_CODEP_HOURS — is one person/desk at one connection. That IS a link.
+    _ip_keys = [k for k, s in cand.items() if "ip" in s and k[0] == "client"]
+    if _ip_keys and (subj.get("reg") or subj.get("fda")):
+        for lg, reg, fda in db.execute(text("""
+            -- CUSTOMER-level earliest reg / first deposit (same grain as build_network_scores)
+            SELECT c.login,
+                   MIN(NULLIF(COALESCE(s.reg_date, c.reg_date),'')),
+                   MIN(NULLIF(COALESCE(s.first_deposit_at, c.first_deposit_at),''))
+            FROM clients c
+            LEFT JOIN clients s ON c.customer_no IS NOT NULL AND s.customer_no = c.customer_no
+            WHERE c.login = ANY(:l)
+            GROUP BY c.login
+        """), {"l": [k[1] for k in _ip_keys]}).fetchall():
+            k = ("client", lg)
+            if k not in cand:
+                continue
+            if _within(subj.get("reg"), reg, IP_COREG_HOURS):
+                cand[k]["ip_coreg"] = str(reg)[:16]
+            if _within(subj.get("fda"), fda, IP_CODEP_HOURS):
+                cand[k]["ip_codep"] = str(fda)[:16]
+
+    # NOTE: EXACT email / phone are NOT connection factors (two different users can't share them =
+    # same customer, handled by customer_no). Only SIMILAR email links two DIFFERENT people.
 
     # ── SIMILAR email: same normalized local part (dots/+tags moved → same inbox, e.g. ahmed.zaman
     #    ≈ ahme.dzaman ≈ ahmedzaman) OR a ≤2-character typo (ahmedzaman ≈ ahmadzaman). Catches the
     #    relative/duplicate-email trick where a fraudster tweaks 1-4 letters. ──
     sne = subj.get("email_norm") or ""
     sco = re.sub(r"\d", "", sne)                       # letters-only core (ahmedzaman1 ≈ ahmedzaman)
+    # COMMON-NAME GUARD: if the subject's core is a common first name / generic token (ali, ahmed,
+    # mohammed, iraqx, souriahost…), a similar-email hit means nothing on its own — millions share it.
+    # Those candidates are marked PROVISIONAL and are kept only if same city / IP / IB corroborates.
+    sco_common = is_common_core(db, sco)
+    provisional_se = set()
     if len(sne) >= 4:
         nec = _norm_email_sql("email")
         core = f"regexp_replace({nec}, '[0-9]', '', 'g')"
-        # DEEP similar-email match (not just a 2-char typo): normalized-equal (dots/+tags) OR same
-        # letters-core (ignores digit suffixes) OR Levenshtein ≤3 (letters/order tweaks).
-        cond = (f"( {nec} = :ne "
-                f"OR (length(:sco) >= 5 AND {core} = :sco) "
-                f"OR (length({nec}) >= 7 AND levenshtein({nec}, :ne) <= 3) )")
-        p = {"ne": sne, "sco": sco}
+        # similar-email = normalized-equal (dots/+tags) OR same letters-core (ignores digit suffixes:
+        # ahmedzaman1 ≈ ahmedzaman2). The old Levenshtein<=3 arm was REMOVED: it matched different
+        # people outright (ahmed1990 vs ahmad1991 = distance 2) and it was the one rule the bulk score
+        # builder could not reproduce, so badge and popup disagreed. Both now use these two rules only.
+        cond = (f"( {nec} = :ne OR (length(:sco) >= 5 AND {core} = :sco) )")
+        p = {"ne": sne[:64], "sco": sco}
         for lg, em in db.execute(text(f"""
             SELECT login, email FROM clients
             WHERE login<>:self AND email IS NOT NULL AND email<>'' AND {cond} LIMIT 120
         """), {**p, "self": subj["login"] or -1}).fetchall():
             if not cand[("client", lg)].get("email"):          # don't downgrade an exact match
                 cand[("client", lg)]["similar_email"] = em
+                if sco_common:
+                    provisional_se.add(("client", lg))
         for lid, em in db.execute(text(f"""
             SELECT id, email FROM leads
             WHERE id<>:self AND email IS NOT NULL AND email<>'' AND {cond} LIMIT 120
         """), {**p, "self": subj["id"] if subj["kind"] == "lead" else -1}).fetchall():
             if not cand[("lead", lid)].get("email"):
                 cand[("lead", lid)]["similar_email"] = em
+                if sco_common:
+                    provisional_se.add(("lead", lid))
 
-    # ── strong: shared phone (family) ──
-    if subj["phone9"] and len(subj["phone9"]) >= 7:
-        for lg, in db.execute(text("""
-            SELECT login FROM clients
-            WHERE RIGHT(regexp_replace(COALESCE(phone,''),'[^0-9]','','g'),9)=:p AND login<>:self
-        """), {"p": subj["phone9"], "self": subj["login"] or -1}).fetchall():
-            cand[("client", lg)]["family"] = subj["phone"]
-        for (lid,) in db.execute(text("""
-            SELECT id FROM leads
-            WHERE RIGHT(regexp_replace(COALESCE(phone,''),'[^0-9]','','g'),9)=:p AND id<>:self
-        """), {"p": subj["phone9"], "self": subj["id"] if subj["kind"] == "lead" else -1}).fetchall():
-            cand[("lead", lid)]["family"] = subj["phone"]
+    # (exact phone removed as a connection factor — same phone = same customer; family comes from the
+    #  family-code system, not a raw phone match.)
 
-    # ── strong: shared PAYMENT SENDER — two accounts funded by the SAME Qi card / wallet are directly
-    #    linked (family / shared card), unlike merely sharing a payment METHOD. High-fanout senders
-    #    (a money exchanger funding many unrelated clients) are excluded (fanout > PAY_SENDER_MAX_FANOUT).
+    # ── strong: shared PAYMENT SENDER — two accounts funded by the SAME sender (Qi = same sender NAME
+    #    on the receipt, NOT the card number; zain = same wallet) are directly linked (family / same
+    #    funder), unlike merely sharing a payment METHOD. High-fanout senders (a money exchanger funding
+    #    many unrelated clients) are excluded (fanout > PAY_SENDER_MAX_FANOUT).
     if subj["login"] and _table_exists(db, "client_payment_senders"):
         for lg, mth, key in db.execute(text("""
             SELECT DISTINCT b.client_login, a.method, a.sender_key
@@ -234,10 +452,19 @@ def score_connections(db, login=None, lead_id=None, limit=60):
     # enrich candidates + add BOOSTER signals (ib / city / payment)
     cmeta = {}
     if client_logins:
+        # city / IB at CUSTOMER grain (cc), same as the subject and the score builder — a person's IB
+        # or city may sit on a sibling login, and judging the single account made badge != popup.
         for r in db.execute(text("""
-            SELECT c.login, c.name, c.city, c.country, c.agent, COALESCE(c.balance,0),
+            SELECT c.login, c.name,
+                   COALESCE(NULLIF(cc.city,''), NULLIF(c.city_canon,''), c.city) AS city,
+                   c.country, COALESCE(cc.agent, c.agent) AS agent, COALESCE(c.balance,0),
                    i.name AS ib_name, c.customer_no
-            FROM clients c LEFT JOIN ibs i ON i.agent_id=c.agent
+            FROM clients c
+            LEFT JOIN LATERAL (
+                SELECT MIN(NULLIF(s.city_canon,'')) AS city, MIN(NULLIF(s.agent,0)) AS agent
+                FROM clients s WHERE c.customer_no IS NOT NULL AND s.customer_no = c.customer_no
+            ) cc ON TRUE
+            LEFT JOIN ibs i ON i.agent_id = COALESCE(cc.agent, c.agent)
             WHERE c.login=ANY(:l)
         """), {"l": client_logins}).fetchall():
             cmeta[("client", r[0])] = {"name": r[1] or f"#{r[0]}", "city": (r[2] or "").strip(),
@@ -247,7 +474,8 @@ def score_connections(db, login=None, lead_id=None, limit=60):
     lmeta = {}
     if lead_ids:
         for r in db.execute(text("""
-            SELECT id, full_name, city, country FROM leads WHERE id=ANY(:l)
+            SELECT id, full_name, COALESCE(NULLIF(city_canon,''), city) AS city, country
+            FROM leads WHERE id=ANY(:l)
         """), {"l": lead_ids}).fetchall():
             lmeta[("lead", r[0])] = {"name": r[1] or f"lead#{r[0]}", "city": (r[2] or "").strip(),
                                      "country": r[3] or "", "agent": 0, "balance": 0.0, "ib_name": ""}
@@ -286,6 +514,24 @@ def score_connections(db, login=None, lead_id=None, limit=60):
         # booster: same city
         if subj["city"] and meta["city"] and subj["city"].lower() == meta["city"].lower():
             sigs["city"] = meta["city"]
+        # COMMON-NAME GUARD: this candidate was found only because a COMMON email core matched
+        # (ali/ahmed/mohammed/iraqx…). Millions share those, so it is NOT a link unless something
+        # real corroborates it — same city, IP, IB (or a device/payment tie). Otherwise drop it.
+        # Baghdad does NOT corroborate: it's ~1/3 of the book, so "both Ali + both Baghdad" is noise.
+        if key in provisional_se:
+            corr = set(sigs) & EMAIL_CORROBORATORS
+            if "city" in corr and (meta["city"] or "").strip().lower() in WEAK_CITIES:
+                corr.discard("city")
+            if not corr:
+                continue
+        # IP RULE: a shared IP on its own is NOT a connection — only alongside another factor
+        # (city / IB / email / device) or with matching registration/deposit timing. A Baghdad "same
+        # city" is NOT that factor (WEAK_CITIES: ~1/3 of the book), so IP + Baghdad is still nothing.
+        eff = set(sigs)
+        if "city" in eff and (meta["city"] or "").strip().lower() in WEAK_CITIES:
+            eff.discard("city")
+        if eff <= IP_ONLY:
+            continue
         # collapse mqid into a device signal next to cid for scoring
         conf, x10 = _confidence(set(sigs.keys()))
         reasons = [{"type": s, "label": SIGNAL_LABEL.get(s, s), "value": str(v)[:40]}
@@ -516,15 +762,11 @@ def refresh_account(db, login):
             WHERE a.login=:lg AND a.agent>0
             ON CONFLICT DO NOTHING
         """), p)
-        # recompute this login's network_score from its edges
-        db.execute(text("""
-            UPDATE clients c SET network_score = COALESCE((
-                SELECT LEAST(100, SUM(CASE reason WHEN 'cid' THEN 50 WHEN 'mqid' THEN 45 WHEN 'ip' THEN 35
-                            WHEN 'family' THEN 30 WHEN 'similar_email' THEN 20 WHEN 'city' THEN 15
-                            WHEN 'ib' THEN 10 ELSE 5 END))
-                FROM network_edges WHERE login_a=:lg OR login_b=:lg), 0)
-            WHERE c.login=:lg
-        """), p)
+        # NOTE: clients.network_score is NO LONGER written here. It is now a single canonical
+        # 0-10 score owned by build_network_scores.py (customer-wise, same scale everywhere). This
+        # per-login edge writer produced a divergent 0-100 value and is why the same client showed a
+        # different x/10 on different pages. We keep maintaining `network_edges` above; the canonical
+        # score refreshes on the nightly build (or on-demand: python build_network_scores.py).
         db.commit()
     except Exception as e:
         db.rollback()
@@ -564,20 +806,15 @@ def connection_groups(db, limit=60, min_size=2):
             for j in range(i + 1, len(cs)):
                 union(cs[i], cs[j]); links[find(cs[i])].append((cs[i], cs[j], typ))
 
+    # device (cid/mqid) + IP only — EXACT email/phone are NOT connection factors (same = same customer)
     for typ, val, members in db.execute(text("""
         SELECT identifier_type, identifier_value, array_agg(DISTINCT login) m
         FROM account_identifiers
-        WHERE identifier_type IN ('cid','mqid','ip','email') AND identifier_value NOT IN ('0','')
+        WHERE identifier_type IN ('cid','mqid','ip') AND identifier_value NOT IN ('0','')
         GROUP BY identifier_type, identifier_value
         HAVING COUNT(DISTINCT login) BETWEEN 2 AND :fan
     """), {"fan": MAX_TOKEN_FANOUT}).fetchall():
         _union_members(members, typ)
-    for phone, members in db.execute(text("""
-        SELECT phone, array_agg(DISTINCT login) m FROM clients
-        WHERE phone IS NOT NULL AND length(trim(phone))>=7
-        GROUP BY phone HAVING COUNT(DISTINCT login) BETWEEN 2 AND :fan
-    """), {"fan": MAX_TOKEN_FANOUT}).fetchall():
-        _union_members(members, "phone")
     _NE = _norm_email_sql("email")
     for nemail, members in db.execute(text(f"""
         SELECT {_NE} ne, array_agg(DISTINCT login) m FROM clients
@@ -585,6 +822,15 @@ def connection_groups(db, limit=60, min_size=2):
         GROUP BY {_NE} HAVING COUNT(DISTINCT login) BETWEEN 2 AND :fan
     """), {"fan": MAX_TOKEN_FANOUT}).fetchall():
         _union_members(members, "similar_email")
+    # shared PAYMENT SENDER (same Qi card / wallet funded them) — SAME strong signal the per-client
+    # view uses; low fanout only (a money exchanger funding many people is NOT a family link).
+    if _table_exists(db, "client_payment_senders"):
+        for _k, members in db.execute(text("""
+            SELECT method || ':' || sender_key AS k, array_agg(DISTINCT client_login) m
+            FROM client_payment_senders WHERE fanout BETWEEN 2 AND :maxfan
+            GROUP BY method, sender_key HAVING COUNT(DISTINCT client_login) BETWEEN 2 AND :fan
+        """), {"maxfan": PAY_SENDER_MAX_FANOUT, "fan": MAX_TOKEN_FANOUT}).fetchall():
+            _union_members(members, "pay_sender")
 
     # components of CUSTOMERS; keep rings of 2..fan DIFFERENT customers, then expand to their logins
     comp = defaultdict(set)
@@ -682,18 +928,12 @@ def group_links(db, logins):
     for typ, val, m in db.execute(text("""
         SELECT identifier_type, identifier_value, array_agg(DISTINCT login ORDER BY login) m
         FROM account_identifiers
-        WHERE login = ANY(:l) AND identifier_type IN ('cid','mqid','ip','email')
+        WHERE login = ANY(:l) AND identifier_type IN ('cid','mqid','ip')
           AND identifier_value NOT IN ('0','')
         GROUP BY identifier_type, identifier_value
         HAVING COUNT(DISTINCT login) >= 2
     """), {"l": logins}).fetchall():
         out.append({"type": typ, "value": str(val)[:60], "logins": [int(x) for x in m]})
-    for phone, m in db.execute(text("""
-        SELECT phone, array_agg(DISTINCT login ORDER BY login) m FROM clients
-        WHERE login = ANY(:l) AND phone IS NOT NULL AND length(trim(phone)) >= 7
-        GROUP BY phone HAVING COUNT(DISTINCT login) >= 2
-    """), {"l": logins}).fetchall():
-        out.append({"type": "phone", "value": str(phone)[:60], "logins": [int(x) for x in m]})
     for nm, m in db.execute(text("""
         SELECT LOWER(TRIM(name)) nm, array_agg(DISTINCT login ORDER BY login) m FROM clients
         WHERE login = ANY(:l) AND length(trim(COALESCE(name,''))) > 5
@@ -708,5 +948,14 @@ def group_links(db, logins):
         GROUP BY {_NE} HAVING COUNT(DISTINCT login) >= 2 AND COUNT(DISTINCT lower(email)) >= 2
     """), {"l": logins}).fetchall():
         out.append({"type": "similar_email", "value": str(ex)[:70], "logins": [int(x) for x in m]})
+    # shared payment sender (same Qi card / wallet) within the group
+    if _table_exists(db, "client_payment_senders"):
+        for mth, key, m in db.execute(text("""
+            SELECT method, sender_key, array_agg(DISTINCT client_login ORDER BY client_login) m
+            FROM client_payment_senders WHERE client_login = ANY(:l)
+            GROUP BY method, sender_key HAVING COUNT(DISTINCT client_login) >= 2
+        """), {"l": logins}).fetchall():
+            out.append({"type": "pay_sender", "value": (str(mth).upper() + " · " + str(key))[:60],
+                        "logins": [int(x) for x in m]})
     out.sort(key=lambda x: (SIGNAL_ORDER.index(x["type"]) if x["type"] in SIGNAL_ORDER else 99, -len(x["logins"])))
     return out

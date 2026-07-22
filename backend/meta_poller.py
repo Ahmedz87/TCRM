@@ -1,9 +1,9 @@
 import time, subprocess, os, sys
 from datetime import datetime
-# load the working token from meta_sync.py once
-import re
-tok = re.search(r'TOKEN\s*=\s*"(EAA[^"]+)"', open("meta_sync.py",encoding="utf-8").read()).group(1)
-os.environ["META_ACCESS_TOKEN"] = tok
+# token now lives in gitignored meta_config.py (secrets centralization, Jul 2026) — the old
+# regex-grep of a hardcoded token in meta_sync.py crashed the poller after the hardening.
+import meta_config
+os.environ["META_ACCESS_TOKEN"] = meta_config.META_ACCESS_TOKEN
 os.environ.pop("META_FORM_ID", None)
 os.environ.pop("META_PAGE_ID", None)
 INTERVAL = 60  # seconds (1 min)

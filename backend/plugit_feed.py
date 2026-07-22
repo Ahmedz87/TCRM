@@ -57,6 +57,12 @@ for e in recs:
                 cur.execute("UPDATE ibs SET ib_level_before_plugit=COALESCE(ib_level_before_plugit,ib_level),ib_level=%s,markup_pips=%s,plugit_status='synced' WHERE id=%s",(e["level"],e["pips"],ib_id)); n_upd+=1
         cur.execute("INSERT INTO ib_plugit VALUES(%s,%s,%s,%s,%s,%s,TRUE,%s) ON CONFLICT (code) DO NOTHING",(e["code"],e["email"],e["name"],e["pips"],e["level"],e["is_null"],matches[0][0]))
     else:
+        # permanently-removed IBs (ib_removed / remove_from_IB.xlsx Jul 2026) must never come back
+        # via a future Plugit export — skip by agent OR email.
+        cur.execute("SELECT 1 FROM ib_removed WHERE agent_id=%s OR (COALESCE(%s,'')<>'' AND LOWER(email)=LOWER(%s)) LIMIT 1",
+                    (e["agent"], e["email"], e["email"]))
+        if cur.fetchone():
+            continue
         status='null' if e["is_null"] else 'plugit_only'
         cur.execute("""INSERT INTO ibs(agent_id,ib_code,name,email,ib_level,markup_pips,plugit_status,is_plugit_created,total_clients)
             VALUES(%s,%s,%s,%s,%s,%s,%s,TRUE,0) ON CONFLICT (agent_id) DO NOTHING RETURNING id""",

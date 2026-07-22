@@ -1,0 +1,416 @@
+# -*- coding: utf-8 -*-
+"""English master content for the TNFX partner SEO sub-pages. Every localized page derives
+from this. Translators receive this JSON and return the same shape in their language.
+Brand names (payment methods, tier names, mission names, TNFX, MT4/MT5, IB/CPA) stay as-is."""
+import json, os
+
+# ── fixed, NOT translated ─────────────────────────────────────────────────────
+TIERS = [
+    {"name": "Bronze",    "rate": 5},
+    {"name": "Silver",    "rate": 6},
+    {"name": "Golden",    "rate": 7},
+    {"name": "Diamond",   "rate": 8},
+    {"name": "Legendary", "rate": 9},
+    {"name": "Prime IB",  "rate": 10},
+]
+PAYMENTS = ["Ovadot", "Qi Card", "ZainCash", "USDT (Tether)", "Perfect Money", "Visa / Mastercard",
+            "FastPay", "Sham Cash", "Al Taif", "FIB", "AsiaPay", "Airtm", "Payeer"]
+# real challenge rewards from ib_challenges.py
+CAREER = [
+    {"name": "Getting Started", "reward": 50},
+    {"name": "First Blood",     "reward": 100},
+    {"name": "Momentum",        "reward": 250},
+    {"name": "Rising Star",     "reward": 600},
+    {"name": "Power Partner",   "reward": 1500},
+    {"name": "Legend",          "reward": 4000},
+]
+WEEKLY = [
+    {"name": "First Blood",   "reward": 15,  "desc": "Bring 1 funded client this week"},
+    {"name": "Hat Trick",     "reward": 60,  "desc": "Bring 3 funded clients this week"},
+    {"name": "Volume Hunter", "reward": 120, "desc": "Your clients trade 50 lots"},
+    {"name": "Whale Hunter",  "reward": 400, "desc": "Your clients deposit $50,000"},
+]
+
+# ── translatable UI chrome ────────────────────────────────────────────────────
+UI = {
+    "partners": "Partners",
+    "nav_commission": "Commission",
+    "nav_challenges": "Challenges",
+    "nav_payments": "Payments",
+    "nav_about": "About TNFX",
+    "login": "Log in",
+    "become_partner": "Become a partner",
+    "cta_primary": "Become a partner",
+    "cta_secondary": "See how it works",
+    "per_lot": "/ lot",
+    "up_to": "up to",
+    "lang_pick": "Language",
+    "suggest_prefix": "View this page in",
+    "suggest_yes": "Switch",
+    "suggest_no": "No thanks",
+    # sidebar / article layout (added Jul 2026)
+    "start_earning": "Start earning today",
+    "ib_partner": "IB / Affiliate Partner",
+    "ib_sub": "Earn up to $10 per lot",
+    "client_area": "Open a Trading Account",
+    "client_sub": "Trade on MT4 & MT5",
+    "sign_up": "Sign up",
+    "open_account": "Open account",
+    "on_this_page": "On this page",
+    "key_facts": "Key facts",
+    "other_pages": "More partner pages",
+    "read_time": "min read",
+    # live widgets (added Jul 2026)
+    "earnings": "Partner earnings",
+    "this_mo": "This month",
+    "last30": "Last 30 days",
+    "clients": "Clients",
+    "funded": "Funded clients",
+    "lots": "Lots traded",
+    "active_mission": "Active mission",
+    "claim": "Claim",
+    "live": "LIVE",
+}
+
+# ── shared sections (translated once per language) ────────────────────────────
+SHARED = {
+    "commission": {
+        "kicker": "The number that matters",
+        "h2": "Up to $10 for every lot your clients trade",
+        "lead": ("Your commission is paid on every single lot your referred clients trade — on gold and major "
+                 "pairs — tracked live to the dollar and withdrawable any time. Every partner starts at $5 per "
+                 "lot and climbs to $10 as your book grows. No negotiation, no favoritism: hit the published "
+                 "thresholds and your rate goes up automatically."),
+        "tiers_note": "Six grades. One number that only goes up.",
+        "rate_word": "per lot",
+    },
+    "challenges": {
+        "kicker": "Challenge Arena",
+        "h2": "Get paid to grow — real cash on top of your commission",
+        "lead": ("TNFX partners don't just earn per lot. Accept missions, hit the target, claim real cash — "
+                 "paid straight to your partner wallet, on top of every dollar of commission."),
+        "career_h3": "Career missions — up to $4,000",
+        "career_lead": ("Six career missions, one epic path. Each one you conquer pays a cash reward and moves "
+                        "you up the grade ladder toward $10 per lot."),
+        "weekly_h3": "Weekly quests — reset every Sunday",
+        "weekly_lead": ("Fresh cash targets every single week. Bring funded clients, drive volume, and claim — "
+                        "then the board resets Sunday and you do it again. A new chance to earn, every week."),
+        "weekly_reward_line": "Up to $400 in cash rewards every week — on top of your $10-per-lot commission.",
+    },
+    "payments": {
+        "kicker": "How your clients fund",
+        "h2": "13 ways for your clients to deposit and withdraw",
+        "lead": ("The #1 reason referred traders actually activate is easy funding. TNFX supports the local "
+                 "and global methods your audience already uses — instant local deposits, cards, and crypto — "
+                 "so the clients you send convert instead of dropping off at the cashier."),
+    },
+    "about": {
+        "kicker": "About TNFX",
+        "h2": "The broker your name can stand behind",
+        "paras": [
+            ("TNFX is an FSA-licensed forex and CFD broker built for traders in the Middle East and beyond. "
+             "Your clients trade 1,000+ instruments — gold, FX majors, indices and more — on the MetaTrader 4 "
+             "and MetaTrader 5 platforms they already know, with tight spreads and fast execution."),
+            ("Commission only compounds when your clients keep trading — and TNFX is built to retain them: "
+             "local-language support, instant local deposits, and a trading experience made for this region. "
+             "That's why partner books here last."),
+        ],
+        "trust": [
+            {"k": "FSA", "v": "Licensed & regulated broker"},
+            {"k": "MT4 & MT5", "v": "Both platforms, one login"},
+            {"k": "1000+", "v": "Instruments — gold, FX, indices"},
+            {"k": "Instant", "v": "Local deposits & fast withdrawals"},
+        ],
+    },
+    "how": {
+        "kicker": "Getting started",
+        "h2": "From application to first commission",
+        "steps": [
+            {"t": "Apply in 60 seconds", "d": "Your name, contact, and how you introduce clients. That's the whole form."},
+            {"t": "Desk approval", "d": "Our partner desk reviews every application and activates your account — usually same day."},
+            {"t": "Share your link", "d": "Get your referral link plus ready-made ad banners that already carry it. Post them anywhere your audience is."},
+            {"t": "Earn per lot", "d": "Commission lands on every trade your clients make — live in your dashboard. Withdraw any time."},
+        ],
+    },
+    "dashboard": {
+        "kicker": "Your partner dashboard",
+        "h2": "Your entire book, live and to the dollar",
+        "lead": ("Every client, every lot, every dollar of commission — updated the moment a trade happens. "
+                 "No monthly statements, no guessing. Track your funnel, your challenge progress, and your "
+                 "withdrawable balance in one real-time partner portal."),
+        "caption": "The TNFX partner dashboard — live commission, funnel and challenge progress. (Illustration.)",
+        "caption_ch": "The Challenge Arena — accept missions, hit targets, claim real cash. (Illustration.)",
+    },
+    "faq": [
+        {"q": "How much do I earn as a TNFX partner?",
+         "a": "Up to $10 for every lot your referred clients trade on gold and major pairs. You start at $5 per lot and your rate rises to $10 as your book grows — plus cash rewards from weekly and career challenges."},
+        {"q": "Do I need to trade or invest to earn?",
+         "a": "No. You earn by introducing clients, not by trading yourself. There's no cost to join and no capital required — you're paid on your clients' trading activity."},
+        {"q": "When and how do I get paid?",
+         "a": "Commission accrues live on every trade and is withdrawable any time — no lock-ups, no minimum cycle. Withdraw through any of TNFX's 13 supported methods, including instant local options."},
+        {"q": "Is TNFX regulated?",
+         "a": "Yes. TNFX is licensed and regulated by the Financial Services Authority (FSA), operating on MetaTrader 4 and MetaTrader 5 with 1,000+ instruments."},
+        {"q": "How do I become a partner?",
+         "a": "Apply in about 60 seconds with your name and contact. Our partner desk reviews and activates your account — usually the same day — and you get your referral link immediately."},
+        {"q": "What's the difference between an IB, an affiliate, and a referral partner?",
+         "a": "All three earn you commission for introducing clients to TNFX. An affiliate drives traffic with links and banners; an introducing broker (IB) actively manages and supports a book of clients, often with a team; a referral partner simply shares a link with friends. With TNFX you can start as any of them from the same account and grow into a full IB desk — the up-to-$10-per-lot commission is the same."},
+        {"q": "How do I get my referral link and marketing banners?",
+         "a": "The moment your account is approved you get a personal referral link in your partner dashboard, plus a library of ready-made ad banners that already carry your link. Share them on any channel your audience uses."},
+        {"q": "Do my clients pay more or get worse spreads because they used my link?",
+         "a": "No. Your clients trade on the exact same tight spreads and conditions as everyone else — your commission comes from TNFX, not from your clients. Referring through you costs them nothing."},
+        {"q": "How is my per-lot commission calculated?",
+         "a": "You earn a fixed amount for every standard lot your referred clients trade on gold and major pairs — from $5 per lot at Bronze up to $10 per lot at Prime. Multiply your rate by your clients' monthly lots to estimate your income; it accrues live on every trade."},
+        {"q": "How do the weekly challenges and career missions work?",
+         "a": "On top of per-lot commission you can accept missions and claim real cash. Weekly quests reset every Sunday and pay up to $400; career missions run once through six stages and pay up to $4,000. Rewards land in your partner wallet the moment you hit the target."},
+        {"q": "Which methods can I use to withdraw my commission?",
+         "a": "You can withdraw through any of TNFX's supported methods, including instant local options and crypto — such as Ovadot, Qi Card, ZainCash, USDT and Perfect Money. There are no lock-ups and no minimum payout cycle."},
+        {"q": "Can I promote TNFX on social media, Telegram, or YouTube?",
+         "a": "Yes. Share your link and banners anywhere your audience is — social media, messaging groups, a website, or video — as long as you follow the partner terms and local advertising rules. Ready-made creatives make it fast."},
+        {"q": "Is there a joining fee or a minimum number of clients?",
+         "a": "No. Joining is completely free, there is no minimum number of clients, and no capital is required. You start earning from your very first client's first lot."},
+        {"q": "What happens to my commission if a client stops trading?",
+         "a": "Your commission is paid on actual trading activity, so it pauses when a client isn't trading and resumes when they return. Because it is lifetime revenue share, you keep earning from that client whenever they trade again."},
+        {"q": "Can I build a team or bring sub-partners under me?",
+         "a": "Yes. TNFX supports introducing brokers who build networks and manage a team of sub-partners, so you can scale well beyond your own direct referrals. Talk to our partner desk about the structure that fits your operation."},
+        {"q": "How do I move up from $5 to $10 per lot?",
+         "a": "Your rate rises automatically as your book grows and you hit the published thresholds — more funded clients and more monthly volume move you up the grade ladder from Bronze to Prime. No negotiation, no favoritism: hit the numbers and your rate increases."},
+        {"q": "How do I track my clients, lots, and earnings?",
+         "a": "Everything is in your real-time partner dashboard — every registration, deposit, traded lot and dollar of commission, updated the moment it happens, plus your challenge progress and withdrawable balance. No monthly statements, no guessing."},
+    ],
+    "finalcta": {
+        "h2": "Your first client can be trading this week",
+        "lead": "Free to join. Bronze rate of $5 per lot from day one, rising to $10. Cash challenges every week. Apply in 60 seconds.",
+        "btn": "Become a TNFX partner",
+        "assurance": "Free to join · Withdraw any time · Real-time reporting",
+    },
+    "footer": {
+        "disclaimer": ("TNFX is licensed by the Financial Services Authority (FSA). Trading foreign exchange and "
+                       "CFDs carries a high level of risk and may not be suitable for all investors. Partner "
+                       "commissions are paid on client trading activity; past earnings do not guarantee future results."),
+        "rights": "© 2026 TNFX. All rights reserved.",
+        "links_login": "Partner login",
+        "links_home": "Partner program",
+    },
+}
+
+# ── the 9 topic pages (each localized; covers the 22 planned pages) ───────────
+TOPICS = {
+    "introducing-broker": {
+        "title": "Become a Forex Introducing Broker (IB) — Earn up to $10 per Lot | TNFX Partners",
+        "meta": "Become a TNFX forex introducing broker and earn up to $10 per lot on every trade your clients make. Free to join, weekly cash challenges, 13 payment methods, FSA-regulated. Apply in 60 seconds.",
+        "h1": "Become a Forex Introducing Broker",
+        "subhead": "Introduce traders to an FSA-licensed broker and earn up to $10 for every lot they trade — with weekly cash challenges on top and a live dashboard tracking every dollar.",
+        "lead_h2": "What is an introducing broker — and how much can you make?",
+        "lead_p": ("An introducing broker (IB) refers traders to a broker and earns commission on their trading — "
+                   "no trading of your own, no capital required. As a TNFX IB you earn up to $10 per lot, paid live "
+                   "on every trade your clients make, withdrawable any time. It's one of the clearest ways to build "
+                   "a real income from forex without taking a single position yourself."),
+    },
+    "affiliate-program": {
+        "title": "Forex Affiliate Program — Up to $10 per Lot | TNFX Partners",
+        "meta": "Join the TNFX forex affiliate program and earn up to $10 per lot plus weekly cash challenges. Best-paying CFD affiliate program for the MENA region — free, FSA-regulated, 13 payment methods.",
+        "h1": "Forex Affiliate Program",
+        "subhead": "Promote an FSA-licensed broker your audience can trust and earn up to $10 per lot — plus weekly cash rewards, ready-made banners, and real-time tracking of every referral.",
+        "lead_h2": "The forex affiliate program that actually pays",
+        "lead_p": ("Affiliate marketing for forex works when the payout is real and the broker converts. TNFX pays up "
+                   "to $10 per lot on every trade your referred clients make — not a one-off bounty — plus cash "
+                   "challenges every week. Get your link and ready-made creatives in minutes and start earning."),
+    },
+    "partnership": {
+        "title": "Forex Partner Program — Partner with TNFX | Earn up to $10 per Lot",
+        "meta": "Partner with TNFX, an FSA-licensed forex broker, and earn up to $10 per lot. Introducing broker, affiliate and referral partnerships — weekly cash challenges, 13 payment methods, live dashboard.",
+        "h1": "Become a TNFX Partner",
+        "subhead": "One partnership, up to $10 per lot. Whether you introduce clients, run affiliate campaigns, or refer friends — TNFX pays you on every lot they trade, with cash challenges every week.",
+        "lead_h2": "Partner with a broker that pays and lasts",
+        "lead_p": ("A partnership is only as good as the broker behind it. TNFX is FSA-licensed, runs on MT4 and MT5 "
+                   "with 1,000+ instruments, and is built to retain the clients you send — so your commission keeps "
+                   "compounding. Up to $10 per lot, weekly cash challenges, and a live partner dashboard."),
+    },
+    "cpa": {
+        "title": "Forex CPA & Partnership Payouts — up to $10 per Lot or CPA | TNFX",
+        "meta": "TNFX forex partner payouts: earn up to $10 per lot revenue share, plus CPA options. Transparent, published rates, FSA-regulated, weekly cash challenges. Choose the payout model that fits you.",
+        "h1": "Forex CPA & Partner Payouts",
+        "subhead": "Pick the payout model that fits your traffic. Earn up to $10 per lot in lifetime revenue share, or talk to our desk about CPA — with transparent, published rates and weekly cash challenges.",
+        "lead_h2": "CPA, revenue share, or hybrid — your choice",
+        "lead_p": ("Serious affiliates choose their payout model. TNFX's core model pays up to $10 per lot as "
+                   "lifetime revenue share — you earn as long as your client trades, not just once. Prefer "
+                   "cost-per-acquisition? Our partner desk works with you on CPA and hybrid deals with clear, "
+                   "published terms — no hidden qualification traps."),
+    },
+    "cashback-rebate": {
+        "title": "Forex Cashback & Rebate — Money Back on Every Lot | TNFX",
+        "meta": "Get forex cashback and rebates on every lot with TNFX. Money back per lot on gold and majors, paid live, withdrawable any time through 13 methods. FSA-regulated. The biggest rebate for MENA traders.",
+        "h1": "Forex Cashback & Rebate",
+        "subhead": "Earn money back on every lot traded — yours or your clients' — paid live and withdrawable any time through 13 funding methods. The clearest cashback deal in the region.",
+        "lead_h2": "Cashback and rebate on every single lot",
+        "lead_p": ("Rebate (or cashback) means real money back for every lot of trading volume — up to $10 per lot "
+                   "on gold and majors. As a TNFX partner you earn it on the volume your referred clients generate; "
+                   "it's paid live to your wallet and withdrawable any time. No caps games, no vague qualification."),
+    },
+    "commission-per-lot": {
+        "title": "Forex Commission Per Lot — Up to $10 | TNFX Partner Earnings",
+        "meta": "How much do forex IBs make? Up to $10 commission per lot with TNFX, paid live on every trade. See the per-lot rate ladder from $5 to $10 and weekly cash challenges. FSA-regulated.",
+        "h1": "Forex Commission — Up to $10 per Lot",
+        "subhead": "Exactly what you earn, per lot, with nothing hidden. From $5 at Bronze to $10 at Prime — paid live on every trade your clients make, plus cash challenges every week.",
+        "lead_h2": "How much do forex IBs and affiliates really make?",
+        "lead_p": ("The honest answer is: it depends on your rate and your clients' volume. TNFX publishes both. Your "
+                   "commission runs from $5 per lot at Bronze to $10 per lot at Prime, on gold and major pairs, paid "
+                   "on every lot your clients trade. Multiply your rate by their monthly lots and you have your income — "
+                   "then add up to $400 a week in challenge cash on top."),
+    },
+    "referral": {
+        "title": "Refer a Friend to Forex — Referral Program | TNFX Partners",
+        "meta": "Refer friends to TNFX and earn on every lot they trade. Get your referral link instantly, earn up to $10 per lot, and withdraw any time. Free to join, FSA-regulated, 13 payment methods.",
+        "h1": "Refer a Friend — Forex Referral Program",
+        "subhead": "Share your link, and earn on every lot your friends trade — up to $10 per lot, paid live. The simplest way to start: get your referral link in 60 seconds and share it anywhere.",
+        "lead_h2": "Refer, share, and earn — no desk required",
+        "lead_p": ("Not ready for a full IB operation? Just refer. Get your personal referral link the moment you "
+                   "sign up, share it with friends and your audience, and earn up to $10 on every lot they trade — "
+                   "live, and withdrawable any time. When you're ready to scale, the same account becomes your full "
+                   "IB and affiliate desk."),
+    },
+    "earn-without-trading": {
+        "title": "How to Make Money in Forex Without Trading | TNFX Partners",
+        "meta": "Make money from forex without trading and without capital — become a TNFX partner and earn up to $10 per lot by referring clients. Is it legit? Yes — FSA-regulated. Learn how it works.",
+        "h1": "How to Make Money in Forex Without Trading",
+        "subhead": "You don't have to risk a single trade. Earn up to $10 per lot by introducing clients to an FSA-licensed broker — no capital, no positions, just your network and your link.",
+        "lead_h2": "Earn from forex — without trading and without capital",
+        "lead_p": ("Most people lose money trading forex. Partners don't trade — they earn from the volume other "
+                   "people trade. As a TNFX partner you refer clients and collect up to $10 per lot on everything "
+                   "they trade, with zero capital at risk. It's legitimate, it's transparent, and TNFX's FSA license "
+                   "means the broker behind your income is regulated. Here's exactly how it works."),
+    },
+    "compare": {
+        "title": "Best Forex IB & Affiliate Partner Program 2026 — Up to $10 per Lot | TNFX",
+        "meta": "Comparing forex partner programs? See what actually matters — payout per lot, how fast you're paid, and whether the broker converts. TNFX: up to $10 per lot, weekly cash challenges, fast local withdrawals, FSA-regulated.",
+        "h1": "The Best Forex Partner Program for 2026",
+        "subhead": "Not every program is worth your traffic. Here's what separates the best forex IB and affiliate programs — and how TNFX measures up: up to $10 per lot, weekly cash challenges, fast local withdrawals, and a dedicated MENA partner desk.",
+        "lead_h2": "What to look for in a forex IB / affiliate program",
+        "lead_p": ("Every serious partner program pays per lot or per acquisition — the real difference is how much, "
+                   "how fast you actually get paid, and whether the broker converts the traffic you send. Judge a "
+                   "program on four things: the per-lot rate (and how high it can climb), payout speed and methods, "
+                   "how well the broker retains your clients, and whether there's real local support behind it. TNFX "
+                   "pays up to $10 per lot, adds up to $400 a week in challenge cash, funds and withdraws through 13 "
+                   "local and global methods, and backs it with an FSA license and a real MENA partner desk — which is "
+                   "why partners move their books to TNFX."),
+    },
+    "what-is-introducing-broker": {
+        "title": "What Is a Forex Introducing Broker (IB)? Meaning, Pay & How to Become One | TNFX",
+        "meta": "What is a forex introducing broker (IB)? A clear guide to how IBs work, how they get paid per lot, IB vs affiliate, and how to become one with TNFX — up to $10 per lot, no trading, no capital.",
+        "h1": "What Is a Forex Introducing Broker?",
+        "subhead": "An introducing broker refers traders to a broker and earns commission on their trading — no trading of your own, no capital. Here's exactly how it works, and how to become one with TNFX for up to $10 per lot.",
+        "lead_h2": "Introducing broker, explained simply",
+        "lead_p": ("A forex introducing broker (IB) is a partner who connects traders with a broker and earns a "
+                   "commission on the volume those traders trade — paid by the broker, not the client. You don't trade "
+                   "yourself and you don't need capital; you earn from other people's trading activity. As a TNFX IB "
+                   "you're paid up to $10 for every standard lot your referred clients trade, live on every trade and "
+                   "withdrawable any time. It's the clearest, lowest-risk way to build a real income from forex."),
+    },
+    "how-much-do-ibs-make": {
+        "title": "How Much Do Forex IBs Make? Real Per-Lot Earnings Explained | TNFX",
+        "meta": "How much do forex introducing brokers make? It depends on your rate and your clients' volume — both published. With TNFX you earn $5 to $10 per lot live on every trade, plus up to $400/week in challenges.",
+        "h1": "How Much Do Forex Introducing Brokers Make?",
+        "subhead": "The honest answer: it depends on your per-lot rate and your clients' monthly volume — and TNFX publishes both. Earn $5 to $10 per lot, live on every trade, plus up to $400 a week in challenge cash.",
+        "lead_h2": "Your income = your rate × your clients' volume",
+        "lead_p": ("There's no single number, but the maths is simple and public. Your rate runs from $5 per lot at "
+                   "Bronze to $10 per lot at Prime; multiply it by the lots your clients trade each month and you have "
+                   "your commission. Refer active clients trading a few hundred lots a month and you're earning a "
+                   "serious monthly income — before you add up to $400 a week in weekly challenges and up to $4,000 in "
+                   "career missions. It accrues live on every trade and you can withdraw any time."),
+    },
+    "islamic-halal-ib": {
+        "title": "Islamic (Halal) Forex Partner Program — Swap-Free IB Commission | TNFX",
+        "meta": "Islamic forex partner program: refer swap-free (halal) traders and earn up to $10 per lot. Commission on trading activity, no interest — built for the Middle East. Free to join, FSA-regulated.",
+        "h1": "Islamic (Halal) Forex Partner Program",
+        "subhead": "Refer swap-free (Islamic) account traders and earn up to $10 per lot — commission on real trading activity, with no interest involved. Built for the Middle East market.",
+        "lead_h2": "A partner program built for swap-free traders",
+        "lead_p": ("Many traders in the region require swap-free (Islamic) accounts, and TNFX offers them. As a partner "
+                   "you refer those traders and earn up to $10 per lot on the volume they trade — your commission comes "
+                   "from the broker's spread on trading activity, not from any interest or lending. It's a clean, "
+                   "activity-based way for you to earn while introducing traders to accounts that suit them."),
+    },
+    "gold-xau-ib": {
+        "title": "Gold (XAU/USD) Forex Partner Program — Earn up to $10 per Lot | TNFX",
+        "meta": "Gold is the most-traded market in the region. Refer gold (XAU/USD) traders and earn up to $10 per lot with TNFX — paid live, withdrawable any time. Free to join, FSA-regulated, weekly cash challenges.",
+        "h1": "Gold Trading Partner Program",
+        "subhead": "Gold is the number-one instrument for traders in this region. Refer gold (XAU/USD) traders and earn up to $10 per lot on their volume — the highest tier of TNFX's commission ladder.",
+        "lead_h2": "Earn on the region's favourite market — gold",
+        "lead_p": ("Gold (XAU/USD) is where a huge share of trading volume in the Middle East happens, and it sits at "
+                   "the top of the TNFX commission ladder — up to $10 per lot. If your audience trades gold, you're "
+                   "referring them to the exact market they already love, and earning on every lot they trade, live "
+                   "and withdrawable any time. Add weekly cash challenges on top and the numbers add up fast."),
+    },
+    "mt4-mt5-ib": {
+        "title": "MT4 & MT5 Introducing Broker Program — Earn up to $10 per Lot | TNFX",
+        "meta": "Become an MT4 & MT5 introducing broker with TNFX. Refer traders on MetaTrader 4 and MetaTrader 5 and earn up to $10 per lot, tracked live. Free to join, FSA-regulated, weekly cash challenges.",
+        "h1": "MT4 & MT5 Introducing Broker Program",
+        "subhead": "Refer traders on the MetaTrader 4 and MetaTrader 5 platforms they already use, and earn up to $10 per lot on their volume — tracked live in your partner dashboard.",
+        "lead_h2": "Earn on both MetaTrader platforms",
+        "lead_p": ("Almost every forex trader knows MetaTrader — and TNFX runs on both MT4 and MT5 from a single "
+                   "partner account. Whether your audience prefers the classic MT4 or the newer MT5, you refer them to "
+                   "the platform they already trust and earn up to $10 per lot on everything they trade. No new tools "
+                   "to learn, tight spreads and fast execution, and every lot tracked live to the dollar."),
+    },
+    "sub-ib-master-ib": {
+        "title": "Sub-IB & Master IB — Build a Forex Partner Team | TNFX",
+        "meta": "Scale beyond your own referrals: become a master IB, bring sub-partners under you, and earn on your whole network's volume — up to $10 per lot. Multi-tier forex partner program from TNFX.",
+        "h1": "Build a Team: Master IB & Sub-IB Program",
+        "subhead": "Don't cap yourself at your own referrals. Bring sub-partners under you and earn on your entire network's trading volume — up to $10 per lot, with a live view of every partner and client.",
+        "lead_h2": "Grow a network, not just a referral list",
+        "lead_p": ("The biggest partners don't just refer clients — they build teams. TNFX supports master IBs who "
+                   "bring sub-partners under them, so you earn on the volume your whole network generates, not only "
+                   "your own direct referrals. It's how a solo affiliate becomes a real IB business: recruit, support "
+                   "your sub-partners, and scale your earnings up to $10 per lot across the team. Talk to our partner "
+                   "desk about the multi-tier structure that fits your operation."),
+    },
+}
+
+# Per-topic meta keywords — rendered as <meta name="keywords"> (invisible). This is the ONLY
+# place competitor brand names appear (never in the visible article). NOTE: Google ignores the
+# keywords meta as a ranking signal; it's a harmless, non-deceptive place to carry these terms.
+META_KEYWORDS = {
+    "introducing-broker": "forex introducing broker, become an IB, IB forex program, how to become an introducing broker, IB commission, وسيط معرف, forex IB nasıl olunur",
+    "affiliate-program": "forex affiliate program, best forex affiliate program, CFD affiliate, forex affiliate marketing, أفلييت فوركس, forex affiliate ortaklık",
+    "partnership": "forex partner program, become a forex partner, broker partnership, شراكة فوركس, forex ortaklık programı",
+    "cpa": "forex CPA, forex CPA affiliate, CPA network forex, forex CPL, cost per acquisition forex, hybrid CPA revenue share",
+    "cashback-rebate": "forex cashback, forex rebate, best forex rebate, rebate per lot, كاش باك فوركس, hoàn phí forex, rebate forex terbesar",
+    "commission-per-lot": "forex commission per lot, IB commission rates, how much do forex IBs make, forex $10 per lot, spread share IB",
+    "referral": "forex referral program, refer a friend forex, forex referral link, refer and earn forex",
+    "earn-without-trading": "make money forex without trading, forex affiliate without investment, passive income forex, is forex affiliate legit",
+    "compare": ("best forex IB program, best forex affiliate program 2026, highest paying forex affiliate, best forex partner program, "
+                "forex IB comparison, Exness partner, Exness IB commission, Exness affiliate, XM affiliate, XM partner, XM IB commission, "
+                "IC Markets IB, Pepperstone partner, FBS partner, HFM partner, OctaFX partner, FXTM partner, Vantage partner, best CPA forex broker, "
+                "switch forex IB, أفضل برنامج شراكة فوركس, بديل شركاء اكسنس"),
+    "what-is-introducing-broker": "what is an introducing broker, introducing broker meaning, what is an IB in forex, introducing broker definition, IB vs affiliate",
+    "how-much-do-ibs-make": "how much do forex IBs make, forex IB salary, forex IB income, how much do introducing brokers earn, forex affiliate income",
+    "islamic-halal-ib": "islamic forex partner program, halal forex affiliate, swap free IB, halal forex IB, وسيط معرف اسلامي, forex affiliate helal mi",
+    "gold-xau-ib": "gold IB forex, XAU IB, gold trading affiliate, gold rebate forex, وسيط ذهب, XAU/USD IB commission",
+    "mt4-mt5-ib": "MT4 introducing broker, MT5 IB, MetaTrader IB program, MT4 MT5 affiliate, MT5 introducing broker program",
+    "sub-ib-master-ib": "sub IB forex, master IB, multi tier IB, sub broker forex, two tier IB program, forex IB team, override commission",
+}
+
+# languages: page-language directions
+LANGS = {
+    "en": {"name": "English",    "native": "English",    "dir": "ltr"},
+    "ar": {"name": "Arabic",     "native": "العربية",     "dir": "rtl"},
+    "ku": {"name": "Kurdish",    "native": "کوردی",       "dir": "rtl"},
+    "tr": {"name": "Turkish",    "native": "Türkçe",      "dir": "ltr"},
+    "id": {"name": "Indonesian", "native": "Indonesia",   "dir": "ltr"},
+    "vi": {"name": "Vietnamese", "native": "Tiếng Việt",  "dir": "ltr"},
+    "es": {"name": "Spanish",    "native": "Español",     "dir": "ltr"},
+    "pt": {"name": "Portuguese", "native": "Português",   "dir": "ltr"},
+    "th": {"name": "Thai",       "native": "ไทย",          "dir": "ltr"},
+    "hi": {"name": "Hindi",      "native": "हिन्दी",        "dir": "ltr"},
+    "ur": {"name": "Urdu",       "native": "اردو",         "dir": "rtl"},
+}
+
+CONTENT = {"UI": UI, "SHARED": SHARED, "TOPICS": TOPICS, "META_KEYWORDS": META_KEYWORDS,
+           "TIERS": TIERS, "PAYMENTS": PAYMENTS, "CAREER": CAREER, "WEEKLY": WEEKLY,
+           "LANGS": LANGS}
+
+if __name__ == "__main__":
+    os.makedirs(os.path.dirname(__file__) + "/i18n", exist_ok=True)
+    with open(os.path.dirname(__file__) + "/i18n/en.json", "w", encoding="utf-8") as f:
+        json.dump(CONTENT, f, ensure_ascii=False, indent=1)
+    n_topics = len(TOPICS)
+    print(f"en.json written · {n_topics} topics · {len(LANGS)} languages = {n_topics*len(LANGS)} pages")

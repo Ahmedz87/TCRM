@@ -18,6 +18,48 @@ import urllib.parse
 import urllib.request
 
 
+def _hashlock_cfg():
+    """Hashlock SMS provider (log.hashlock.tech). Configure in sms_config.py:
+        HASHLOCK_KEY    = "<api key>"
+        HASHLOCK_BASE   = "https://log.hashlock.tech"   # optional, this is the default
+        HASHLOCK_SENDER = "TNFX"                          # optional sender id, if the account supports it
+    Send API:  POST {base}/campaigns  {"recipients":["+9647..."],"message":"..."}  (Bearer auth)."""
+    try:
+        import sms_config as c
+        key = getattr(c, "HASHLOCK_KEY", "")
+        if not key:
+            return None
+        return {"base": (getattr(c, "HASHLOCK_BASE", "https://log.hashlock.tech") or "https://log.hashlock.tech").rstrip("/"),
+                "key": key, "sender": (getattr(c, "HASHLOCK_SENDER", "") or None)}
+    except Exception:
+        return None
+
+
+def _send_hashlock(hc, phone, message):
+    # E.164 with leading + (the provider validates "valid phone number"; our numbers are stored +9647…)
+    digits = "".join(ch for ch in (phone or "") if ch.isdigit())
+    to = "+" + digits
+    payload = {"recipients": [to], "message": message or ""}
+    if hc.get("sender"):
+        payload["sender"] = hc["sender"]
+    req = urllib.request.Request(
+        hc["base"] + "/campaigns", data=json.dumps(payload).encode(), method="POST",
+        headers={"Authorization": f"Bearer {hc['key']}", "Content-Type": "application/json", "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            resp = json.loads(r.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        try:
+            resp = json.loads(e.read() or b"{}")
+        except Exception:
+            resp = {}
+        print(f"[sms] hashlock HTTP {e.code} to={to}: {resp.get('message') or resp.get('code') or ''}", flush=True)
+        return False
+    ok = bool(resp.get("ok"))
+    print(f"[sms] hashlock to={to} ok={ok} {resp.get('code') or ''}", flush=True)
+    return ok
+
+
 def _infobip_cfg():
     """Infobip provider (preferred). Configure in sms_config.py:
         INFOBIP_BASE   = "w4v9lq.api.infobip.com"   # host only, no scheme
@@ -52,7 +94,7 @@ def _cfg():
 
 
 def configured():
-    return _infobip_cfg() is not None or _cfg() is not None
+    return _hashlock_cfg() is not None or _infobip_cfg() is not None or _cfg() is not None
 
 
 def _send_infobip(ic, phone, message):
@@ -89,6 +131,15 @@ def _send_infobip(ic, phone, message):
 
 
 def send(phone, message):
+    # PRIMARY: Hashlock. On any failure it falls through to Infobip so OTP delivery never
+    # depends on a single provider.
+    hc = _hashlock_cfg()
+    if hc:
+        try:
+            if _send_hashlock(hc, phone, message):
+                return True
+        except Exception as e:
+            print(f"[sms] hashlock send error to {phone}: {e} — falling back", flush=True)
     ic = _infobip_cfg()
     if ic:
         try:

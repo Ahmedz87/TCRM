@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { placeCall } from './api';
+import { placeCall, dialNumber } from './api';
 
 // ── Yeastar helper ─────────────────────────────────────────────────────────
 // Routes through the backend Yeastar proxy (placeCall in api.ts); auto-falls back to tel:.
@@ -81,7 +81,7 @@ export function PhoneModal({ contact, onClose }: {
               </div>
             </button>
 
-            <button onClick={()=>{ window.location.href=`tel:${phone}`; onClose(); }}
+            <button onClick={()=>{ window.location.href=`tel:${dialNumber(phone)}`; onClose(); }}
               style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', background:'rgba(0,102,255,0.08)', border:'1px solid rgba(0,102,255,0.3)', borderRadius:10, color:'#4d9fff', cursor:'pointer' }}>
               <div style={{ width:40, height:40, borderRadius:10, background:'rgba(0,102,255,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>📱</div>
               <div style={{ textAlign:'left' }}>

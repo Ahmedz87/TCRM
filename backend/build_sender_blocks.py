@@ -52,9 +52,10 @@ def main():
     agg = defaultdict(lambda: {"n": 0, "max_onc": None, "max_all": None, "f": None, "l": None})
     for login, tx, txd in cur.fetchall():
         t = norm(tx)
-        if len(t) != 37 or t[8:25] != FIXED:
+        # [8 date][17 fixed][4-5 block][8 seq] -> 37 or 38 digits; block4 col holds either width
+        if len(t) not in (37, 38) or t[8:25] != FIXED:
             continue
-        b4 = t[25:29]; seq = int(t[29:])
+        b4 = t[25:-8]; seq = int(t[-8:])
         try:
             td = datetime.date(int(t[:4]), int(t[4:6]), int(t[6:8]))
         except ValueError:

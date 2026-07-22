@@ -47,6 +47,72 @@ def credit_account(login, amount, comment="Deposit", credit_type=2):
     return _post(f"/provision/credit/{int(login)}", {"amount": amount, "comment": comment, "type": int(credit_type)})
 
 
+# ───────────────────────── IDEMPOTENT PROVISIONING (P0-9/10) ─────────────────────────
+# create_account is NOT idempotent on the MT side: a retry after a bridge timeout (where the
+# account WAS actually created) would create a SECOND real account. This guards it with a
+# `provision_intents` claim table: exactly one caller ever runs UserAdd per intent_key. All others
+# get the recorded login back (idempotent) — or, if a prior attempt is mid-flight, a "in progress"
+# refusal instead of a duplicate. The fail direction is SAFE: it will never double-create; a crash
+# between the MT create and the status update leaves the intent 'pending' (blocks retries) until an
+# admin reconciles, rather than risking a duplicate live account.
+from sqlalchemy import text as _text
+
+
+def _ensure_provision_intents(db):
+    db.execute(_text("""CREATE TABLE IF NOT EXISTS provision_intents (
+        intent_key TEXT PRIMARY KEY,
+        status TEXT NOT NULL DEFAULT 'pending',   -- pending | done | failed
+        login BIGINT,
+        error TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW())"""))
+    db.commit()
+
+
+def create_account_idempotent(db, intent_key, group, first, last, **kw):
+    """Create a real MT account AT MOST ONCE per intent_key (e.g. "reg_123"). Concurrent or retried
+    calls with the same key never double-create: they get the recorded login (idempotent=True) or a
+    'in progress' refusal. Returns the same dict as create_account (+ 'idempotent'/'pending' flags).
+    On an idempotent hit master/investor are None (credentials are only returned on the first create)."""
+    _ensure_provision_intents(db)
+    # atomic claim: only the FIRST caller inserts the 'pending' row and proceeds to UserAdd
+    claimed = db.execute(_text("""
+        INSERT INTO provision_intents (intent_key, status) VALUES (:k,'pending')
+        ON CONFLICT (intent_key) DO NOTHING RETURNING intent_key
+    """), {"k": intent_key}).scalar()
+    db.commit()
+    if not claimed:
+        row = db.execute(_text("SELECT status, login FROM provision_intents WHERE intent_key=:k"),
+                         {"k": intent_key}).fetchone()
+        if row and row[0] == "done" and row[1]:
+            return {"ok": True, "login": int(row[1]), "idempotent": True, "master": None, "investor": None}
+        if row and row[0] == "pending":
+            return {"ok": False, "pending": True,
+                    "error": "provisioning already in progress for this registration"}
+        # prior attempt FAILED — re-claim atomically so exactly one retry proceeds
+        reclaimed = db.execute(_text("""UPDATE provision_intents SET status='pending', updated_at=NOW()
+                                        WHERE intent_key=:k AND status='failed' RETURNING intent_key"""),
+                               {"k": intent_key}).scalar()
+        db.commit()
+        if not reclaimed:
+            row = db.execute(_text("SELECT status, login FROM provision_intents WHERE intent_key=:k"),
+                             {"k": intent_key}).fetchone()
+            if row and row[0] == "done" and row[1]:
+                return {"ok": True, "login": int(row[1]), "idempotent": True, "master": None, "investor": None}
+            return {"ok": False, "pending": True, "error": "provisioning already in progress"}
+
+    # we hold the claim: create exactly once
+    res = create_account(group, first, last, **kw)
+    if res.get("ok") and res.get("login"):
+        db.execute(_text("UPDATE provision_intents SET status='done', login=:lg, updated_at=NOW() WHERE intent_key=:k"),
+                   {"lg": int(res["login"]), "k": intent_key})
+    else:
+        db.execute(_text("UPDATE provision_intents SET status='failed', error=:e, updated_at=NOW() WHERE intent_key=:k"),
+                   {"e": str(res.get("error"))[:500], "k": intent_key})
+    db.commit()
+    return res
+
+
 def delete_account(login):
     return _post(f"/provision/delete/{int(login)}")
 

@@ -141,12 +141,12 @@ export default function ClientChat({ login }: { login?: number }) {
             )}
             {msgs.map((m, i) => (
               <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth:'86%' }}>
-                <div style={{ background: m.role === 'user' ? ACCENT : '#2c333e',
+                <div dir="auto" style={{ background: m.role === 'user' ? ACCENT : '#2c333e',
                   color: m.role === 'user' ? '#04140e' : '#e7eef7',
                   padding:'10px 13px', borderRadius:13,
                   borderBottomRightRadius: m.role === 'user' ? 4 : 13,
                   borderBottomLeftRadius: m.role === 'user' ? 13 : 4,
-                  fontSize:13.5, lineHeight:1.5, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
+                  fontSize:13.5, lineHeight:1.5, whiteSpace:'pre-wrap', wordBreak:'break-word', textAlign:'start' }}>
                   {m.image && (
                     <img src={m.image} alt="attachment" style={{ display:'block', maxWidth:'100%',
                       maxHeight:180, borderRadius:8, marginBottom: m.content ? 8 : 0 }} />
@@ -188,12 +188,12 @@ export default function ClientChat({ login }: { login?: number }) {
                 style={{ background:'#2c333e', border:'1px solid #3a4350', borderRadius:10, color:'#e7eef7',
                   width:42, fontSize:18, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.5 : 1,
                   fontFamily:'inherit' }}>📎</button>
-              <textarea value={input} onChange={e => setInput(e.target.value)}
+              <textarea value={input} onChange={e => setInput(e.target.value)} dir="auto"
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
                 placeholder="Type your message…" rows={1}
                 style={{ flex:1, resize:'none', background:'#2c333e', border:'1px solid #3a4350',
                   borderRadius:10, color:'#e7eef7', padding:'10px 12px', fontSize:13.5,
-                  fontFamily:'inherit', outline:'none', maxHeight:90 }} />
+                  fontFamily:'inherit', outline:'none', maxHeight:90, textAlign:'start' }} />
               <button onClick={() => send()} disabled={busy || (!input.trim() && !imgData)}
                 style={{ background:ACCENT, border:'none', borderRadius:10, color:'#04140e',
                   fontWeight:800, padding:'0 16px', cursor: busy ? 'default' : 'pointer',

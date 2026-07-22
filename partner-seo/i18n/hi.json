@@ -1,0 +1,331 @@
+{
+ "ui": {
+  "partners": "पार्टनर्स",
+  "nav_commission": "कमीशन",
+  "nav_challenges": "चैलेंज",
+  "nav_payments": "पेमेंट",
+  "nav_about": "TNFX के बारे में",
+  "login": "लॉग इन",
+  "become_partner": "पार्टनर बनें",
+  "cta_primary": "पार्टनर बनें",
+  "cta_secondary": "देखें यह कैसे काम करता है",
+  "per_lot": "/ लॉट",
+  "up_to": "तक",
+  "lang_pick": "भाषा",
+  "suggest_prefix": "इस पेज को देखें",
+  "suggest_yes": "बदलें",
+  "suggest_no": "नहीं, धन्यवाद",
+  "start_earning": "आज ही कमाना शुरू करें",
+  "ib_partner": "IB / एफिलिएट पार्टनर",
+  "ib_sub": "प्रति लॉट $10 तक कमाएं",
+  "client_area": "ट्रेडिंग अकाउंट खोलें",
+  "client_sub": "MT4 और MT5 पर ट्रेड करें",
+  "sign_up": "साइन अप करें",
+  "open_account": "अकाउंट खोलें",
+  "on_this_page": "इस पेज पर",
+  "key_facts": "मुख्य तथ्य",
+  "other_pages": "अधिक पार्टनर पेज",
+  "read_time": "मिनट पढ़ें",
+  "earnings": "पार्टनर कमाई",
+  "this_mo": "इस महीने",
+  "last30": "पिछले 30 दिन",
+  "clients": "क्लाइंट",
+  "funded": "फंडेड क्लाइंट",
+  "lots": "ट्रेड किए लॉट",
+  "active_mission": "सक्रिय मिशन",
+  "claim": "क्लेम करें",
+  "live": "लाइव"
+ },
+ "s": {
+  "commission_kicker": "वह नंबर जो मायने रखता है",
+  "commission_h2": "आपके क्लाइंट्स द्वारा ट्रेड किए गए हर लॉट पर $10 तक",
+  "commission_lead": "आपका कमीशन आपके रेफर किए गए क्लाइंट्स द्वारा ट्रेड किए गए हर एक लॉट पर मिलता है — गोल्ड और मेजर पेयर्स पर — डॉलर तक लाइव ट्रैक होता है और कभी भी विथड्रॉ किया जा सकता है। हर पार्टनर $5 per lot से शुरू करता है और जैसे-जैसे आपका बुक बढ़ता है, यह $10 तक पहुँचता है। कोई मोलभाव नहीं, कोई पक्षपात नहीं: पब्लिश किए गए थ्रेशोल्ड को पूरा करें और आपका रेट अपने आप बढ़ जाता है।",
+  "commission_tiers_note": "छह ग्रेड। एक नंबर जो सिर्फ ऊपर जाता है।",
+  "commission_rate_word": "प्रति लॉट",
+  "challenges_kicker": "चैलेंज अरीना",
+  "challenges_h2": "बढ़ने के लिए पैसे कमाएँ — आपके कमीशन के ऊपर रियल कैश",
+  "challenges_lead": "TNFX पार्टनर सिर्फ per lot ही नहीं कमाते। मिशन स्वीकार करें, टारगेट पूरा करें, रियल कैश क्लेम करें — सीधे आपके पार्टनर वॉलेट में, कमीशन के हर डॉलर के ऊपर।",
+  "career_h3": "करियर मिशन — $4,000 तक",
+  "career_lead": "छह करियर मिशन, एक शानदार सफर। हर मिशन जो आप जीतते हैं वह कैश रिवॉर्ड देता है और आपको $10 per lot की ओर ग्रेड सीढ़ी पर ऊपर ले जाता है।",
+  "weekly_h3": "वीकली क्वेस्ट — हर रविवार रीसेट",
+  "weekly_lead": "हर हफ्ते नए कैश टारगेट। फंडेड क्लाइंट लाएँ, वॉल्यूम बढ़ाएँ, और क्लेम करें — फिर रविवार को बोर्ड रीसेट होता है और आप फिर से करते हैं। कमाने का नया मौका, हर हफ्ते।",
+  "weekly_reward_line": "हर हफ्ते $400 तक के कैश रिवॉर्ड — आपके $10-per-lot कमीशन के ऊपर।",
+  "payments_kicker": "आपके क्लाइंट कैसे फंड करते हैं",
+  "payments_h2": "आपके क्लाइंट्स के लिए डिपॉज़िट और विथड्रॉ के 13 तरीके",
+  "payments_lead": "रेफर किए गए ट्रेडर्स के असल में एक्टिवेट होने की #1 वजह है आसान फंडिंग। TNFX उन लोकल और ग्लोबल तरीकों को सपोर्ट करता है जो आपकी ऑडियंस पहले से इस्तेमाल करती है — इंस्टेंट लोकल डिपॉज़िट, कार्ड्स, और क्रिप्टो — ताकि जो क्लाइंट आप भेजते हैं वे कैशियर पर छूटने के बजाय कन्वर्ट हों।",
+  "about_kicker": "TNFX के बारे में",
+  "about_h2": "वह ब्रोकर जिसके पीछे आप अपना नाम रख सकते हैं",
+  "about_para1": "TNFX एक FSA-लाइसेंस प्राप्त forex और CFD ब्रोकर है जो मिडल ईस्ट और उससे आगे के ट्रेडर्स के लिए बनाया गया है। आपके क्लाइंट 1,000+ इंस्ट्रूमेंट्स ट्रेड करते हैं — गोल्ड, FX मेजर, इंडाइसेस और बहुत कुछ — MetaTrader 4 और MetaTrader 5 प्लेटफॉर्म पर जिन्हें वे पहले से जानते हैं, टाइट स्प्रेड और तेज़ एग्ज़ीक्यूशन के साथ।",
+  "about_para2": "कमीशन तभी बढ़ता है जब आपके क्लाइंट ट्रेड करते रहते हैं — और TNFX उन्हें बनाए रखने के लिए बना है: लोकल-भाषा सपोर्ट, इंस्टेंट लोकल डिपॉज़िट, और इस रीजन के लिए बनाया गया ट्रेडिंग अनुभव। इसीलिए यहाँ पार्टनर बुक लंबे समय तक टिकते हैं।",
+  "how_kicker": "शुरुआत करना",
+  "how_h2": "एप्लिकेशन से पहले कमीशन तक",
+  "dash_kicker": "आपका पार्टनर डैशबोर्ड",
+  "dash_h2": "आपका पूरा बुक, लाइव और डॉलर तक",
+  "dash_lead": "हर क्लाइंट, हर लॉट, कमीशन का हर डॉलर — ट्रेड होते ही अपडेट। कोई मंथली स्टेटमेंट नहीं, कोई अनुमान नहीं। अपने फनल, अपनी चैलेंज प्रोग्रेस, और अपने विथड्रॉ करने योग्य बैलेंस को एक रियल-टाइम पार्टनर पोर्टल में ट्रैक करें।",
+  "dash_caption": "TNFX पार्टनर डैशबोर्ड — लाइव कमीशन, फनल और चैलेंज प्रोग्रेस। (चित्रण।)",
+  "dash_caption_ch": "चैलेंज अरीना — मिशन स्वीकार करें, टारगेट पूरा करें, रियल कैश क्लेम करें। (चित्रण।)",
+  "finalcta_h2": "आपका पहला क्लाइंट इसी हफ्ते ट्रेडिंग कर सकता है",
+  "finalcta_lead": "जुड़ना फ्री है। पहले दिन से $5 per lot का Bronze रेट, बढ़कर $10 तक। हर हफ्ते कैश चैलेंज। 60 सेकंड में अप्लाई करें।",
+  "finalcta_btn": "TNFX पार्टनर बनें",
+  "finalcta_assurance": "जुड़ना फ्री · कभी भी विथड्रॉ · रियल-टाइम रिपोर्टिंग",
+  "footer_disclaimer": "TNFX को Financial Services Authority (FSA) द्वारा लाइसेंस प्राप्त है। विदेशी मुद्रा और CFDs की ट्रेडिंग में उच्च स्तर का जोखिम होता है और यह सभी निवेशकों के लिए उपयुक्त नहीं हो सकती। पार्टनर कमीशन क्लाइंट की ट्रेडिंग गतिविधि पर दिया जाता है; पिछली कमाई भविष्य के नतीजों की गारंटी नहीं देती।",
+  "footer_rights": "© 2026 TNFX. सर्वाधिकार सुरक्षित।",
+  "footer_login": "पार्टनर लॉगिन",
+  "footer_home": "पार्टनर प्रोग्राम"
+ },
+ "about_trust": [
+  {
+   "k": "FSA",
+   "v": "लाइसेंस प्राप्त और विनियमित ब्रोकर"
+  },
+  {
+   "k": "MT4 & MT5",
+   "v": "दोनों प्लेटफॉर्म, एक लॉगिन"
+  },
+  {
+   "k": "1000+",
+   "v": "इंस्ट्रूमेंट्स — गोल्ड, FX, इंडाइसेस"
+  },
+  {
+   "k": "Instant",
+   "v": "लोकल डिपॉज़िट और तेज़ विथड्रॉल"
+  }
+ ],
+ "how_steps": [
+  {
+   "t": "60 सेकंड में अप्लाई करें",
+   "d": "आपका नाम, संपर्क, और आप क्लाइंट कैसे लाते हैं। बस यही पूरा फॉर्म है।"
+  },
+  {
+   "t": "डेस्क अप्रूवल",
+   "d": "हमारा पार्टनर डेस्क हर एप्लिकेशन की समीक्षा करता है और आपका अकाउंट एक्टिवेट करता है — आमतौर पर उसी दिन।"
+  },
+  {
+   "t": "अपना लिंक शेयर करें",
+   "d": "अपना referral link पाएँ, साथ ही रेडी-मेड ऐड बैनर जिनमें यह पहले से लगा होता है। इन्हें जहाँ भी आपकी ऑडियंस है वहाँ पोस्ट करें।"
+  },
+  {
+   "t": "प्रति लॉट कमाएँ",
+   "d": "आपके क्लाइंट द्वारा किए गए हर ट्रेड पर कमीशन मिलता है — आपके डैशबोर्ड में लाइव। कभी भी विथड्रॉ करें।"
+  }
+ ],
+ "weekly": [
+  {
+   "name": "First Blood",
+   "desc": "इस हफ्ते 1 फंडेड क्लाइंट लाएँ"
+  },
+  {
+   "name": "Hat Trick",
+   "desc": "इस हफ्ते 3 फंडेड क्लाइंट लाएँ"
+  },
+  {
+   "name": "Volume Hunter",
+   "desc": "आपके क्लाइंट 50 लॉट ट्रेड करें"
+  },
+  {
+   "name": "Whale Hunter",
+   "desc": "आपके क्लाइंट $50,000 डिपॉज़िट करें"
+  }
+ ],
+ "faq": [
+  {
+   "q": "TNFX पार्टनर के रूप में मैं कितना कमाता हूँ?",
+   "a": "आपके रेफर किए गए क्लाइंट्स द्वारा गोल्ड और मेजर पेयर्स पर ट्रेड किए गए हर लॉट पर $10 तक। आप $5 per lot से शुरू करते हैं और जैसे-जैसे आपका बुक बढ़ता है आपका रेट $10 तक पहुँचता है — साथ ही वीकली और करियर चैलेंज से कैश रिवॉर्ड।"
+  },
+  {
+   "q": "कमाने के लिए क्या मुझे ट्रेड या निवेश करना पड़ता है?",
+   "a": "नहीं। आप क्लाइंट लाकर कमाते हैं, खुद ट्रेड करके नहीं। जुड़ने की कोई लागत नहीं और कोई पूंजी की ज़रूरत नहीं — आपको आपके क्लाइंट की ट्रेडिंग गतिविधि पर भुगतान मिलता है।"
+  },
+  {
+   "q": "मुझे कब और कैसे भुगतान मिलता है?",
+   "a": "हर ट्रेड पर कमीशन लाइव जमा होता है और कभी भी विथड्रॉ किया जा सकता है — कोई लॉक-अप नहीं, कोई न्यूनतम साइकल नहीं। TNFX के 13 सपोर्टेड तरीकों में से किसी से भी विथड्रॉ करें, इंस्टेंट लोकल विकल्पों सहित।"
+  },
+  {
+   "q": "क्या TNFX विनियमित है?",
+   "a": "हाँ। TNFX को Financial Services Authority (FSA) द्वारा लाइसेंस प्राप्त और विनियमित किया गया है, जो MetaTrader 4 और MetaTrader 5 पर 1,000+ इंस्ट्रूमेंट्स के साथ काम करता है।"
+  },
+  {
+   "q": "मैं पार्टनर कैसे बनूँ?",
+   "a": "अपने नाम और संपर्क के साथ लगभग 60 सेकंड में अप्लाई करें। हमारा पार्टनर डेस्क आपके अकाउंट की समीक्षा और एक्टिवेट करता है — आमतौर पर उसी दिन — और आपको तुरंत अपना referral link मिल जाता है।"
+  },
+  {
+   "q": "IB, affiliate और referral partner में क्या फर्क है?",
+   "a": "तीनों ही TNFX में क्लाइंट लाने पर आपको commission दिलाते हैं। एक affiliate links और banners के ज़रिए traffic लाता है; एक introducing broker (IB) अपने क्लाइंट्स की एक पूरी book को active रूप से manage और support करता है, अक्सर एक team के साथ; और एक referral partner बस अपने दोस्तों के साथ एक link share कर देता है। TNFX के साथ आप इनमें से किसी भी रूप में एक ही account से शुरुआत कर सकते हैं और आगे चलकर एक पूरी IB desk बना सकते हैं — $10 per lot तक का commission सबके लिए एक जैसा है।"
+  },
+  {
+   "q": "मुझे मेरा referral link और marketing banners कैसे मिलेंगे?",
+   "a": "आपका account approve होते ही आपको आपके partner dashboard में एक personal referral link मिल जाता है, साथ ही ready-made ad banners की एक library भी, जिनमें पहले से ही आपका link लगा होता है। इन्हें आप अपनी audience जिस भी channel पर हो, वहाँ share कर सकते हैं।"
+  },
+  {
+   "q": "क्या मेरे link से आने की वजह से मेरे क्लाइंट्स को ज़्यादा पैसे देने पड़ते हैं या खराब spreads मिलते हैं?",
+   "a": "नहीं। आपके क्लाइंट्स बिल्कुल वही tight spreads और conditions पर trade करते हैं जो बाकी सबको मिलती हैं — आपका commission TNFX से आता है, आपके क्लाइंट्स से नहीं। आपके ज़रिए refer होने में उन्हें एक रुपया भी extra नहीं लगता।"
+  },
+  {
+   "q": "मेरा per-lot commission कैसे calculate होता है?",
+   "a": "आपके refer किए हुए क्लाइंट्स gold और major pairs पर जितने standard lots trade करते हैं, हर lot पर आपको एक fixed रकम मिलती है — Bronze पर $5 per lot से लेकर Prime पर $10 per lot तक। अपनी rate को क्लाइंट्स के monthly lots से गुणा करके आप अपनी income का अंदाज़ा लगा सकते हैं; यह हर trade पर live जुड़ता रहता है।"
+  },
+  {
+   "q": "weekly challenges और career missions कैसे काम करते हैं?",
+   "a": "per-lot commission के अलावा आप missions accept करके असली cash कमा सकते हैं। Weekly quests हर रविवार reset होते हैं और $400 तक देते हैं; career missions एक बार छह stages में चलते हैं और $4,000 तक देते हैं। जैसे ही आप target hit करते हैं, reward सीधे आपके partner wallet में आ जाता है।"
+  },
+  {
+   "q": "मैं अपना commission किन तरीकों से withdraw कर सकता हूँ?",
+   "a": "आप TNFX के किसी भी supported method से withdraw कर सकते हैं, जिसमें instant local options और crypto भी शामिल हैं — जैसे Ovadot, Qi Card, ZainCash, USDT और Perfect Money। न कोई lock-up है, न कोई minimum payout cycle।"
+  },
+  {
+   "q": "क्या मैं TNFX को social media, Telegram या YouTube पर promote कर सकता हूँ?",
+   "a": "हाँ। अपना link और banners वहाँ share करें जहाँ आपकी audience है — social media, messaging groups, कोई website, या video — बस partner terms और local advertising rules का पालन करें। ready-made creatives की वजह से यह काम तेज़ी से हो जाता है।"
+  },
+  {
+   "q": "क्या join करने की कोई fee है या क्लाइंट्स की कोई minimum संख्या ज़रूरी है?",
+   "a": "नहीं। Joining पूरी तरह free है, क्लाइंट्स की कोई minimum संख्या नहीं है, और कोई capital भी नहीं चाहिए। आप अपने बिल्कुल पहले क्लाइंट के पहले lot से ही कमाना शुरू कर देते हैं।"
+  },
+  {
+   "q": "अगर कोई क्लाइंट trade करना बंद कर दे तो मेरे commission का क्या होता है?",
+   "a": "आपका commission असली trading activity पर मिलता है, इसलिए जब कोई क्लाइंट trade नहीं करता तो यह रुक जाता है और जब वह वापस आता है तो फिर शुरू हो जाता है। चूँकि यह lifetime revenue share है, इसलिए वह क्लाइंट जब भी दोबारा trade करेगा, आप उससे कमाते रहेंगे।"
+  },
+  {
+   "q": "क्या मैं एक team बना सकता हूँ या अपने नीचे sub-partners ला सकता हूँ?",
+   "a": "हाँ। TNFX ऐसे introducing brokers को support करता है जो networks बनाते हैं और sub-partners की एक team manage करते हैं, ताकि आप अपने direct referrals से कहीं आगे तक scale कर सकें। जो structure आपके operation के लिए सही हो, उसके बारे में हमारी partner desk से बात करें।"
+  },
+  {
+   "q": "मैं $5 per lot से $10 per lot तक कैसे पहुँचूँ?",
+   "a": "जैसे-जैसे आपकी book बढ़ती है और आप published thresholds hit करते हैं, आपकी rate अपने आप बढ़ती जाती है — ज़्यादा funded क्लाइंट्स और ज़्यादा monthly volume आपको Bronze से Prime तक grade ladder पर ऊपर ले जाते हैं। न कोई मोल-भाव, न कोई पक्षपात: बस numbers hit कीजिए और आपकी rate बढ़ जाती है।"
+  },
+  {
+   "q": "मैं अपने क्लाइंट्स, lots और earnings को कैसे track करूँ?",
+   "a": "सब कुछ आपके real-time partner dashboard में है — हर registration, deposit, traded lot और commission का हर dollar, जैसे ही होता है वैसे ही update होता है, साथ ही आपकी challenge progress और withdrawable balance भी। न कोई monthly statements, न कोई अंदाज़ा लगाना।"
+  }
+ ],
+ "topics": {
+  "introducing-broker": {
+   "title": "Forex Introducing Broker (IB) बनें — प्रति लॉट $10 तक कमाएँ | TNFX Partners",
+   "meta": "TNFX forex introducing broker बनें और अपने क्लाइंट के हर ट्रेड पर प्रति लॉट $10 तक कमाएँ। जुड़ना फ्री, वीकली कैश चैलेंज, 13 पेमेंट तरीके, FSA-regulated। 60 सेकंड में अप्लाई करें।",
+   "h1": "Forex Introducing Broker बनें",
+   "subhead": "ट्रेडर्स को एक FSA-लाइसेंस प्राप्त ब्रोकर से जोड़ें और उनके ट्रेड किए हर लॉट पर $10 तक कमाएँ — ऊपर से वीकली कैश चैलेंज और हर डॉलर को ट्रैक करने वाला लाइव डैशबोर्ड।",
+   "lead_h2": "introducing broker क्या होता है — और आप कितना कमा सकते हैं?",
+   "lead_p": "एक introducing broker (IB) ट्रेडर्स को एक ब्रोकर से जोड़ता है और उनकी ट्रेडिंग पर कमीशन कमाता है — खुद कोई ट्रेडिंग नहीं, कोई पूंजी की ज़रूरत नहीं। एक TNFX IB के रूप में आप प्रति लॉट $10 तक कमाते हैं, जो आपके क्लाइंट के हर ट्रेड पर लाइव मिलता है, कभी भी विथड्रॉ किया जा सकता है। यह खुद एक भी पोज़िशन लिए बिना forex से असली इनकम बनाने के सबसे स्पष्ट तरीकों में से एक है।"
+  },
+  "affiliate-program": {
+   "title": "Forex Affiliate Program — प्रति लॉट $10 तक | TNFX Partners",
+   "meta": "TNFX forex affiliate program जॉइन करें और प्रति लॉट $10 तक और वीकली कैश चैलेंज कमाएँ। MENA रीजन के लिए सबसे ज़्यादा भुगतान करने वाला CFD affiliate program — फ्री, FSA-regulated, 13 पेमेंट तरीके।",
+   "h1": "Forex Affiliate Program",
+   "subhead": "एक FSA-लाइसेंस प्राप्त ब्रोकर को प्रमोट करें जिस पर आपकी ऑडियंस भरोसा कर सके और प्रति लॉट $10 तक कमाएँ — साथ ही वीकली कैश रिवॉर्ड, रेडी-मेड बैनर, और हर referral की रियल-टाइम ट्रैकिंग।",
+   "lead_h2": "वह forex affiliate program जो सच में भुगतान करता है",
+   "lead_p": "forex के लिए affiliate marketing तभी काम करती है जब पेआउट असली हो और ब्रोकर कन्वर्ट करे। TNFX आपके रेफर किए गए क्लाइंट के हर ट्रेड पर प्रति लॉट $10 तक देता है — कोई एक-बार का बाउंटी नहीं — साथ ही हर हफ्ते कैश चैलेंज। मिनटों में अपना लिंक और रेडी-मेड क्रिएटिव पाएँ और कमाना शुरू करें।"
+  },
+  "partnership": {
+   "title": "Forex Partner Program — TNFX के साथ पार्टनर बनें | प्रति लॉट $10 तक कमाएँ",
+   "meta": "TNFX, एक FSA-लाइसेंस प्राप्त forex ब्रोकर, के साथ पार्टनर बनें और प्रति लॉट $10 तक कमाएँ। Introducing broker, affiliate और referral पार्टनरशिप — वीकली कैश चैलेंज, 13 पेमेंट तरीके, लाइव डैशबोर्ड।",
+   "h1": "TNFX पार्टनर बनें",
+   "subhead": "एक पार्टनरशिप, प्रति लॉट $10 तक। चाहे आप क्लाइंट लाएँ, affiliate कैंपेन चलाएँ, या दोस्तों को रेफर करें — TNFX आपको उनके ट्रेड किए हर लॉट पर भुगतान करता है, हर हफ्ते कैश चैलेंज के साथ।",
+   "lead_h2": "ऐसे ब्रोकर के साथ पार्टनर बनें जो भुगतान करता है और टिकता है",
+   "lead_p": "कोई पार्टनरशिप उतनी ही अच्छी होती है जितना उसके पीछे का ब्रोकर। TNFX FSA-लाइसेंस प्राप्त है, MT4 और MT5 पर 1,000+ इंस्ट्रूमेंट्स के साथ चलता है, और जो क्लाइंट आप भेजते हैं उन्हें बनाए रखने के लिए बना है — ताकि आपका कमीशन बढ़ता रहे। प्रति लॉट $10 तक, वीकली कैश चैलेंज, और एक लाइव पार्टनर डैशबोर्ड।"
+  },
+  "cpa": {
+   "title": "Forex CPA और पार्टनरशिप पेआउट — प्रति लॉट $10 तक या CPA | TNFX",
+   "meta": "TNFX forex पार्टनर पेआउट: प्रति लॉट $10 तक revenue share कमाएँ, साथ ही CPA विकल्प। पारदर्शी, पब्लिश किए गए रेट, FSA-regulated, वीकली कैश चैलेंज। अपने अनुकूल पेआउट मॉडल चुनें।",
+   "h1": "Forex CPA और पार्टनर पेआउट",
+   "subhead": "अपने ट्रैफिक के अनुकूल पेआउट मॉडल चुनें। lifetime revenue share में प्रति लॉट $10 तक कमाएँ, या CPA के बारे में हमारे डेस्क से बात करें — पारदर्शी, पब्लिश किए गए रेट और वीकली कैश चैलेंज के साथ।",
+   "lead_h2": "CPA, revenue share, या hybrid — आपकी पसंद",
+   "lead_p": "गंभीर affiliates अपना पेआउट मॉडल खुद चुनते हैं। TNFX का मुख्य मॉडल lifetime revenue share के रूप में प्रति लॉट $10 तक देता है — आप तब तक कमाते हैं जब तक आपका क्लाइंट ट्रेड करता है, सिर्फ एक बार नहीं। cost-per-acquisition पसंद है? हमारा पार्टनर डेस्क CPA और hybrid डील पर आपके साथ काम करता है, स्पष्ट, पब्लिश की गई शर्तों के साथ — कोई छिपे हुए क्वालिफिकेशन जाल नहीं।"
+  },
+  "cashback-rebate": {
+   "title": "Forex Cashback और Rebate — हर लॉट पर पैसा वापस | TNFX",
+   "meta": "TNFX के साथ हर लॉट पर forex cashback और rebate पाएँ। गोल्ड और मेजर पर प्रति लॉट पैसा वापस, लाइव भुगतान, 13 तरीकों से कभी भी विथड्रॉ। FSA-regulated। MENA ट्रेडर्स के लिए सबसे बड़ा rebate।",
+   "h1": "Forex Cashback और Rebate",
+   "subhead": "हर ट्रेड किए गए लॉट पर पैसा वापस कमाएँ — आपका या आपके क्लाइंट का — लाइव भुगतान और 13 फंडिंग तरीकों से कभी भी विथड्रॉ। रीजन में सबसे स्पष्ट cashback डील।",
+   "lead_h2": "हर एक लॉट पर cashback और rebate",
+   "lead_p": "Rebate (या cashback) का मतलब है ट्रेडिंग वॉल्यूम के हर लॉट पर असली पैसा वापस — गोल्ड और मेजर पर प्रति लॉट $10 तक। एक TNFX पार्टनर के रूप में आप इसे उस वॉल्यूम पर कमाते हैं जो आपके रेफर किए गए क्लाइंट जनरेट करते हैं; यह आपके वॉलेट में लाइव मिलता है और कभी भी विथड्रॉ किया जा सकता है। कोई कैप के खेल नहीं, कोई अस्पष्ट क्वालिफिकेशन नहीं।"
+  },
+  "commission-per-lot": {
+   "title": "Forex Commission प्रति लॉट — $10 तक | TNFX पार्टनर कमाई",
+   "meta": "forex IB कितना कमाते हैं? TNFX के साथ प्रति लॉट $10 तक कमीशन, हर ट्रेड पर लाइव भुगतान। $5 से $10 तक की per-lot रेट सीढ़ी और वीकली कैश चैलेंज देखें। FSA-regulated।",
+   "h1": "Forex Commission — प्रति लॉट $10 तक",
+   "subhead": "आप प्रति लॉट ठीक कितना कमाते हैं, कुछ भी छिपा नहीं। Bronze पर $5 से Prime पर $10 तक — आपके क्लाइंट के हर ट्रेड पर लाइव भुगतान, साथ ही हर हफ्ते कैश चैलेंज।",
+   "lead_h2": "forex IB और affiliates सच में कितना कमाते हैं?",
+   "lead_p": "ईमानदार जवाब है: यह आपके रेट और आपके क्लाइंट के वॉल्यूम पर निर्भर करता है। TNFX दोनों पब्लिश करता है। आपका कमीशन Bronze पर $5 per lot से Prime पर $10 per lot तक होता है, गोल्ड और मेजर पेयर्स पर, आपके क्लाइंट द्वारा ट्रेड किए हर लॉट पर मिलता है। अपने रेट को उनके मंथली लॉट से गुणा करें और आपकी इनकम मिल जाती है — फिर ऊपर से हर हफ्ते $400 तक चैलेंज कैश जोड़ें।"
+  },
+  "referral": {
+   "title": "Forex में दोस्त को रेफर करें — Referral Program | TNFX Partners",
+   "meta": "दोस्तों को TNFX पर रेफर करें और उनके ट्रेड किए हर लॉट पर कमाएँ। तुरंत अपना referral link पाएँ, प्रति लॉट $10 तक कमाएँ, और कभी भी विथड्रॉ करें। जुड़ना फ्री, FSA-regulated, 13 पेमेंट तरीके।",
+   "h1": "दोस्त को रेफर करें — Forex Referral Program",
+   "subhead": "अपना लिंक शेयर करें, और अपने दोस्तों के ट्रेड किए हर लॉट पर कमाएँ — प्रति लॉट $10 तक, लाइव भुगतान। शुरू करने का सबसे आसान तरीका: 60 सेकंड में अपना referral link पाएँ और इसे कहीं भी शेयर करें।",
+   "lead_h2": "रेफर करें, शेयर करें, और कमाएँ — किसी डेस्क की ज़रूरत नहीं",
+   "lead_p": "पूरे IB ऑपरेशन के लिए तैयार नहीं? बस रेफर करें। साइन अप करते ही अपना पर्सनल referral link पाएँ, इसे दोस्तों और अपनी ऑडियंस के साथ शेयर करें, और उनके ट्रेड किए हर लॉट पर $10 तक कमाएँ — लाइव, और कभी भी विथड्रॉ करने योग्य। जब आप स्केल करने के लिए तैयार हों, वही अकाउंट आपका पूरा IB और affiliate डेस्क बन जाता है।"
+  },
+  "earn-without-trading": {
+   "title": "बिना ट्रेडिंग के Forex में पैसे कैसे कमाएँ | TNFX Partners",
+   "meta": "बिना ट्रेडिंग और बिना पूंजी के forex से पैसे कमाएँ — TNFX पार्टनर बनें और क्लाइंट रेफर करके प्रति लॉट $10 तक कमाएँ। क्या यह असली है? हाँ — FSA-regulated। जानें यह कैसे काम करता है।",
+   "h1": "बिना ट्रेडिंग के Forex में पैसे कैसे कमाएँ",
+   "subhead": "आपको एक भी ट्रेड का जोखिम नहीं उठाना पड़ता। एक FSA-लाइसेंस प्राप्त ब्रोकर से क्लाइंट जोड़कर प्रति लॉट $10 तक कमाएँ — कोई पूंजी नहीं, कोई पोज़िशन नहीं, बस आपका नेटवर्क और आपका लिंक।",
+   "lead_h2": "forex से कमाएँ — बिना ट्रेडिंग और बिना पूंजी के",
+   "lead_p": "ज़्यादातर लोग forex ट्रेडिंग में पैसे गँवाते हैं। पार्टनर ट्रेड नहीं करते — वे उस वॉल्यूम से कमाते हैं जो दूसरे लोग ट्रेड करते हैं। एक TNFX पार्टनर के रूप में आप क्लाइंट रेफर करते हैं और उनके ट्रेड की हर चीज़ पर प्रति लॉट $10 तक कमाते हैं, शून्य पूंजी के जोखिम के साथ। यह वैध है, यह पारदर्शी है, और TNFX का FSA लाइसेंस मतलब आपकी इनकम के पीछे का ब्रोकर विनियमित है। यह ठीक इसी तरह काम करता है।"
+  },
+  "compare": {
+   "title": "Best Forex IB & Affiliate Partner Program 2026 — $10 प्रति लॉट तक | TNFX",
+   "meta": "Forex partner programs की तुलना कर रहे हैं? देखें असल में क्या मायने रखता है — प्रति लॉट payout, कितनी जल्दी पैसा मिलता है, और क्या broker convert करता है। TNFX: $10 प्रति लॉट तक, weekly cash challenges, तेज़ local withdrawals, FSA-regulated।",
+   "h1": "2026 के लिए सबसे बेहतरीन Forex Partner Program",
+   "subhead": "हर program आपके traffic के लायक नहीं होता। यहाँ बताया है कि सबसे अच्छे forex IB और affiliate programs को क्या अलग बनाता है — और TNFX कहाँ खरा उतरता है: $10 प्रति लॉट तक, weekly cash challenges, तेज़ local withdrawals, और एक dedicated MENA partner desk।",
+   "lead_h2": "Forex IB / affiliate program में क्या देखना चाहिए",
+   "lead_p": "हर गंभीर partner program प्रति लॉट या प्रति acquisition पर पैसा देता है — असली फ़र्क़ इसमें है कि कितना, कितनी जल्दी आपको असल में पैसा मिलता है, और क्या broker आपके भेजे traffic को convert करता है। किसी program को चार चीज़ों पर परखें: प्रति-लॉट rate (और यह कितना ऊपर जा सकता है), payout की रफ़्तार और तरीके, broker आपके clients को कितनी अच्छी तरह retain करता है, और क्या इसके पीछे असल local support है। TNFX $10 प्रति लॉट तक देता है, ऊपर से हर हफ़्ते $400 तक की challenge cash जोड़ता है, 13 local और global methods से funding और withdrawal करता है, और इसे एक FSA license और एक असली MENA partner desk का सहारा देता है — इसीलिए partners अपनी books TNFX पर ले आते हैं।"
+  },
+  "what-is-introducing-broker": {
+   "title": "Forex Introducing Broker (IB) क्या है? मतलब, कमाई और कैसे बनें | TNFX",
+   "meta": "Forex introducing broker (IB) क्या है? IBs कैसे काम करते हैं, प्रति लॉट कैसे कमाते हैं, IB बनाम affiliate, और TNFX के साथ IB कैसे बनें — $10 प्रति लॉट तक, न trading, न capital का एक साफ़ गाइड।",
+   "h1": "Forex Introducing Broker क्या होता है?",
+   "subhead": "एक introducing broker traders को broker के पास भेजता है और उनकी trading पर commission कमाता है — न अपनी कोई trading, न capital। यहाँ बताया है यह ठीक कैसे काम करता है, और TNFX के साथ $10 प्रति लॉट तक कमाने वाला IB कैसे बनें।",
+   "lead_h2": "Introducing broker, आसान भाषा में समझें",
+   "lead_p": "एक forex introducing broker (IB) वह partner होता है जो traders को broker से जोड़ता है और उन traders के trade किए गए volume पर commission कमाता है — यह broker देता है, client नहीं। आप खुद trade नहीं करते और आपको capital की ज़रूरत नहीं; आप दूसरों की trading activity से कमाते हैं। TNFX IB के तौर पर आपके referred clients जो भी standard lot trade करते हैं, उस पर आपको $10 तक मिलते हैं, हर trade पर live और कभी भी withdraw करने लायक। forex से असली income बनाने का यह सबसे साफ़ और सबसे कम-risk वाला तरीका है।"
+  },
+  "how-much-do-ibs-make": {
+   "title": "Forex IBs कितना कमाते हैं? असली प्रति-लॉट कमाई समझें | TNFX",
+   "meta": "Forex introducing brokers कितना कमाते हैं? यह आपके rate और आपके clients के volume पर निर्भर करता है — दोनों published हैं। TNFX के साथ हर trade पर live $5 से $10 प्रति लॉट कमाएँ, ऊपर से हर हफ़्ते $400 तक की challenges।",
+   "h1": "Forex Introducing Brokers कितना कमाते हैं?",
+   "subhead": "ईमानदार जवाब: यह आपके प्रति-लॉट rate और आपके clients के महीने के volume पर निर्भर करता है — और TNFX दोनों publish करता है। $5 से $10 प्रति लॉट कमाएँ, हर trade पर live, ऊपर से हर हफ़्ते $400 तक की challenge cash।",
+   "lead_h2": "आपकी income = आपका rate × आपके clients का volume",
+   "lead_p": "कोई एक तय आँकड़ा नहीं है, पर हिसाब सीधा और सार्वजनिक है। आपका rate Bronze पर $5 प्रति लॉट से लेकर Prime पर $10 प्रति लॉट तक चलता है; इसे अपने clients के हर महीने trade किए लॉट्स से गुणा करें और आपकी commission सामने है। कुछ सौ लॉट महीना trade करने वाले active clients refer करें और आप एक अच्छी-ख़ासी monthly income कमा रहे हैं — इससे पहले कि आप हर हफ़्ते $400 तक की weekly challenges और career missions में $4,000 तक जोड़ें। यह हर trade पर live जमा होती है और आप कभी भी withdraw कर सकते हैं।"
+  },
+  "islamic-halal-ib": {
+   "title": "Islamic (Halal) Forex Partner Program — Swap-Free IB Commission | TNFX",
+   "meta": "Islamic forex partner program: swap-free (halal) traders refer करें और $10 प्रति लॉट तक कमाएँ। Commission trading activity पर, कोई interest नहीं — Middle East के लिए बना। जुड़ना मुफ़्त, FSA-regulated।",
+   "h1": "Islamic (Halal) Forex Partner Program",
+   "subhead": "Swap-free (Islamic) account traders refer करें और $10 प्रति लॉट तक कमाएँ — असली trading activity पर commission, जिसमें कोई interest शामिल नहीं। Middle East market के लिए बना।",
+   "lead_h2": "Swap-free traders के लिए बना एक partner program",
+   "lead_p": "इस region के कई traders को swap-free (Islamic) accounts चाहिए होते हैं, और TNFX उन्हें ये देता है। एक partner के तौर पर आप उन traders को refer करते हैं और उनके trade किए volume पर $10 प्रति लॉट तक कमाते हैं — आपकी commission broker के trading activity पर लगने वाले spread से आती है, किसी interest या lending से नहीं। यह आपके लिए कमाने का एक साफ़, activity-आधारित तरीका है, जबकि आप traders को उनके लिए उपयुक्त accounts से जोड़ते हैं।"
+  },
+  "gold-xau-ib": {
+   "title": "Gold (XAU/USD) Forex Partner Program — $10 प्रति लॉट तक कमाएँ | TNFX",
+   "meta": "Gold इस region का सबसे ज़्यादा trade होने वाला market है। Gold (XAU/USD) traders refer करें और TNFX के साथ $10 प्रति लॉट तक कमाएँ — live मिलता है, कभी भी withdraw करने लायक। जुड़ना मुफ़्त, FSA-regulated, weekly cash challenges।",
+   "h1": "Gold Trading Partner Program",
+   "subhead": "इस region के traders के लिए gold नंबर-वन instrument है। Gold (XAU/USD) traders refer करें और उनके volume पर $10 प्रति लॉट तक कमाएँ — TNFX की commission ladder का सबसे ऊँचा tier।",
+   "lead_h2": "Region के पसंदीदा market — gold — पर कमाएँ",
+   "lead_p": "Gold (XAU/USD) वह जगह है जहाँ Middle East में trading volume का एक बड़ा हिस्सा होता है, और यह TNFX commission ladder के शीर्ष पर बैठता है — $10 प्रति लॉट तक। अगर आपके audience gold trade करते हैं, तो आप उन्हें ठीक उसी market में refer कर रहे हैं जिसे वे पहले से पसंद करते हैं, और उनके trade किए हर लॉट पर कमा रहे हैं, live और कभी भी withdraw करने लायक। ऊपर से weekly cash challenges जोड़ें और आँकड़े तेज़ी से बढ़ते हैं।"
+  },
+  "mt4-mt5-ib": {
+   "title": "MT4 & MT5 Introducing Broker Program — $10 प्रति लॉट तक कमाएँ | TNFX",
+   "meta": "TNFX के साथ MT4 & MT5 introducing broker बनें। MetaTrader 4 और MetaTrader 5 पर traders refer करें और $10 प्रति लॉट तक कमाएँ, live tracked। जुड़ना मुफ़्त, FSA-regulated, weekly cash challenges।",
+   "h1": "MT4 & MT5 Introducing Broker Program",
+   "subhead": "जिन MetaTrader 4 और MetaTrader 5 platforms को traders पहले से इस्तेमाल करते हैं, उन पर उन्हें refer करें, और उनके volume पर $10 प्रति लॉट तक कमाएँ — आपके partner dashboard में live tracked।",
+   "lead_h2": "दोनों MetaTrader platforms पर कमाएँ",
+   "lead_p": "लगभग हर forex trader MetaTrader को जानता है — और TNFX एक ही partner account से MT4 और MT5 दोनों पर चलता है। चाहे आपके audience classic MT4 पसंद करें या नया MT5, आप उन्हें उसी platform पर refer करते हैं जिस पर वे पहले से भरोसा करते हैं और वे जो कुछ trade करते हैं उस पर $10 प्रति लॉट तक कमाते हैं। सीखने के लिए कोई नए tools नहीं, tight spreads और तेज़ execution, और हर लॉट dollar तक live tracked।"
+  },
+  "sub-ib-master-ib": {
+   "title": "Sub-IB & Master IB — एक Forex Partner Team बनाएँ | TNFX",
+   "meta": "अपने ख़ुद के referrals से आगे बढ़ें: master IB बनें, अपने नीचे sub-partners लाएँ, और अपने पूरे network के volume पर कमाएँ — $10 प्रति लॉट तक। TNFX का multi-tier forex partner program।",
+   "h1": "एक Team बनाएँ: Master IB & Sub-IB Program",
+   "subhead": "ख़ुद को अपने referrals तक सीमित न रखें। अपने नीचे sub-partners लाएँ और अपने पूरे network के trading volume पर कमाएँ — $10 प्रति लॉट तक, हर partner और client का live view के साथ।",
+   "lead_h2": "सिर्फ़ एक referral list नहीं, एक network बढ़ाएँ",
+   "lead_p": "सबसे बड़े partners सिर्फ़ clients refer नहीं करते — वे teams बनाते हैं। TNFX उन master IBs का साथ देता है जो अपने नीचे sub-partners लाते हैं, ताकि आप अपने पूरे network के generate किए volume पर कमाएँ, सिर्फ़ अपने direct referrals पर नहीं। इसी तरह एक अकेला affiliate एक असली IB business बन जाता है: recruit करें, अपने sub-partners का साथ दें, और अपनी कमाई को पूरी team में $10 प्रति लॉट तक बढ़ाएँ। आपके operation के लिए उपयुक्त multi-tier structure के बारे में हमारे partner desk से बात करें।"
+  }
+ },
+ "review_flags": [
+  "Game/challenge names (First Blood, Hat Trick, Volume Hunter, Whale Hunter) kept in English per instruction — confirm this reads well to Hindi traders or if transliteration is preferred.",
+  "Regulatory disclaimer and 'FSA licensed & regulated' phrasing translated as 'लाइसेंस प्राप्त और विनियमित' — have a compliance/native reviewer confirm the legal register is acceptable.",
+  "Financial terms revenue share, CPA, cost-per-acquisition, rebate, cashback, lifetime revenue share kept in English (Latin) — verify Indian forex audience searches/recognizes these vs Hindi equivalents.",
+  "'Bronze' and 'Prime' tier names left in English — confirm they should not be transliterated.",
+  "'प्रति लॉट' used for commission_rate_word label while 'per lot' kept inline elsewhere for SEO — confirm consistency is acceptable.",
+  "'इंडाइसेस' (indices) transliteration — confirm preferred over 'सूचकांक'.",
+  "Idiomatic hero line 'The number that matters' rendered as 'वह नंबर जो मायने रखता है' — check it carries the intended punch."
+ ]
+}

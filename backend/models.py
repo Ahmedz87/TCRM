@@ -416,6 +416,10 @@ class IB(Base):
     markup_pips      = Column(Float, nullable=True)
     plugit_status    = Column(String, nullable=True)
     total_payoff     = Column(Float, default=0)       # money the IB withdrew (from ib_operations)
+    commission_excel    = Column(Float, default=0)    # Plugit commission 2023-01..2026-07 (authoritative)
+    commission_computed = Column(Float, default=0)    # our deals-based commission for uncovered dates (pre-2023)
+    commission_source   = Column(String, nullable=True)  # 'excel' | 'excel+computed' | 'computed'
+    commission_live     = Column(Float, default=0)    # post-Excel-cutoff commission from new trades (refreshed every 30min by ib_trades)
 
     # Assignments
     commission_plan_id = Column(Integer, ForeignKey("commission_plans.id"), nullable=True)

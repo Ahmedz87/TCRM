@@ -5,7 +5,7 @@ const card: React.CSSProperties = { background: 'var(--bg-card,#2c333e)', border
 const cap: React.CSSProperties = { fontSize: 11, color: '#8a93a5', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, fontWeight: 700 };
 const input: React.CSSProperties = { padding: '8px 10px', background: '#1c2231', border: '1px solid #3a4252', borderRadius: 8, color: '#e6e9ef', fontSize: 13 };
 const btn = (bg: string, fg = '#06251b'): React.CSSProperties => ({ padding: '9px 14px', background: bg, border: 'none', borderRadius: 8, color: fg, fontSize: 13, fontWeight: 700, cursor: 'pointer' });
-const fmt = (n: number) => (n || 0).toLocaleString();
+const fmt = (n: number) => (n || 0).toLocaleString('en-GB');
 
 export default function DripJourneys() {
   const [journeys, setJourneys] = useState<any[]>([]);

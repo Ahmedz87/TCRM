@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { apiGet, apiPost, placeCall } from './api';
+import { apiGet, apiPost, placeCall, openIbProfile } from './api';
 import { CT, Pager } from './crmTable';
+import { useColumnPicker, ColumnGear } from './ColumnPicker';
 
 const API = '/api';
+// Trading-accounts list columns (fixed order) — shared by the header and the ⚙ column picker.
+const TA_COLS = ['Account','Account type','Leverage','Balance','Equity','Credit','Margin%','Client','IB','Sales','Country','Status','Created','Settings'];
 
 const statusColor = (s: string) => {
   if (s === 'active')    return { bg: 'rgba(0,229,160,0.1)',  text: '#00e5a0' };
@@ -104,14 +107,14 @@ function AccountDetail({ account, onBack, lang }: any) {
       {/* Stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:10, padding:'16px 24px 0' }}>
         {[
-          { label:'Balance',     value:`$${(account.balance||0).toLocaleString()}`,      color:'var(--text,#fff)', icon:'💰' },
-          { label:'Equity',      value:`$${(account.equity||account.balance||0).toLocaleString()}`,        color: (account.equity||account.balance) < account.balance ? '#ff4d4d':'#00e5a0', icon:'📈' },
-          { label:'Credit',      value:`$${(account.credit||0).toLocaleString()}`,        color:'#ffaa00', icon:'🎁' },
+          { label:'Balance',     value:`$${(account.balance||0).toLocaleString('en-GB')}`,      color:'var(--text,#fff)', icon:'💰' },
+          { label:'Equity',      value:`$${(account.equity||account.balance||0).toLocaleString('en-GB')}`,        color: (account.equity||account.balance) < account.balance ? '#ff4d4d':'#00e5a0', icon:'📈' },
+          { label:'Credit',      value:`$${(account.credit||0).toLocaleString('en-GB')}`,        color:'#ffaa00', icon:'🎁' },
           { label:'Margin level',value: account.margin_level ? `${account.margin_level.toFixed(0)}%`:'—', color: (account.margin_level||0)<80?'#ff4d4d':'#00e5a0', icon:'⚖️' },
-          { label:'Total dep.',  value:`$${(account.total_deposits||0).toLocaleString()}`, color:'#00e5a0', icon:'⬆️' },
-          { label:'Total with.', value:`$${(account.total_withdrawals||0).toLocaleString()}`, color:'#ff8888', icon:'⬇️' },
-          { label:'Volume (lots)',value:(account.total_volume||0).toLocaleString(), color:'#0066ff', icon:'📊' },
-          { label:'Trades',      value:(account.total_trades||0).toLocaleString(), color:'#9966ff', icon:'🔄' },
+          { label:'Total dep.',  value:`$${(account.total_deposits||0).toLocaleString('en-GB')}`, color:'#00e5a0', icon:'⬆️' },
+          { label:'Total with.', value:`$${(account.total_withdrawals||0).toLocaleString('en-GB')}`, color:'#ff8888', icon:'⬇️' },
+          { label:'Volume (lots)',value:(account.total_volume||0).toLocaleString('en-GB'), color:'#0066ff', icon:'📊' },
+          { label:'Trades',      value:(account.total_trades||0).toLocaleString('en-GB'), color:'#9966ff', icon:'🔄' },
         ].map((s,i) => (
           <div key={i} style={{ background:'var(--bg-card,#2c333e)', border:'1px solid var(--border,#4f596b)', borderRadius:12, padding:'14px 16px' }}>
             <div style={{ fontSize:11, color:'var(--text3,#555)', marginBottom:6, display:'flex', alignItems:'center', gap:5 }}><span>{s.icon}</span>{s.label}</div>
@@ -164,7 +167,7 @@ function AccountDetail({ account, onBack, lang }: any) {
                   ['Client',   account.client_name || '—'],
                   ['IB',       account.ib_name || '—'],
                   ['Sales agent', account.agent_name || '—'],
-                  ['Credit at',  account.credit_at ? new Date(account.credit_at).toLocaleDateString() : '—'],
+                  ['Credit at',  account.credit_at ? new Date(account.credit_at).toLocaleDateString('en-GB') : '—'],
                   ['Country',  account.country || '—'],
                   ['City',     account.city || '—'],
                 ].map(([k,v]) => (
@@ -224,7 +227,7 @@ function AccountDetail({ account, onBack, lang }: any) {
                   <tr key={i} style={{ borderBottom:'1px solid var(--border,#373f4d)' }}>
                     <td style={{ padding:'10px 14px', color:'var(--text2,#888)' }}>{d.date}</td>
                     <td style={{ padding:'10px 14px' }}><span style={{ fontSize:10, padding:'2px 8px', borderRadius:99, background: (d.type||'').includes('in')?'rgba(0,229,160,0.1)':'rgba(255,136,136,0.1)', color: (d.type||'').includes('in')?'#00e5a0':'#ff8888' }}>{d.type}</span></td>
-                    <td style={{ padding:'10px 14px', color: (d.type||'').includes('in')?'#00e5a0':'#ff8888', fontWeight:500 }}>${d.amount.toLocaleString()}</td>
+                    <td style={{ padding:'10px 14px', color: (d.type||'').includes('in')?'#00e5a0':'#ff8888', fontWeight:500 }}>${d.amount.toLocaleString('en-GB')}</td>
                     <td style={{ padding:'10px 14px', color:'var(--text2,#888)', fontFamily:'monospace', fontSize:11 }}>#{d.from}</td>
                     <td style={{ padding:'10px 14px', color:'var(--text2,#888)', fontFamily:'monospace', fontSize:11 }}>#{d.to}</td>
                     <td style={{ padding:'10px 14px', color:'var(--text3,#555)', fontFamily:'monospace', fontSize:11 }}>{d.ref}</td>
@@ -350,7 +353,7 @@ function TxTable({ rows, type }: any) {
           {rows.map((d: any, i: number) => (
             <tr key={i} style={{ borderBottom:'1px solid var(--border,#373f4d)' }}>
               <td style={{ padding:'10px 14px', color:'var(--text2,#888)' }}>{d.date}</td>
-              <td style={{ padding:'10px 14px', color: type==='deposit'?'#00e5a0':'#ff8888', fontWeight:500 }}>${d.amount.toLocaleString()}</td>
+              <td style={{ padding:'10px 14px', color: type==='deposit'?'#00e5a0':'#ff8888', fontWeight:500 }}>${d.amount.toLocaleString('en-GB')}</td>
               <td style={{ padding:'10px 14px', color:'var(--text2,#888)' }}>{d.method}</td>
               <td style={{ padding:'10px 14px' }}>
                 <span style={{ fontSize:10, padding:'2px 8px', borderRadius:99, background: d.status==='approved'?'rgba(0,229,160,0.1)':'rgba(255,170,0,0.1)', color: d.status==='approved'?'#00e5a0':'#ffaa00' }}>{d.status}</span>
@@ -397,7 +400,7 @@ function TradesTable({ rows: rawRows, type }: any) {
   const fmtTime = (ts: number, date: string) => {
     if (ts && ts > 1000000) {
       const d = new Date(ts * 1000);
-      return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
     }
     return date || '—';
   };
@@ -510,11 +513,18 @@ export default function TradingAccounts({ lang }: any) {
   const [sortDir, setSortDir]   = useState<'asc'|'desc'>('desc');
   const [detail, setDetail]     = useState<any>(null);
   const [settingsMenu, setSettingsMenu] = useState<any>(null);
+  // #192 SECURITY: the ⚙ Account-Settings actions (deposit / reset / change group / delete …) are
+  // administrative account operations — restrict them to the BACKOFFICE team + ADMINS. Everyone
+  // else (sales, retention, …) never sees the gear at all.
+  const canManageAccounts = ['super_admin','admin','director','backoffice'].includes((localStorage.getItem('userRole')||'').toLowerCase());
   const [archivedTab, setArchivedTab]   = useState<'active'|'archived'>('active');
   const [filterType, setFilterType]     = useState('all');
   const [filterLeverage, setFilterLeverage] = useState('all');
   const [filterStatus, setFilterStatus]     = useState('all');
   const [showFilters, setShowFilters]       = useState(false);
+  const taCols = useColumnPicker(TA_COLS, 'ta_cols_v1', { locked: ['Account','Settings'] });
+  const _taHideCss = TA_COLS.map((h,i)=>({h,n:i+1})).filter(x=>!taCols.V(x.h))
+    .map(x=>`.ta-cols th:nth-child(${x.n}),.ta-cols td:nth-child(${x.n}){display:none}`).join('');
   const [filterCountry, setFilterCountry]   = useState('');
   const [filterCity, setFilterCity]         = useState('');
   const [filterIB, setFilterIB]             = useState('');
@@ -528,6 +538,16 @@ export default function TradingAccounts({ lang }: any) {
   const [callLaterDays, setCallLaterDays]   = useState(0);
   const [callLaterHours, setCallLaterHours] = useState(0);
   const [saving, setSaving]                 = useState(false);
+
+  // deep-link from other pages (e.g. IB profile "Account" click): navigate event -> search that login
+  useEffect(() => {
+    const h = (e: any) => {
+      const login = e?.detail?.login;
+      if (login) { setSearch(String(login)); setPage(1); }
+    };
+    window.addEventListener('accounts_focus', h);
+    return () => window.removeEventListener('accounts_focus', h);
+  }, []);
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
@@ -636,13 +656,13 @@ export default function TradingAccounts({ lang }: any) {
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,minmax(0,1fr))', gap:8, padding:'8px 14px 10px' }}>
           {[
-            { label:'Total accounts',   value: total.toLocaleString(),                                    color:'#00e5a0' },
+            { label:'Total accounts',   value: total.toLocaleString('en-GB'),                                    color:'#00e5a0' },
             { label:'Total deposits',   value: '$'+((kpis?.deposits||0)/1000).toFixed(1)+'K',             color:'#00e5a0' },
             { label:'Total withdrawals',value: '$'+((kpis?.withdrawals||0)/1000).toFixed(1)+'K',          color:'#ff8888' },
             { label:'Net deposit',      value: '$'+((kpis?.net_deposit||0)/1000).toFixed(1)+'K',          color:(kpis?.net_deposit||0)>=0?'#00e5a0':'#ff4d4d' },
-            { label:'Active traders',   value: (kpis?.active_traders||0).toLocaleString(),                color:'#00aaff' },
+            { label:'Active traders',   value: (kpis?.active_traders||0).toLocaleString('en-GB'),                color:'#00aaff' },
             { label:'Pending withdrawals',value:(kpis?.pending_w||0).toString(),                          color:(kpis?.pending_w||0)>0?'#ffaa00':'#555' },
-            { label:'New clients',      value: (kpis?.new_clients||0).toLocaleString(),                   color:'#00aaff' },
+            { label:'New clients',      value: (kpis?.new_clients||0).toLocaleString('en-GB'),                   color:'#00aaff' },
             { label:'IB commission',    value: '$'+((kpis?.ib_comm||0)/1000).toFixed(1)+'K',              color:'#ff8c00' },
           ].map((k,i) => (
             <div key={i} style={{ background:'var(--bg-card,#2c333e)', borderRadius:10, padding:'10px 14px', border:'1px solid var(--border,#373f4d)' }}>
@@ -653,20 +673,10 @@ export default function TradingAccounts({ lang }: any) {
         </div>
       </div>      {/* Header */}
       <div style={{ background:'var(--bg-card,#2c333e)', borderBottom:'1px solid var(--border,#4f596b)', flexShrink:0 }}>
-        <div style={{ display:'flex', gap:6, padding:'8px 14px 0', alignItems:'center', flexWrap:'wrap' }}>
-          {([['active','Active accounts'],['archived','🗄 Archive Trading Accounts']] as [string,string][]).map(([k,l])=>(
-            <button key={k} onClick={()=>{ setArchivedTab(k as any); setPage(1); }}
-              style={{ padding:'6px 14px', borderRadius:8, border:`1px solid ${archivedTab===k?'#ffaa00':'var(--border2,#626d80)'}`, background:archivedTab===k?'rgba(255,170,0,0.12)':'transparent', color:archivedTab===k?'#ffaa00':'var(--text2,#888)', cursor:'pointer', fontSize:12, fontWeight:archivedTab===k?700:400, fontFamily:'inherit' }}>
-              {l}
-            </button>
-          ))}
-          {archivedTab==='archived' && <span style={{ fontSize:11, color:'var(--text3,#888)' }}>Archived from MT4/MT5 (idle · balance &lt; $1). Read-only — history, IB/sales commission &amp; loyalty preserved; clients can't deposit or transfer.</span>}
-        </div>
-
         <div style={{ padding:'10px 14px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
           <div>
             <div style={{ fontSize:15, fontWeight:500 }}>{archivedTab==='archived' ? 'Archived trading accounts' : 'Trading accounts'}</div>
-            <div style={{ fontSize:11, color:'var(--text3,#555)' }}>{total.toLocaleString()} accounts</div>
+            <div style={{ fontSize:11, color:'var(--text3,#555)' }}>{total.toLocaleString('en-GB')} accounts</div>
           </div>
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
             placeholder="Search login, name, email, group..."
@@ -692,10 +702,22 @@ export default function TradingAccounts({ lang }: any) {
               <span style={{ fontSize:11, color:'#ff4d4d', cursor:'pointer' }} onClick={clearClickFilters}>Clear all</span>
             </div>
           )}
-          <button style={{ padding:'7px 14px', background:'#00e5a0', border:'none', borderRadius:8, color:'#20252f', fontWeight:700, cursor:'pointer', fontSize:12, marginLeft:'auto' }}>
+          {/* single archive toggle, next to Add account: active view → click to see archived, and back */}
+          <button onClick={()=>{ setArchivedTab(archivedTab==='archived'?'active':'archived'); setPage(1); }}
+            style={{ marginLeft:'auto', padding:'7px 14px', borderRadius:8, border:`1px solid ${archivedTab==='archived'?'#ffaa00':'var(--border2,#626d80)'}`, background:archivedTab==='archived'?'rgba(255,170,0,0.12)':'transparent', color:archivedTab==='archived'?'#ffaa00':'var(--text2,#888)', cursor:'pointer', fontSize:12, fontWeight:archivedTab==='archived'?700:500, fontFamily:'inherit', whiteSpace:'nowrap' }}>
+            {archivedTab==='archived' ? '← Active accounts' : '🗄 Archive Trading Accounts'}
+          </button>
+          <button style={{ padding:'7px 14px', background:'#00e5a0', border:'none', borderRadius:8, color:'#20252f', fontWeight:700, cursor:'pointer', fontSize:12 }}>
             + Add account
           </button>
+          <ColumnGear picker={taCols} />
         </div>
+
+        {archivedTab==='archived' && (
+          <div style={{ padding:'0 14px 8px', fontSize:11, color:'var(--text3,#888)' }}>
+            Archived from MT4/MT5 (idle · balance &lt; $1). Read-only — history, IB/sales commission &amp; loyalty preserved; clients can't deposit or transfer.
+          </div>
+        )}
 
         {showFilters && (
           <div style={{ padding:'10px 14px', borderTop:'1px solid var(--border,#4f596b)', background:'var(--bg-input,#373f4d)', display:'flex', gap:12, flexWrap:'wrap' }}>
@@ -734,10 +756,11 @@ export default function TradingAccounts({ lang }: any) {
 
       {/* Table */}
       <div style={CT.scroll}>
-        <table style={CT.table}>
+        {_taHideCss && <style>{_taHideCss}</style>}
+        <table className="ta-cols" style={CT.table}>
           <thead>
             <tr style={CT.theadTr}>
-              {(['Account','Account type','Leverage','Balance','Equity','Credit','Margin%','Client','IB','Sales','Country','Status','Created','Settings'] as string[]).map(h => {
+              {(TA_COLS as string[]).map(h => {
                 const sortable = SORTABLE.includes(h);
                 const active   = sortCol === h;
                 const align    = (['Balance','Equity','Credit','Margin%'].includes(h) ? 'right' : 'left') as 'left'|'right';
@@ -789,16 +812,20 @@ export default function TradingAccounts({ lang }: any) {
                   <span style={{ fontSize:10, padding:'2px 7px', borderRadius:99, background:'rgba(0,102,255,0.1)', color:'#4d9fff' }}>{a.account_type||'live'}</span>
                 </td>
                 <td style={{ ...CT.td, color:'var(--text2,#888)' }}>1:{a.leverage}</td>
-                <td style={{ ...CT.td, fontWeight:500, textAlign:'right' }}>${(a.balance||0).toLocaleString()}</td>
-                <td style={{ ...CT.td, textAlign:'right', color: (a.equity||a.balance||0)<(a.balance||0)?'#ff4d4d':'#00e5a0' }}>{'$'+((a.equity||0)>0?(a.equity||0):(a.balance||0)).toLocaleString()}</td>
-                <td style={{ ...CT.td, textAlign:'right', color:'#ffaa00' }}>${(a.credit||0).toLocaleString()}</td>
+                <td style={{ ...CT.td, fontWeight:500, textAlign:'right' }}>${(a.balance||0).toLocaleString('en-GB')}</td>
+                <td style={{ ...CT.td, textAlign:'right', color: (a.equity||a.balance||0)<(a.balance||0)?'#ff4d4d':'#00e5a0' }}>{'$'+((a.equity||0)>0?(a.equity||0):(a.balance||0)).toLocaleString('en-GB')}</td>
+                <td style={{ ...CT.td, textAlign:'right', color:'#ffaa00' }}>${(a.credit||0).toLocaleString('en-GB')}</td>
                 <td style={{ ...CT.td, textAlign:'right' }}>
                   {(a.margin_level||0) > 0
                     ? <span style={{ color:(a.margin_level||0)<80?'#ff4d4d':(a.margin_level||0)<150?'#ffaa00':'#00e5a0', fontWeight:500 }}>{(a.margin_level||0).toFixed(0)}%</span>
                     : <span style={{ color:'var(--text3,#555)' }}>—</span>}
                 </td>
                 <td style={{ ...CT.td, color:'var(--text2,#888)', fontSize:11 }}>{a.name || a.client_name || '—'}</td>
-                <td style={{ ...CT.td, color:'var(--text2,#888)', fontSize:11, cursor:'pointer' }} onClick={() => (a.ib_display||a.ib_code||a.agent) && setFilterIB(String(a.ib_code||a.agent))} title="Filter by IB">{a.ib_display || a.ib_name || a.ib_code || (a.agent?`#${a.agent}`:'—')}</td>
+                <td style={{ ...CT.td, color:'var(--text2,#888)', fontSize:11, cursor:'pointer' }}
+                  onClick={() => { const key = String(a.ib_code||a.agent||''); if(!(a.ib_display||a.ib_code||a.agent)) return;
+                    const nm = String(a.ib_display||a.ib_name||'').replace(/\s*\(.*\)$/,'');
+                    if (filterIB === key && nm) { openIbProfile(nm); } else { setFilterIB(key); } }}
+                  title={filterIB===String(a.ib_code||a.agent||'') ? 'Open IB page' : 'Filter by this IB (click again to open IB page)'}>{a.ib_display || a.ib_name || a.ib_code || (a.agent?`#${a.agent}`:'—')}</td>
                 <td style={{ ...CT.td, color:'var(--text2,#888)', fontSize:11, cursor:'pointer' }} onClick={() => a.agent_name && setFilterAgent(a.agent_name)} title="Filter by agent">{a.agent_name || '—'}</td>
                 <td style={CT.td}>
                   <div style={{ color:'var(--text2,#888)', cursor:'pointer', fontSize:12 }} onClick={() => a.country && setFilterCountry(a.country)} title="Filter by country">{a.country || '—'}</div>
@@ -810,7 +837,7 @@ export default function TradingAccounts({ lang }: any) {
                   </span>
                 </td>
                 <td style={{ ...CT.td, color:'var(--text3,#555)', fontSize:11 }}>
-                  {(a.created_at||a.reg_date) ? new Date(a.created_at||a.reg_date).toLocaleDateString() : '—'}
+                  {(a.created_at||a.reg_date) ? new Date(a.created_at||a.reg_date).toLocaleDateString('en-GB') : '—'}
                 </td>
 
                 {/* Call action + Settings gear */}
@@ -820,12 +847,15 @@ export default function TradingAccounts({ lang }: any) {
                       style={{ padding:'4px 8px', background:'var(--bg-input,#373f4d)', border:'1px solid var(--border2,#626d80)', borderRadius:6, color:'var(--text2,#888)', cursor:'pointer', fontSize:11, whiteSpace:'nowrap' }}>
                       Action ▾
                     </button>
+                    {canManageAccounts && (
                     <div style={{ position:'relative', display:'inline-block' }}>
                       <button onClick={e => { e.stopPropagation(); setSettingsMenu(settingsMenu?.login===a.login ? null : a); }}
+                        title="Account settings (backoffice / admin only)"
                         style={{ width:28, height:28, borderRadius:6, border:'1px solid var(--border2,#626d80)', background:'var(--bg-input,#373f4d)', color:'var(--text2,#888)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>
                         ⚙
                       </button>
                     </div>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -925,7 +955,7 @@ export default function TradingAccounts({ lang }: any) {
       )}
 
       {/* Settings dropdown */}
-      {settingsMenu && (
+      {settingsMenu && canManageAccounts && (
         <div style={{ position:'fixed', inset:0, zIndex:200 }} onClick={() => setSettingsMenu(null)}>
           <div style={{ position:'fixed', top:'auto', right:60, background:'var(--bg-card,#2c333e)', border:'1px solid var(--border2,#626d80)', borderRadius:12, padding:8, width:220, zIndex:201, boxShadow:'0 8px 32px rgba(0,0,0,0.4)' }}
             onClick={e => e.stopPropagation()}>
