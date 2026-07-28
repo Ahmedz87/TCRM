@@ -104,6 +104,9 @@ const menuSections = [
 // Flatten for backward compat
 const menuItems = menuSections.flatMap(s => s.items);
 
+// Hedging section — visible ONLY to these staff emails (case-insensitive), even for admins.
+const HEDGING_EMAILS = ['abbask@tnfx.co', 'ahmedz@tnfx.co'];
+
 const PERIODS = [
   { key: 'today',        label: 'Today' },
   { key: 'yesterday',    label: 'Yesterday' },
@@ -470,6 +473,7 @@ export default function Dashboard({ user, onLogout, lang, onLangChange, theme, o
   const canSee = (k: string): boolean => {
     if (k === 'search') return true;          // global search — available to every staff user
     if (k === 'tickets') return canTicket;    // hard allowlist — overrides the admin "see all"
+    if (k === 'hedging') return HEDGING_EMAILS.includes(String(user?.email || '').trim().toLowerCase());  // email allowlist — overrides admin "see all"
     if (!allowedKeys || k === 'dashboard') return true;
     if (allowedKeys.includes(k)) return true;
     const hub = menuSections.find(s => (s as any).hub) as any;

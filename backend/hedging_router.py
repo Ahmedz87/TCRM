@@ -20,7 +20,20 @@ from database import get_db
 from auth import get_current_user
 import models
 
-router = APIRouter(prefix="/hedging", tags=["Hedging (analysis)"])
+# Access is restricted to these staff emails ONLY (case-insensitive) — not all admins.
+HEDGING_EMAILS = {"abbask@tnfx.co", "ahmedz@tnfx.co"}
+
+
+def _require_hedging_access(current_user: models.User = Depends(get_current_user)):
+    """Hard email allowlist — 403 for everyone else, including other admins."""
+    if (getattr(current_user, "email", "") or "").strip().lower() not in HEDGING_EMAILS:
+        raise HTTPException(403, "Not authorized for the Hedging section")
+    return current_user
+
+
+# Router-level dependency => every endpoint below enforces the allowlist.
+router = APIRouter(prefix="/hedging", tags=["Hedging (analysis)"],
+                   dependencies=[Depends(_require_hedging_access)])
 
 # ── canonical per-deal classification (mirrors build_transactions.py + cbook_cash_movements) ──
 # Produces `kind` and `signed_delta` (balance impact) for every money-affecting deal.
