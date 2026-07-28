@@ -47,6 +47,7 @@ const MonthlyReport = lazyWithReload(() => import('./MonthlyReport'));
 const Finance = lazyWithReload(() => import('./Finance'));
 const Marketing = lazyWithReload(() => import('./Marketing'));
 const KycReview = lazyWithReload(() => import('./KycReview'));
+const CBook = lazyWithReload(() => import('./CBook'));
 
 const menuSections = [
   {
@@ -65,6 +66,7 @@ const menuSections = [
       { icon: '📅', label: 'Monthly Report',     key: 'monthly_report' },
       { icon: '💰', label: 'Finance Management', key: 'finance' },
       { icon: '🚨', label: 'Abuse Detection',   key: 'abuse' },
+      { icon: '📕', label: 'C-Book',            key: 'cbook' },
       { icon: '⚖️', label: 'AML Screening',      key: 'aml' },
       { icon: '🎧', label: 'Call QA',           key: 'call_qa' },
       { icon: '🎓', label: 'Training',          key: 'training' },
@@ -778,6 +780,7 @@ export default function Dashboard({ user, onLogout, lang, onLangChange, theme, o
           {active === 'monthly_report' && <MonthlyReport />}
           {active === 'finance'        && <Finance />}
           {active === 'abuse'          && <AbuseDetection />}
+          {active === 'cbook'          && <CBook />}
           {active === 'aml'            && <AMLReview />}
           {active === 'copy_admin'     && <CopyTradingAdmin />}
           {active === 'loyalty'        && <Loyalty />}
@@ -785,7 +788,7 @@ export default function Dashboard({ user, onLogout, lang, onLangChange, theme, o
           {active === 'neg_balance'    && <NegBalance />}
           </Suspense></ChunkErrorBoundary>
 
-          {!(['abuse', 'accounts', 'call_qa', 'clients', 'copy_admin', 'dashboard', 'finance', 'ib', 'ib_admin', 'ib_challenges', 'ib_profiles', 'kyc', 'leads', 'loyalty', 'marketing', 'monthly_report', 'my_loyalty', 'neg_balance', 'network', 'reports', 'retention', 'sales_agents', 'settings', 'settings_account_types', 'settings_archive', 'settings_bonuses', 'settings_leads', 'settings_markups', 'settings_payment_cards', 'settings_payments', 'settings_score', 'settings_users', 'tickets', 'transactions'] as string[]).includes(active) && (
+          {!(['abuse', 'accounts', 'call_qa', 'cbook', 'clients', 'copy_admin', 'dashboard', 'finance', 'ib', 'ib_admin', 'ib_challenges', 'ib_profiles', 'kyc', 'leads', 'loyalty', 'marketing', 'monthly_report', 'my_loyalty', 'neg_balance', 'network', 'reports', 'retention', 'sales_agents', 'settings', 'settings_account_types', 'settings_archive', 'settings_bonuses', 'settings_leads', 'settings_markups', 'settings_payment_cards', 'settings_payments', 'settings_score', 'settings_users', 'tickets', 'transactions'] as string[]).includes(active) && (
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh', flexDirection:'column', gap:16 }}>
               <div style={{ fontSize:48 }}>{menuItems.find(m=>m.key===active)?.icon}</div>
               <div style={{ fontSize:20, fontWeight:500 }}>{t(menuItems.find(m=>m.key===active)?.label || '')}</div>

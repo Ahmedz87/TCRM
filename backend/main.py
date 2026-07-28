@@ -261,6 +261,9 @@ app.include_router(call_qa_router)
 from aml_router import router as aml_router
 app.include_router(aml_router)
 
+from cbook_router import router as cbook_router   # Behavioral Client-Flow C-Book (read-only analysis)
+app.include_router(cbook_router)
+
 @app.get("/")
 def root():
     return {"message": "Broker CRM API is running!"}
