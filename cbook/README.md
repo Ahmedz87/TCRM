@@ -33,8 +33,9 @@ needed to research one.
 | Phase | Name | Status |
 |------|------|--------|
 | **1** | Data Inventory, Feasibility & Quality Audit | ⏳ Partially done — see `audit/DATA_AVAILABILITY_MAP.md` |
-| **2** | Financial Facts, Accounting Logic & Reconciliation | 📋 Spec loaded — see `docs/PHASE2_FINANCIAL_RECONCILIATION.md`; blocked on Phase-1 gaps |
-| 3+ | Behavioral classification, clustering, C-Book strategy research | 🔒 Not started (gated on Phase 2 reconciliation) |
+| **2** | Financial Facts, Accounting Logic & Reconciliation | 🔨 In progress — spec in `docs/PHASE2_FINANCIAL_RECONCILIATION.md`; §5 built |
+| **3** | Client Classification, Selection & Behavioral Clustering | 📋 Spec loaded — `docs/PHASE3_BEHAVIORAL_CLASSIFICATION.md`; feasibility in `audit/PHASE3_FEATURE_FEASIBILITY.md`; gated on Phase 2 + price-history gap |
+| 4+ | C-Book strategy research & backtesting | 🔒 Not started |
 
 **Phase 2 begins only after Phase 1 blockers are documented.** The most important Phase-1
 finding so far: large parts of Phase 2 (LP accounts, hedging, real book classification, FX
@@ -62,9 +63,14 @@ cbook/
 ├── README.md                                  ← this file (charter + safety + status)
 ├── STATUS.md                                  ← step-by-step work tracker (33 areas / 21 tables / 20 deliverables)
 ├── docs/
-│   └── PHASE2_FINANCIAL_RECONCILIATION.md     ← the governing Phase-2 methodology spec
-└── audit/
-    └── DATA_AVAILABILITY_MAP.md               ← Phase-1↔2 bridge: spec-required sources vs. actual schema
+│   ├── PHASE2_FINANCIAL_RECONCILIATION.md     ← Phase-2 methodology spec
+│   └── PHASE3_BEHAVIORAL_CLASSIFICATION.md    ← Phase-3 classification & clustering methodology
+├── audit/
+│   ├── DATA_AVAILABILITY_MAP.md               ← Phase-1↔2 bridge: financial sources vs. schema
+│   └── PHASE3_FEATURE_FEASIBILITY.md          ← Phase-3 features vs. schema (price-history gap)
+├── lib/                                       ← read-only calculation library (§5 built)
+├── sql/                                       ← read-only SQL (views + reports)
+└── tests/                                     ← unit & reconciliation tests
 ```
 
 Code, SQL and reports are added **incrementally, one work area at a time**, only for

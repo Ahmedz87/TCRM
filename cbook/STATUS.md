@@ -86,6 +86,35 @@ moving on. **No step touches client accounts or real actions.**
 
 ---
 
+---
+
+## Phase 3 — Classification & Clustering (spec loaded; gated)
+
+Full spec: `docs/PHASE3_BEHAVIORAL_CLASSIFICATION.md` · Feasibility: `audit/PHASE3_FEATURE_FEASIBILITY.md`
+
+| § | Work area | Status |
+|---|---|---|
+| 3  | Identity & linked-account resolution (Linked Account Confidence Score) | ⬜ buildable |
+| 4  | Data-sufficiency gating (Data Sufficiency Score) | ⬜ buildable |
+| 5  | Exclusion classes (martingale/grid/scalper/news-window) | ⬜ mostly buildable |
+| 7.1 | Financial-performance features | ⬜ buildable (needs round-trip pairing) |
+| 7.2 | **Directional features (MFE/MAE, expectancy@horizon)** | 🔒 **price history missing** |
+| 7.3 | Timing features | 🟡 sessions ✅ / location-in-move 🔒 |
+| 7.4 | Size & leverage features | ⬜ buildable |
+| 7.5 | Position-management features | 🟡 hold/giveback ✅ / SL-TP 🔒 (maybe raw_json) |
+| 7.6 | Stability features | ⬜ buildable |
+| 9  | Rule-based classifications | 🟡 behavior labels ✅ / directional labels 🔒 |
+| 10 | Loss Attribution (5 axes) | 🟡 sizing/exit/cost ✅ / direction/timing 🔒 |
+| 12-24 | Hybrid clustering, quality, entry/exit, stability, drift | ⬜ buildable on available features |
+| 18 | **Reverse Edge** (the investment thesis) | 🔒 **price history missing** |
+| 25-26 | Point-in-time discipline + out-of-sample | ⬜ buildable |
+| 27-28 | Cluster dashboard + lifecycle states | ⬜ buildable |
+
+**Prerequisite for the round-trip pairing that most of Phase 3 needs:** a trade-pairing step
+(entry↔exit via `deals.entry`) — a natural early Phase-3 build once Phase 2 is validated live.
+
+---
+
 ## Changelog
 
 - **2026-07-28** — Section created. Phase-2 spec loaded; Phase-1 data-availability audit done;
@@ -95,3 +124,9 @@ moving on. **No step touches client accounts or real actions.**
   Delivers Table 1 + client balance/equity reconciliation with explicit `balance_break`.
   10/10 §31 unit tests pass in-sandbox. Next: §6 client statistics + §7 MWR/TWR returns, then §8
   aggregate book — building on Table 1.
+- **2026-07-28** — Phase 3 methodology loaded (owner .docx). Added
+  `docs/PHASE3_BEHAVIORAL_CLASSIFICATION.md` (30 sections, EN rendering) +
+  `audit/PHASE3_FEATURE_FEASIBILITY.md`. Key finding: behavioral features are buildable, but
+  directional features (§7.2), Loss-Attribution direction/timing axes (§10) and Reverse Edge (§18)
+  are BLOCKED — no historical price series in the CRM. That gap must be sourced before the
+  reverse-crowding thesis can be built.
