@@ -12,7 +12,7 @@ a time**, only where data exists (see `audit/DATA_AVAILABILITY_MAP.md`).
 | § | Work area | Status | Note |
 |---|---|---|---|
 | 4  | Currency-conversion framework | 🔒 | No FX rate table → single-USD assumption pending Phase-1 confirm |
-| 5  | Client account financial reconstruction (opening/closing balance, deposits, withdrawals, transfers, bonuses, realized/unrealized P&L, equity) | ⬜ | **← recommended first build; data exists** |
+| 5  | Client account financial reconstruction (opening/closing balance, deposits, withdrawals, transfers, bonuses, realized/unrealized P&L, equity) | ✅ | Done — `lib/reconstruction.py` + `lib/classification.py` + `sql/reports/s05_*.sql` + view `cbook_cash_movements`; 10/10 tests pass. All-time per login; monthly periodization pending in §6/§8 |
 | 6  | Client financial statistics (funding, account values, trading results, net wealth, returns, risk) | ⬜ | Depends on §5 |
 | 7  | Money-weighted (XIRR) & time-weighted returns | ⬜ | TWR aided by `daily_snapshots` |
 | 8  | Aggregate client-book statistics (daily/monthly + breakdowns) | ⬜ | Depends on §5/§6 |
@@ -46,7 +46,7 @@ a time**, only where data exists (see `audit/DATA_AVAILABILITY_MAP.md`).
 
 | # | Table | Buildable now? |
 |---|---|---|
-| 1 | Client account financial summary | ✅ yes |
+| 1 | Client account financial summary | ✅ **built** (§5) |
 | 2 | Client consolidated financial summary | ✅ yes |
 | 3 | Client funding & cash-flow history | ✅ yes |
 | 4 | Client trading P&L & cost summary | ✅ yes (spread cost = N/A) |
@@ -89,4 +89,9 @@ moving on. **No step touches client accounts or real actions.**
 ## Changelog
 
 - **2026-07-28** — Section created. Phase-2 spec loaded; Phase-1 data-availability audit done;
-  work tracker established. Next: confirm scope with owner, then build §5.
+  work tracker established.
+- **2026-07-28** — §5 Client Account Financial Reconstruction built (single-currency USD, FX
+  deferred by owner). Reuses build_transactions.py classification (ported to Python + SQL view).
+  Delivers Table 1 + client balance/equity reconciliation with explicit `balance_break`.
+  10/10 §31 unit tests pass in-sandbox. Next: §6 client statistics + §7 MWR/TWR returns, then §8
+  aggregate book — building on Table 1.
