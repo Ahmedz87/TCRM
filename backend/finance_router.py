@@ -798,6 +798,81 @@ def _build_trends(db, months):
     return {"series": series, "totals": totals, "months": months}
 
 
+# ── Per-method net cash, broken down month by month, ranked high → low ─────────
+# The Overview "payment-method balances" table, but pivoted across the last N months
+# instead of a single all-time column. Net per (method, month) = genuine deposits −
+# non-rejected withdrawals through that method that month. The `method` column carries
+# ~130k noise values, so we keep the top `top` methods by total net over the window as
+# themselves and fold the long tail into a single 'Other' row (the totals are unchanged).
+@router.get("/method-trends")
+def finance_method_trends(
+    months: int = Query(12, ge=1, le=36),
+    top: int = Query(25, ge=5, le=100),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return cached(f"finance:method-trends:all:{months}:{top}", 300,
+                  lambda: _build_method_trends(db, months, top))
+
+
+def _build_method_trends(db, months, top):
+    keys = _last_n_months(months)
+    m0 = keys[0]
+    rows = db.execute(text(f"""
+        SELECT COALESCE(NULLIF(method,''),'Other') AS method, tx_month,
+               COALESCE(SUM(amount) FILTER (WHERE tx_type='deposit' AND {NOT_INTERNAL_SQL}),0)
+             - COALESCE(SUM(amount) FILTER (WHERE tx_type='withdrawal' AND COALESCE(status,'')<>'rejected'),0) AS net,
+               COUNT(*) AS cnt
+        FROM transactions
+        WHERE tx_type IN ('deposit','withdrawal') AND tx_month >= :m0
+        GROUP BY 1, 2
+    """), {"m0": m0, "mt5_adj": MT5_ADJUST_METHOD, "internal_re": INTERNAL_LABEL_RE}).fetchall()
+
+    # accumulate per method: {month: net}, total net, total count
+    acc: dict = {}
+    for method, tx_month, net, cnt in rows:
+        if tx_month not in keys:      # ignore any stray month outside the window
+            continue
+        d = acc.setdefault(method, {"monthly": {}, "total": 0.0, "count": 0})
+        d["monthly"][tx_month] = round(float(net or 0), 2)
+        d["total"] += float(net or 0)
+        d["count"] += int(cnt or 0)
+
+    ranked = sorted(acc.items(), key=lambda kv: kv[1]["total"], reverse=True)
+    head, tail = ranked[:top], ranked[top:]
+
+    label = lambda m: ("Internal / MT5 adjustment"
+                       if (m or "").strip().upper() == MT5_ADJUST_METHOD else (m or "Other"))
+
+    def pack(method, d):
+        return {
+            "method": method, "method_label": label(method),
+            "total": round(d["total"], 2), "count": d["count"],
+            "monthly": {k: round(d["monthly"].get(k, 0.0), 2) for k in keys},
+        }
+
+    out = [pack(m, d) for m, d in head]
+    if tail:
+        folded = {"monthly": {k: 0.0 for k in keys}, "total": 0.0, "count": 0}
+        for _m, d in tail:
+            folded["total"] += d["total"]; folded["count"] += d["count"]
+            for k in keys:
+                folded["monthly"][k] += d["monthly"].get(k, 0.0)
+        out.append({
+            "method": "__other__", "method_label": f"Other ({len(tail)} methods)",
+            "total": round(folded["total"], 2), "count": folded["count"],
+            "monthly": {k: round(folded["monthly"][k], 2) for k in keys},
+        })
+
+    col_totals = {k: round(sum(r["monthly"][k] for r in out), 2) for k in keys}
+    return {
+        "months": keys,
+        "methods": out,
+        "column_totals": col_totals,
+        "grand_total": round(sum(r["total"] for r in out), 2),
+    }
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PSP RECONCILIATION
 # ══════════════════════════════════════════════════════════════════════════════

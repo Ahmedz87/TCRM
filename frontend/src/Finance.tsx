@@ -173,51 +173,97 @@ function Overview() {
             <KpiCard label="Net after expenses" value={fmtUSD(k.net_after_expenses)} color={k.net_after_expenses >= 0 ? '#37d67a' : '#ff5c6c'} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, alignItems: 'start' }}>
-            {/* Payment-method balances */}
-            <div style={card}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Payment-method balances (net cash in, all-time)</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr>
-                    <th style={th}>Method / PSP</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Deposits</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Withdrawals</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Net balance</th>
-                    <th style={{ ...th, textAlign: 'right' }}>Txns</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(data.payment_methods || []).length === 0 && (
-                    <tr><td colSpan={5} style={{ ...td, color: '#8a93a3' }}>No data</td></tr>
-                  )}
-                  {(data.payment_methods || []).map((m: any) => (
-                    <tr key={m.method}>
-                      <td style={td}>{m.method}</td>
-                      <td style={{ ...td, textAlign: 'right', color: '#7fe0a8' }}>{fmtUSD(m.deposits)}</td>
-                      <td style={{ ...td, textAlign: 'right', color: '#ff8a93' }}>{fmtUSD(m.withdrawals)}</td>
-                      <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: m.net >= 0 ? '#37d67a' : '#ff5c6c' }}>{fmtUSD(m.net)}</td>
-                      <td style={{ ...td, textAlign: 'right', color: '#8a93a3' }}>{fmtNum(m.count)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {/* Payment-method balances — month by month, ranked high → low */}
+          <MethodTrends />
 
-            {/* How calculated */}
-            <div style={{ ...card, background: 'var(--bg-card2,#262c36)' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>ℹ️ How these are calculated</div>
-              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, lineHeight: 1.7, color: '#c4ccd8' }}>
-                <li><b>Total liquidity</b> = all-time genuine deposits − all-time withdrawals = net client funds the platform is holding. Internal MT5 balance adjustments are excluded (not real cash in).</li>
-                <li><b>Available liquidity</b> = total liquidity − pending (not-yet-performed) withdrawals — funds not already earmarked to leave.</li>
-                <li><b>Payment-method balances</b> = per PSP/method, net of its deposits minus the withdrawals paid back out through it.</li>
-                <li><b>Client balances</b> = live sum of trading-account balance (and credit) — what is currently sitting in client accounts.</li>
-              </ul>
-            </div>
+          {/* How calculated */}
+          <div style={{ ...card, background: 'var(--bg-card2,#262c36)', marginTop: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>ℹ️ How these are calculated</div>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, lineHeight: 1.7, color: '#c4ccd8' }}>
+              <li><b>Total liquidity</b> = all-time genuine deposits − all-time withdrawals = net client funds the platform is holding. Internal MT5 balance adjustments are excluded (not real cash in).</li>
+              <li><b>Available liquidity</b> = total liquidity − pending (not-yet-performed) withdrawals — funds not already earmarked to leave.</li>
+              <li><b>Payment-method balances</b> = per PSP/method, the net cash in (genuine deposits − withdrawals paid back out) each month, ranked highest to lowest by total over the window.</li>
+              <li><b>Client balances</b> = live sum of trading-account balance (and credit) — what is currently sitting in client accounts.</li>
+            </ul>
           </div>
         </>
       )}
     </>
+  );
+}
+
+// ── Payment-method net cash, month by month, ranked high → low ─────────────────
+function MethodTrends() {
+  const [months, setMonths] = useState(12);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    apiGet(`/finance/method-trends?months=${months}`)
+      .then((d: any) => setData(d)).catch(() => setData(null)).finally(() => setLoading(false));
+  }, [months]);
+  useEffect(() => { load(); }, [load]);
+
+  const mkeys: string[] = data?.months || [];
+  const methods: any[] = data?.methods || [];
+  const colTotals = data?.column_totals || {};
+  const netColor = (v: number) => (v > 0 ? '#37d67a' : v < 0 ? '#ff5c6c' : '#5b6472');
+  const cell: React.CSSProperties = { ...td, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' };
+  const stickyL: React.CSSProperties = { position: 'sticky', left: 0, background: 'var(--bg-card,#2c333e)', zIndex: 1 };
+
+  return (
+    <div style={{ ...card, padding: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px 8px', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>Payment-method balances — net cash in, month by month</div>
+        <span style={{ fontSize: 11, color: '#8a93a3' }}>ranked highest → lowest by total</span>
+        <div style={{ flex: 1 }} />
+        <select value={months} onChange={e => setMonths(parseInt(e.target.value, 10))} style={{ ...input, padding: '5px 8px', fontSize: 12 }}>
+          {MONTH_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 640 }}>
+          <thead>
+            <tr style={{ background: 'var(--bg-card2,#262c36)' }}>
+              <th style={{ ...th, ...stickyL, background: 'var(--bg-card2,#262c36)' }}>#</th>
+              <th style={{ ...th, position: 'sticky', left: 34, background: 'var(--bg-card2,#262c36)', zIndex: 1 }}>Method / PSP</th>
+              {mkeys.map(mk => <th key={mk} style={{ ...th, textAlign: 'right' }}>{monthLabel(mk)}</th>)}
+              <th style={{ ...th, textAlign: 'right', borderLeft: '1px solid var(--border,#373f4d)' }}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && <tr><td colSpan={mkeys.length + 3} style={{ ...td, color: '#8a93a3' }}>Loading…</td></tr>}
+            {!loading && methods.length === 0 && <tr><td colSpan={mkeys.length + 3} style={{ ...td, color: '#8a93a3' }}>No data</td></tr>}
+            {!loading && methods.map((m, i) => (
+              <tr key={m.method}>
+                <td style={{ ...td, ...stickyL, color: '#8a93a3', textAlign: 'right', paddingRight: 10 }}>{i + 1}</td>
+                <td style={{ ...td, position: 'sticky', left: 34, background: 'var(--bg-card,#2c333e)', zIndex: 1, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${m.method_label} · ${fmtNum(m.count)} txns`}>{m.method_label}</td>
+                {mkeys.map(mk => {
+                  const v = m.monthly?.[mk] || 0;
+                  return <td key={mk} style={{ ...cell, color: v === 0 ? '#5b6472' : netColor(v) }}>{v === 0 ? '·' : fmtCompact(v)}</td>;
+                })}
+                <td style={{ ...cell, fontWeight: 700, borderLeft: '1px solid var(--border,#373f4d)', color: netColor(m.total) }}>{fmtUSD(m.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+          {!loading && methods.length > 0 && (
+            <tfoot>
+              <tr style={{ background: 'var(--bg-card2,#262c36)' }}>
+                <td style={{ ...td, ...stickyL, background: 'var(--bg-card2,#262c36)' }} />
+                <td style={{ ...th, position: 'sticky', left: 34, background: 'var(--bg-card2,#262c36)', zIndex: 1, fontWeight: 700 }}>All methods</td>
+                {mkeys.map(mk => {
+                  const v = colTotals[mk] || 0;
+                  return <td key={mk} style={{ ...cell, fontWeight: 700, color: netColor(v) }}>{v === 0 ? '·' : fmtCompact(v)}</td>;
+                })}
+                <td style={{ ...cell, fontWeight: 700, borderLeft: '1px solid var(--border,#373f4d)', color: netColor(data?.grand_total || 0) }}>{fmtUSD(data?.grand_total || 0)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+    </div>
   );
 }
 
