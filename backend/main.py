@@ -261,8 +261,8 @@ app.include_router(call_qa_router)
 from aml_router import router as aml_router
 app.include_router(aml_router)
 
-from cbook_router import router as cbook_router   # Behavioral Client-Flow C-Book (read-only analysis)
-app.include_router(cbook_router)
+from hedging_router import router as hedging_router   # Hedging — Behavioral Client-Flow (read-only analysis)
+app.include_router(hedging_router)
 
 @app.get("/")
 def root():

@@ -117,15 +117,16 @@ Full spec: `docs/PHASE3_BEHAVIORAL_CLASSIFICATION.md` · Feasibility: `audit/PHA
 
 ## CRM integration (live app)
 
-The C-Book project is now a **read-only tab inside the CRM** (admin-only; non-admin roles don't
-see it). Nothing in the integration writes to client data.
+The project is surfaced as a **read-only tab inside the CRM named "Hedging"** (admin-only; non-admin
+roles don't see it). Nothing in the integration writes to client data. (The `cbook/` folder keeps
+the "C-Book" name as the underlying financial methodology; the CRM-visible section is "Hedging".)
 
-- `backend/cbook_router.py` — `/cbook/status`, `/cbook/account/{login}` (§5 reconstruction for one
-  account), `/cbook/accounts` (capped aggregate, biggest break first). SELECT-only; classification
-  inlined to mirror `build_transactions.py`. Mounted in `main.py`.
-- `frontend/src/CBook.tsx` — the tab: phase/data-availability panel, §5 account-reconstruction
+- `backend/hedging_router.py` — `/hedging/status`, `/hedging/account/{login}` (§5 reconstruction for
+  one account), `/hedging/accounts` (capped aggregate, biggest break first). SELECT-only;
+  classification inlined to mirror `build_transactions.py`. Mounted in `main.py`.
+- `frontend/src/Hedging.tsx` — the tab: phase/data-availability panel, §5 account-reconstruction
   lookup with reconciliation badge, and an on-demand "top reconciliation breaks" scan.
-- `frontend/src/Dashboard.tsx` — menu item 📕 C-Book (`key: 'cbook'`) + lazy import + render wire.
+- `frontend/src/Dashboard.tsx` — menu item 📕 Hedging (`key: 'hedging'`) + lazy import + render wire.
 
 **Deploy on the CRM box:** restart backend (loads the router) and rebuild the frontend
 (`cd C:\Broker-crm\frontend; $env:CI="false"; npm run build`), then hard-refresh. Perf note: the

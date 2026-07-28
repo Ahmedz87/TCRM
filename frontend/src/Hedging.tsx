@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiGet } from './api';
 
-// Behavioral Client-Flow C-Book — READ-ONLY analysis tab.
+// Hedging (Behavioral Client-Flow) — READ-ONLY analysis tab.
 // Surfaces Phase 2 §5 client account financial reconstruction + project status.
 // Nothing here modifies any client account, balance, order or transaction.
 
@@ -81,7 +81,7 @@ function ReconCard({ d }: any) {
   );
 }
 
-export default function CBook() {
+export default function Hedging() {
   const [status, setStatus] = useState<any>(null);
   const [login, setLogin] = useState('');
   const [acct, setAcct] = useState<any>(null);
@@ -90,19 +90,19 @@ export default function CBook() {
   const [list, setList] = useState<any>(null);
   const [listLoading, setListLoading] = useState(false);
 
-  useEffect(() => { apiGet('/cbook/status').then(setStatus).catch(() => {}); }, []);
+  useEffect(() => { apiGet('/hedging/status').then(setStatus).catch(() => {}); }, []);
 
   const lookup = () => {
     const l = login.trim();
     if (!l) return;
     setLoading(true); setErr(''); setAcct(null);
-    apiGet(`/cbook/account/${encodeURIComponent(l)}`)
+    apiGet(`/hedging/account/${encodeURIComponent(l)}`)
       .then(setAcct).catch((e: any) => setErr(e?.message || 'Not found')).finally(() => setLoading(false));
   };
 
   const runList = () => {
     setListLoading(true);
-    apiGet('/cbook/accounts?limit=50&order=break')
+    apiGet('/hedging/accounts?limit=50&order=break')
       .then(setList).catch(() => setList({ accounts: [] })).finally(() => setListLoading(false));
   };
 
@@ -110,12 +110,12 @@ export default function CBook() {
     <div style={{ color: C.txt, maxWidth: 1100 }}>
       {/* Header */}
       <div style={{ marginBottom: 6 }}>
-        <span style={{ fontSize: 22, fontWeight: 800 }}>📕 C-Book</span>
+        <span style={{ fontSize: 22, fontWeight: 800 }}>📕 Hedging</span>
         <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 700, color: C.ok,
           background: 'rgba(58,210,159,0.14)', padding: '3px 10px', borderRadius: 20 }}>READ-ONLY · analysis</span>
       </div>
       <div style={{ fontSize: 13, color: C.mut, marginBottom: 16, lineHeight: 1.5 }}>
-        Behavioral Client-Flow C-Book — financial reconciliation & behavioral classification research.
+        Hedging — behavioral client-flow analysis: financial reconciliation & behavioral classification research.
         This section never opens, closes, or modifies any client account, balance, order or transaction.
       </div>
 
@@ -212,7 +212,7 @@ export default function CBook() {
                   const ok = a.balance_break !== null && Math.abs(a.balance_break) <= 0.01;
                   return (
                     <tr key={a.login} style={{ borderTop: '1px solid var(--border,#4f596b)', textAlign: 'right', cursor: 'pointer' }}
-                      onClick={() => { setLogin(String(a.login)); apiGet(`/cbook/account/${a.login}`).then(setAcct).catch(() => {}); }}>
+                      onClick={() => { setLogin(String(a.login)); apiGet(`/hedging/account/${a.login}`).then(setAcct).catch(() => {}); }}>
                       <td style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 700 }}>#{a.login}</td>
                       <td style={{ padding: '6px 8px' }}>{money(a.net_completed_deposits)}</td>
                       <td style={{ padding: '6px 8px' }}>{money(a.net_completed_withdrawals)}</td>

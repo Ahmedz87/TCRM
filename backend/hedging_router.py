@@ -1,14 +1,14 @@
 """
-cbook_router.py — Behavioral Client-Flow C-Book project API (READ-ONLY / analysis only).
+hedging_router.py — Hedging (Behavioral Client-Flow) project API (READ-ONLY / analysis only).
 
-Surfaces the C-Book project inside the CRM. This router NEVER writes: no client account,
-balance, order, bonus or transaction is created or modified. It only reads `deals` and
-reports financial facts (Phase 2 §5 reconstruction) plus the project's phase/data status.
+Surfaces the Hedging analysis project inside the CRM. This router NEVER writes: no client
+account, balance, order, bonus or transaction is created or modified. It only reads `deals`
+and reports financial facts (Phase 2 §5 reconstruction) plus the project's phase/data status.
 
 Endpoints (admin analytical tab):
-    GET /cbook/status              -> phase + data-availability summary (+ light live counts)
-    GET /cbook/account/{login}     -> §5 reconstruction for one account (Table 1 row)
-    GET /cbook/accounts            -> capped aggregate list, biggest reconciliation break first
+    GET /hedging/status              -> phase + data-availability summary (+ light live counts)
+    GET /hedging/account/{login}     -> §5 reconstruction for one account (Table 1 row)
+    GET /hedging/accounts            -> capped aggregate list, biggest reconciliation break first
 
 Classification of money movements mirrors build_transactions.py (the CRM's canonical logic),
 so figures tie to the existing Finance/Deposits totals. See cbook/ docs for the methodology.
@@ -20,7 +20,7 @@ from database import get_db
 from auth import get_current_user
 import models
 
-router = APIRouter(prefix="/cbook", tags=["C-Book (analysis)"])
+router = APIRouter(prefix="/hedging", tags=["Hedging (analysis)"])
 
 # ── canonical per-deal classification (mirrors build_transactions.py + cbook_cash_movements) ──
 # Produces `kind` and `signed_delta` (balance impact) for every money-affecting deal.
@@ -94,7 +94,7 @@ def _row_dict(r):
 
 # ── Phase / data-availability status (from the cbook/ audit docs) ─────────────
 _STATUS = {
-    "project": "Behavioral Client-Flow C-Book",
+    "project": "Hedging — Behavioral Client-Flow",
     "read_only": True,
     "note": "Analysis & classification only. No client account, balance, order or transaction is ever modified.",
     "phases": [
@@ -102,7 +102,7 @@ _STATUS = {
         {"n": 2, "name": "Financial Facts, Accounting Logic & Reconciliation", "state": "in_progress",
          "detail": "§5 Client Account Financial Reconstruction is live (this tab). FX deferred (single-currency USD)."},
         {"n": 3, "name": "Client Classification & Behavioral Clustering", "state": "spec_loaded"},
-        {"n": 4, "name": "C-Book strategy research & backtesting", "state": "not_started"},
+        {"n": 4, "name": "Hedging strategy research & backtesting", "state": "not_started"},
     ],
     "buildable": [
         "Client account financial reconstruction (deposits, withdrawals, transfers, bonuses, realized P&L, balance)",
