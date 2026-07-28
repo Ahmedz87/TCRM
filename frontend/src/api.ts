@@ -46,4 +46,29 @@ export async function placeCall(phone: string): Promise<any> {
 export function apiPatch(path: string, body: any) { return apiRequest("PATCH", path, body); }
 export function apiPut(path: string, body: any) { return apiRequest("PUT", path, body); }
 export function apiDelete(path: string) { return apiRequest("DELETE", path); }
+
+// Download an authenticated file (e.g. a CSV export). The endpoints require the
+// Bearer token, so we fetch as a blob (can't use a plain <a href>) and save it.
+export function apiDownload(path: string, filename: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const token = localStorage.getItem("token") || "";
+    xhr.open("GET", API + path);
+    xhr.setRequestHeader("Authorization", "Bearer " + token);
+    xhr.responseType = "blob";
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const url = URL.createObjectURL(xhr.response);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        resolve();
+      } else { reject(new Error("Download failed: " + xhr.status)); }
+    };
+    xhr.onerror = () => reject(new Error("Network error"));
+    xhr.send();
+  });
+}
 export default API;

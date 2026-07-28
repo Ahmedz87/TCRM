@@ -40,7 +40,10 @@ scan (see CLAUDE.md / reports perf note).
 These are platform-wide (all-time) cash-flow figures, independent of the period
 selector (the period only scopes the deposits/withdrawals KPIs + breakdowns).
 """
+import io
+import csv as _csv
 from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
@@ -51,6 +54,7 @@ from database import get_db, SessionLocal
 from auth import get_current_user
 import models
 from dashboard_router import get_period_dates
+from reports_router import _previous_period_dates, _pct_change
 from perf_cache import cached
 
 router = APIRouter(prefix="/finance", tags=["Finance"])
@@ -576,3 +580,564 @@ def delete_expense(
     if not res:
         raise HTTPException(status_code=404, detail="Expense not found")
     return {"id": exp_id, "message": "Expense deleted"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# P&L / INCOME STATEMENT
+# ══════════════════════════════════════════════════════════════════════════════
+# A broker income statement built on the SAME established revenue metric the rest of
+# the app uses:
+#   Revenue  = spread/markup revenue = SUM(deals.markup_profit)/10000 on trades
+#              (action 0/1), period-bounded on the indexed deal_date string range
+#              (mirrors reports_router / dashboard_router / sales_agents).
+#   less IB commissions paid  = SUM(ib_commissions.commission_usd) in the period
+#              (money rebated to introducing brokers — a direct cost of revenue).
+#   = GROSS PROFIT
+#   less Operating expenses    = finance_expenses (status<>void) in the period,
+#              broken down by category (Salaries, Marketing, PSP fees, …).
+#   = NET PROFIT
+# Deposits / withdrawals / net client flow are carried as a CASH-FLOW memo block —
+# they are client money movements, not P&L lines, but the desk wants them alongside.
+# Every figure is period-bounded and a previous-comparable-period delta is attached.
+
+def _pnl_window(db, p_from, p_to):
+    """All P&L figures for one [p_from, p_to] window. Read-only."""
+    t_next = _next_day(p_to)
+    p = {"f": p_from, "t_next": t_next,
+         "mt5_adj": MT5_ADJUST_METHOD, "internal_re": INTERNAL_LABEL_RE}
+
+    markup = db.execute(text("""
+        SELECT COALESCE(SUM(d.markup_profit),0)/10000.0
+        FROM deals d
+        WHERE d.action IN (0,1)
+          AND d.deal_date >= :f AND d.deal_date < :t_next
+    """), p).scalar() or 0
+
+    ib_cost = db.execute(text("""
+        SELECT COALESCE(SUM(commission_usd),0) FROM ib_commissions
+        WHERE trade_date IS NOT NULL
+          AND trade_date >= :f AND trade_date < :t_next
+    """), p).scalar() or 0
+
+    dep = db.execute(text(f"""
+        SELECT COALESCE(SUM(amount),0), COUNT(*) FROM transactions
+        WHERE tx_type='deposit' AND {NOT_INTERNAL_SQL}
+          AND tx_date >= :f AND tx_date < :t_next
+    """), p).fetchone()
+    wth = db.execute(text("""
+        SELECT COALESCE(SUM(amount),0), COUNT(*) FROM transactions
+        WHERE tx_type='withdrawal' AND COALESCE(status,'')<>'rejected'
+          AND tx_date >= :f AND tx_date < :t_next
+    """), {"f": p_from, "t_next": t_next}).fetchone()
+
+    _ensure_expense_table(db)
+    exp_rows = db.execute(text("""
+        SELECT category, COALESCE(SUM(amount),0), COUNT(*) FROM finance_expenses
+        WHERE status <> 'void' AND exp_date >= :f AND exp_date < :t_next
+        GROUP BY category ORDER BY 2 DESC
+    """), {"f": p_from, "t_next": t_next}).fetchall()
+
+    markup_revenue = round(float(markup or 0), 2)
+    ib_commission = round(float(ib_cost or 0), 2)
+    deposits = round(float(dep[0] or 0), 2)
+    withdrawals = round(float(wth[0] or 0), 2)
+    expense_by_cat = [{"category": r[0] or "Other",
+                       "amount": round(float(r[1] or 0), 2),
+                       "count": int(r[2] or 0)} for r in exp_rows]
+    operating_expenses = round(sum(c["amount"] for c in expense_by_cat), 2)
+    gross_profit = round(markup_revenue - ib_commission, 2)
+    net_profit = round(gross_profit - operating_expenses, 2)
+
+    return {
+        "markup_revenue": markup_revenue,
+        "ib_commission": ib_commission,
+        "gross_profit": gross_profit,
+        "operating_expenses": operating_expenses,
+        "net_profit": net_profit,
+        "expense_by_category": expense_by_cat,
+        # cash-flow memo (not P&L lines)
+        "deposits": deposits,
+        "deposit_count": int(dep[1] or 0),
+        "withdrawals": withdrawals,
+        "withdrawal_count": int(wth[1] or 0),
+        "net_client_flow": round(deposits - withdrawals, 2),
+    }
+
+
+@router.get("/pnl")
+def finance_pnl(
+    period: str = Query("this_month"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if period not in VALID_PERIODS:
+        period = "this_month"
+    return cached(f"finance:pnl:all:{period}", 120,
+                  lambda: _build_pnl(db, period))
+
+
+def _build_pnl(db, period):
+    p_from, p_to = get_period_dates(period)
+    cur = _pnl_window(db, p_from, p_to)
+    pp_from, pp_to = _previous_period_dates(period, p_from, p_to)
+    prev = _pnl_window(db, pp_from, pp_to) if pp_from else None
+
+    COMPARE_KEYS = [
+        "markup_revenue", "ib_commission", "gross_profit",
+        "operating_expenses", "net_profit",
+        "deposits", "withdrawals", "net_client_flow",
+    ]
+    lines = {}
+    for k in COMPARE_KEYS:
+        c = cur[k]
+        pv = prev[k] if prev else None
+        lines[k] = {"current": c, "previous": pv, "pct_change": _pct_change(c, pv)}
+
+    margin = round(cur["net_profit"] / cur["markup_revenue"] * 100, 1) if cur["markup_revenue"] else None
+
+    return {
+        "period": {"key": period, "from": p_from, "to": p_to,
+                   "prev_from": pp_from, "prev_to": pp_to},
+        "lines": lines,
+        "expense_by_category": cur["expense_by_category"],
+        "counts": {"deposit": cur["deposit_count"], "withdrawal": cur["withdrawal_count"]},
+        "net_margin_pct": margin,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MONTHLY TRENDS (for the charts)
+# ══════════════════════════════════════════════════════════════════════════════
+def _last_n_months(n: int):
+    today = date.today()
+    y, m = today.year, today.month
+    out = []
+    for _ in range(n):
+        out.append(f"{y:04d}-{m:02d}")
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+    out.reverse()
+    return out
+
+
+@router.get("/trends")
+def finance_trends(
+    months: int = Query(12, ge=1, le=36),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return cached(f"finance:trends:all:{months}", 300,
+                  lambda: _build_trends(db, months))
+
+
+def _build_trends(db, months):
+    keys = _last_n_months(months)
+    m0 = keys[0]                 # 'YYYY-MM' inclusive lower bound
+    m0_date = m0 + "-01"         # for the date-string columns
+    base = {k: {"month": k, "deposits": 0.0, "withdrawals": 0.0, "net": 0.0,
+                "markup_revenue": 0.0, "ib_commission": 0.0,
+                "expenses": 0.0, "profit": 0.0} for k in keys}
+
+    # transactions: genuine deposits + withdrawals by tx_month (indexed)
+    for r in db.execute(text(f"""
+        SELECT tx_month,
+               COALESCE(SUM(amount) FILTER (WHERE tx_type='deposit' AND {NOT_INTERNAL_SQL}),0),
+               COALESCE(SUM(amount) FILTER (WHERE tx_type='withdrawal' AND COALESCE(status,'')<>'rejected'),0)
+        FROM transactions
+        WHERE tx_month >= :m0 AND tx_type IN ('deposit','withdrawal')
+        GROUP BY tx_month
+    """), {"m0": m0, "mt5_adj": MT5_ADJUST_METHOD, "internal_re": INTERNAL_LABEL_RE}).fetchall():
+        if r[0] in base:
+            base[r[0]]["deposits"] = round(float(r[1] or 0), 2)
+            base[r[0]]["withdrawals"] = round(float(r[2] or 0), 2)
+
+    # markup revenue by deal_month (indexed), trades only
+    for r in db.execute(text("""
+        SELECT deal_month, COALESCE(SUM(markup_profit),0)/10000.0
+        FROM deals WHERE action IN (0,1) AND deal_month >= :m0
+        GROUP BY deal_month
+    """), {"m0": m0}).fetchall():
+        if r[0] in base:
+            base[r[0]]["markup_revenue"] = round(float(r[1] or 0), 2)
+
+    # IB commission cost by month (trade_date 'YYYY-MM-DD')
+    for r in db.execute(text("""
+        SELECT substr(trade_date,1,7), COALESCE(SUM(commission_usd),0)
+        FROM ib_commissions WHERE trade_date >= :m0d
+        GROUP BY 1
+    """), {"m0d": m0_date}).fetchall():
+        if r[0] in base:
+            base[r[0]]["ib_commission"] = round(float(r[1] or 0), 2)
+
+    # operating expenses by month
+    _ensure_expense_table(db)
+    for r in db.execute(text("""
+        SELECT substr(exp_date,1,7), COALESCE(SUM(amount),0)
+        FROM finance_expenses WHERE status<>'void' AND exp_date >= :m0d
+        GROUP BY 1
+    """), {"m0d": m0_date}).fetchall():
+        if r[0] in base:
+            base[r[0]]["expenses"] = round(float(r[1] or 0), 2)
+
+    series = []
+    for k in keys:
+        row = base[k]
+        row["net"] = round(row["deposits"] - row["withdrawals"], 2)
+        row["profit"] = round(row["markup_revenue"] - row["ib_commission"] - row["expenses"], 2)
+        series.append(row)
+
+    totals = {
+        "deposits": round(sum(r["deposits"] for r in series), 2),
+        "withdrawals": round(sum(r["withdrawals"] for r in series), 2),
+        "markup_revenue": round(sum(r["markup_revenue"] for r in series), 2),
+        "ib_commission": round(sum(r["ib_commission"] for r in series), 2),
+        "expenses": round(sum(r["expenses"] for r in series), 2),
+        "profit": round(sum(r["profit"] for r in series), 2),
+    }
+    return {"series": series, "totals": totals, "months": months}
+
+
+# ── Per-method net cash, broken down month by month, ranked high → low ─────────
+# The Overview "payment-method balances" table, but pivoted across the last N months
+# instead of a single all-time column. Net per (method, month) = genuine deposits −
+# non-rejected withdrawals through that method that month. The `method` column carries
+# ~130k noise values, so we keep the top `top` methods by total net over the window as
+# themselves and fold the long tail into a single 'Other' row (the totals are unchanged).
+@router.get("/method-trends")
+def finance_method_trends(
+    months: int = Query(12, ge=1, le=36),
+    top: int = Query(25, ge=5, le=100),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return cached(f"finance:method-trends:all:{months}:{top}", 300,
+                  lambda: _build_method_trends(db, months, top))
+
+
+def _build_method_trends(db, months, top):
+    keys = _last_n_months(months)
+    m0 = keys[0]
+    rows = db.execute(text(f"""
+        SELECT COALESCE(NULLIF(method,''),'Other') AS method, tx_month,
+               COALESCE(SUM(amount) FILTER (WHERE tx_type='deposit' AND {NOT_INTERNAL_SQL}),0)
+             - COALESCE(SUM(amount) FILTER (WHERE tx_type='withdrawal' AND COALESCE(status,'')<>'rejected'),0) AS net,
+               COUNT(*) AS cnt
+        FROM transactions
+        WHERE tx_type IN ('deposit','withdrawal') AND tx_month >= :m0
+        GROUP BY 1, 2
+    """), {"m0": m0, "mt5_adj": MT5_ADJUST_METHOD, "internal_re": INTERNAL_LABEL_RE}).fetchall()
+
+    # accumulate per method: {month: net}, total net, total count
+    acc: dict = {}
+    for method, tx_month, net, cnt in rows:
+        if tx_month not in keys:      # ignore any stray month outside the window
+            continue
+        d = acc.setdefault(method, {"monthly": {}, "total": 0.0, "count": 0})
+        d["monthly"][tx_month] = round(float(net or 0), 2)
+        d["total"] += float(net or 0)
+        d["count"] += int(cnt or 0)
+
+    ranked = sorted(acc.items(), key=lambda kv: kv[1]["total"], reverse=True)
+    head, tail = ranked[:top], ranked[top:]
+
+    label = lambda m: ("Internal / MT5 adjustment"
+                       if (m or "").strip().upper() == MT5_ADJUST_METHOD else (m or "Other"))
+
+    def pack(method, d):
+        return {
+            "method": method, "method_label": label(method),
+            "total": round(d["total"], 2), "count": d["count"],
+            "monthly": {k: round(d["monthly"].get(k, 0.0), 2) for k in keys},
+        }
+
+    out = [pack(m, d) for m, d in head]
+    if tail:
+        folded = {"monthly": {k: 0.0 for k in keys}, "total": 0.0, "count": 0}
+        for _m, d in tail:
+            folded["total"] += d["total"]; folded["count"] += d["count"]
+            for k in keys:
+                folded["monthly"][k] += d["monthly"].get(k, 0.0)
+        out.append({
+            "method": "__other__", "method_label": f"Other ({len(tail)} methods)",
+            "total": round(folded["total"], 2), "count": folded["count"],
+            "monthly": {k: round(folded["monthly"][k], 2) for k in keys},
+        })
+
+    col_totals = {k: round(sum(r["monthly"][k] for r in out), 2) for k in keys}
+    return {
+        "months": keys,
+        "methods": out,
+        "column_totals": col_totals,
+        "grand_total": round(sum(r["total"] for r in out), 2),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PSP RECONCILIATION
+# ══════════════════════════════════════════════════════════════════════════════
+# The desk enters what each PSP's own statement says it is holding for us; we show it
+# next to the internal net (genuine deposits − withdrawals through that method, from
+# the precomputed finance_method_agg rollup) and the variance. A non-zero variance is
+# what to chase with the provider. Statements persist in finance_psp_statements.
+def _ensure_recon_table(db: Session):
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS finance_psp_statements (
+            method            TEXT PRIMARY KEY,
+            statement_balance DOUBLE PRECISION DEFAULT 0,
+            statement_date    VARCHAR,
+            note              TEXT,
+            updated_by        INTEGER,
+            updated_at        TIMESTAMPTZ DEFAULT NOW()
+        )
+    """))
+    db.commit()
+
+
+@router.get("/reconciliation")
+def finance_reconciliation(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _ensure_recon_table(db)
+    _refresh_finance_agg(db)
+    rows = db.execute(text("""
+        SELECT a.method, a.deposits, a.withdrawals, (a.deposits - a.withdrawals) AS net,
+               (a.dep_cnt + a.wd_cnt) AS cnt,
+               s.statement_balance, s.statement_date, s.note, s.updated_at
+        FROM finance_method_agg a
+        LEFT JOIN finance_psp_statements s ON s.method = a.method
+        WHERE (a.dep_cnt + a.wd_cnt) > 0
+        ORDER BY net DESC
+        LIMIT 80
+    """)).fetchall()
+    label = lambda m: ("Internal / MT5 adjustment"
+                       if (m or "").strip().upper() == MT5_ADJUST_METHOD else (m or "Other"))
+    items, matched, total_variance = [], 0, 0.0
+    for r in rows:
+        net = round(float(r[3] or 0), 2)
+        has_stmt = r[5] is not None
+        stmt = round(float(r[5] or 0), 2) if has_stmt else None
+        variance = round(stmt - net, 2) if has_stmt else None
+        if has_stmt:
+            if abs(variance) < 0.01:
+                matched += 1
+            total_variance += variance
+        items.append({
+            "method": r[0], "method_label": label(r[0]),
+            "deposits": round(float(r[1] or 0), 2),
+            "withdrawals": round(float(r[2] or 0), 2),
+            "net": net, "count": int(r[4] or 0),
+            "statement_balance": stmt, "statement_date": r[6] or "",
+            "note": r[7] or "", "updated_at": str(r[8]) if r[8] else "",
+            "variance": variance,
+            "reconciled": has_stmt and abs(variance) < 0.01,
+        })
+    reconciled_cnt = sum(1 for i in items if i["statement_balance"] is not None)
+    return {
+        "items": items,
+        "summary": {
+            "methods": len(items),
+            "with_statement": reconciled_cnt,
+            "matched": matched,
+            "total_variance": round(total_variance, 2),
+        },
+    }
+
+
+class ReconIn(BaseModel):
+    method:            str
+    statement_balance: float = 0
+    statement_date:    Optional[str] = ""
+    note:              Optional[str] = ""
+
+
+@router.post("/reconciliation")
+def set_reconciliation(
+    body: ReconIn,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _ensure_recon_table(db)
+    if not body.method or not body.method.strip():
+        raise HTTPException(status_code=400, detail="Method is required")
+    db.execute(text("""
+        INSERT INTO finance_psp_statements
+            (method, statement_balance, statement_date, note, updated_by, updated_at)
+        VALUES (:method, :bal, :sdate, :note, :uid, NOW())
+        ON CONFLICT (method) DO UPDATE SET
+            statement_balance = EXCLUDED.statement_balance,
+            statement_date    = EXCLUDED.statement_date,
+            note              = EXCLUDED.note,
+            updated_by        = EXCLUDED.updated_by,
+            updated_at        = NOW()
+    """), {
+        "method": body.method.strip(),
+        "bal": float(body.statement_balance or 0),
+        "sdate": (body.statement_date or "").strip(),
+        "note": (body.note or "").strip(),
+        "uid": getattr(current_user, "id", None),
+    })
+    db.commit()
+    return {"method": body.method.strip(), "message": "Statement saved"}
+
+
+@router.delete("/reconciliation/{method}")
+def clear_reconciliation(
+    method: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _ensure_recon_table(db)
+    db.execute(text("DELETE FROM finance_psp_statements WHERE method = :m"), {"m": method})
+    db.commit()
+    return {"method": method, "message": "Statement cleared"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CSV EXPORTS
+# ══════════════════════════════════════════════════════════════════════════════
+def _csv_response(header, rows, filename):
+    buf = io.StringIO()
+    w = _csv.writer(buf)
+    w.writerow(header)
+    for row in rows:
+        w.writerow(row)
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]), media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/ledger.csv")
+def export_ledger_csv(
+    tx_type: str = Query(""),
+    method: str = Query(""),
+    search: str = Query(""),
+    date_from: str = Query(""),
+    date_to: str = Query(""),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    where = ["1=1"]
+    params: dict = {}
+    if tx_type:
+        types = [t.strip() for t in tx_type.split(",") if t.strip()]
+        if types:
+            ph = ",".join(f":ty{i}" for i in range(len(types)))
+            where.append(f"t.tx_type IN ({ph})")
+            for i, ty in enumerate(types):
+                params[f"ty{i}"] = ty
+    if method:
+        where.append("t.method ILIKE :method")
+        params["method"] = f"%{method}%"
+    if search:
+        where.append("(CAST(t.login AS TEXT) LIKE :s OR c.name ILIKE :s "
+                     "OR t.method ILIKE :s OR t.notes ILIKE :s OR t.psp_reference ILIKE :s)")
+        params["s"] = f"%{search}%"
+    if date_from:
+        where.append("t.tx_date >= :date_from")
+        params["date_from"] = date_from
+    if date_to:
+        where.append("t.tx_date < :date_to_next")
+        params["date_to_next"] = _next_day(date_to)
+    where_sql = "WHERE " + " AND ".join(where)
+    rows = db.execute(text(f"""
+        SELECT t.tx_date, t.login, c.name, t.tx_type, t.amount, t.currency,
+               t.method, t.status, COALESCE(t.psp_reference, CAST(t.deal_id AS TEXT))
+        FROM transactions t
+        LEFT JOIN clients c ON c.login = t.login
+        {where_sql}
+        ORDER BY t.tx_date DESC NULLS LAST
+        LIMIT 100000
+    """), params).fetchall()
+    out = [[str(r[0] or ""), r[1], r[2] or "", r[3] or "", float(r[4] or 0),
+            r[5] or "USD", r[6] or "", r[7] or "", r[8] or ""] for r in rows]
+    return _csv_response(
+        ["Date", "Login", "Client", "Type", "Amount", "Currency", "Method", "Status", "Reference"],
+        out, "finance_ledger.csv")
+
+
+@router.get("/expenses.csv")
+def export_expenses_csv(
+    status: str = Query(""),
+    category: str = Query(""),
+    search: str = Query(""),
+    date_from: str = Query(""),
+    date_to: str = Query(""),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _ensure_expense_table(db)
+    where = ["1=1"]
+    params: dict = {}
+    if status:
+        where.append("status = :status"); params["status"] = status
+    if category:
+        where.append("category = :category"); params["category"] = category
+    if search:
+        where.append("(payee ILIKE :s OR note ILIKE :s OR invoice_no ILIKE :s)")
+        params["s"] = f"%{search}%"
+    if date_from:
+        where.append("exp_date >= :date_from"); params["date_from"] = date_from
+    if date_to:
+        where.append("exp_date < :date_to_next"); params["date_to_next"] = _next_day(date_to)
+    where_sql = "WHERE " + " AND ".join(where)
+    rows = db.execute(text(f"""
+        SELECT exp_date, payee, category, amount, currency, status, invoice_no, note
+        FROM finance_expenses {where_sql}
+        ORDER BY exp_date DESC, id DESC LIMIT 100000
+    """), params).fetchall()
+    out = [[r[0] or "", r[1] or "", r[2] or "", float(r[3] or 0), r[4] or "USD",
+            r[5] or "", r[6] or "", r[7] or ""] for r in rows]
+    return _csv_response(
+        ["Date", "Payee", "Category", "Amount", "Currency", "Status", "Invoice #", "Note"],
+        out, "finance_expenses.csv")
+
+
+@router.get("/methods.csv")
+def export_methods_csv(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _refresh_finance_agg(db)
+    rows = db.execute(text("""
+        SELECT method, deposits, withdrawals, (deposits - withdrawals) AS net,
+               (dep_cnt + wd_cnt) AS cnt
+        FROM finance_method_agg WHERE (dep_cnt + wd_cnt) > 0 ORDER BY net DESC
+    """)).fetchall()
+    out = [[r[0] or "Other", float(r[1] or 0), float(r[2] or 0),
+            float(r[3] or 0), int(r[4] or 0)] for r in rows]
+    return _csv_response(
+        ["Method / PSP", "Deposits", "Withdrawals", "Net", "Txns"],
+        out, "finance_payment_methods.csv")
+
+
+@router.get("/pnl.csv")
+def export_pnl_csv(
+    period: str = Query("this_month"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if period not in VALID_PERIODS:
+        period = "this_month"
+    d = _build_pnl(db, period)
+    L = d["lines"]
+    g = lambda k: L[k]["current"]
+    out = [
+        ["Spread / markup revenue", g("markup_revenue")],
+        ["less IB commissions paid", -g("ib_commission")],
+        ["Gross profit", g("gross_profit")],
+    ]
+    for c in d["expense_by_category"]:
+        out.append([f"  {c['category']}", -c["amount"]])
+    out.append(["Operating expenses (total)", -g("operating_expenses")])
+    out.append(["NET PROFIT", g("net_profit")])
+    out.append(["", ""])
+    out.append(["Deposits (cash-flow memo)", g("deposits")])
+    out.append(["Withdrawals (cash-flow memo)", -g("withdrawals")])
+    out.append(["Net client flow", g("net_client_flow")])
+    return _csv_response(
+        ["Line", f"Amount ({d['period']['from']}..{d['period']['to']})"],
+        out, f"finance_pnl_{period}.csv")
